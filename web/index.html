@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- Standard meta tags -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>datn_web_admin</title>
+
+  <!-- Enforce minimum window size -->
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-width: 960px;
+      min-height: 600px;
+      overflow: auto;
+      box-sizing: border-box;
+    }
+    #flutter_container {
+      min-width: 960px;
+      min-height: 600px;
+    }
+  </style>
+
+  <!-- JavaScript to enforce minimum window size -->
+  <script>
+    function enforceMinSize() {
+      const minWidth = 960;
+      const minHeight = 600;
+      if (window.innerWidth < minWidth || window.innerHeight < minHeight) {
+        window.resizeTo(
+          Math.max(window.innerWidth, minWidth),
+          Math.max(window.innerHeight, minHeight)
+        );
+      }
+    }
+
+    // Run on load and resize
+    window.addEventListener('load', enforceMinSize);
+    window.addEventListener('resize', enforceMinSize);
+  </script>
+</head>
+<body>
+<div id="flutter_container"></div>
+<script src="main.dart.js" type="application/javascript"></script>
+</body>
+</html>

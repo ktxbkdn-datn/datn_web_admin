@@ -1,0 +1,1 @@
+const String ktxLogo = 'assets/logo/logo.jpg';

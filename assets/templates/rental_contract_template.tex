@@ -1,0 +1,62 @@
+% Defining document class and essential packages
+\documentclass[a4paper,12pt]{article}
+\usepackage[utf8]{vietnam}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{parskip}
+\usepackage{titlesec}
+\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+
+% Beginning document
+\begin{document}
+
+% Creating centered title
+\begin{center}
+    {\Large \textbf{HỢP ĐỒNG CHO THUÊ PHÒNG TRỌ}} \\
+    \vspace{0.5cm}
+    Số: [CONTRACT_NUMBER]/HĐCT
+\end{center}
+
+% Adding lessor information
+\section*{Thông tin bên cho thuê}
+\textbf{Công ty:} Công ty Cho Thuê Nhà Trọ ABC \\
+\textbf{Địa chỉ:} 123 Đường ABC, Quận 1, TP. Hồ Chí Minh \\
+\textbf{Đại diện:} Ông Nguyễn Văn A \\
+\textbf{Số điện thoại:} 0123 456 789 \\
+
+% Adding lessee information
+\section*{Thông tin bên thuê}
+\textbf{Họ và tên:} [FULLNAME] \\
+\textbf{Ngày sinh:} [DATE_OF_BIRTH] \\
+\textbf{CCCD:} [CCCD] \\
+\textbf{Địa chỉ email:} [USER_EMAIL] \\
+\textbf{Số điện thoại:} [PHONE] \\
+\textbf{Lớp học:} [CLASS_NAME] \\
+
+% Adding room information
+\section*{Thông tin phòng trọ}
+\textbf{Tên phòng:} [ROOM_NAME] \\
+\textbf{Khu vực:} [AREA_NAME] \\
+\textbf{Loại hợp đồng:} [CONTRACT_TYPE] \\
+\textbf{Thời gian bắt đầu:} [START_DATE] \\
+\textbf{Thời gian kết thúc:} [END_DATE] \\
+\textbf{Trạng thái:} [STATUS] \\
+\textbf{Ngày tạo hợp đồng:} [CREATED_AT] \\
+
+% Adding contract terms
+\section*{Điều khoản hợp đồng}
+1. Bên thuê đồng ý thanh toán tiền thuê phòng đúng hạn. \\
+2. Bên cho thuê cam kết cung cấp phòng trọ đúng như mô tả. \\
+3. Các điều khoản khác theo thỏa thuận hai bên.
+
+% Adding signature section
+\begin{flushright}
+    \textbf{ĐẠI DIỆN BÊN CHO THUÊ} \hfill \textbf{BÊN THUÊ} \\
+    \vspace{2cm} \\
+    (Ký và ghi rõ họ tên) \hfill (Ký và ghi rõ họ tên)
+\end{flushright}
+
+% Ending document
+\end{document}

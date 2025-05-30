@@ -1,0 +1,151 @@
+import 'package:dartz/dartz.dart';
+
+import '../../../../src/core/error/failures.dart';
+import '../../../../src/core/network/api_client.dart';
+import '../../domain/entities/contract_entity.dart';
+import '../models/contract_model.dart';
+
+abstract class ContractRemoteDataSource {
+  Future<List<ContractModel>> getAllContracts({
+    int page,
+    int limit,
+    String? email,
+    String? status,
+    String? startDate,
+    String? endDate,
+    String? contractType,
+  });
+
+  Future<ContractModel> getContractById(int contractId);
+
+  Future<ContractModel> createContract(ContractModel contract, int areaId);
+
+  Future<ContractModel> updateContract(int contractId, ContractModel contract, int areaId);
+
+  Future<void> deleteContract(int contractId);
+
+  Future<void> updateContractStatus(); // Thêm phương thức mới
+}
+
+class ContractRemoteDataSourceImpl implements ContractRemoteDataSource {
+  final ApiService apiService;
+
+  ContractRemoteDataSourceImpl(this.apiService);
+
+  @override
+  Future<List<ContractModel>> getAllContracts({
+    int page = 1,
+    int limit = 10,
+    String? email,
+    String? status,
+    String? startDate,
+    String? endDate,
+    String? contractType,
+  }) async {
+    try {
+      final response = await apiService.get(
+        '/contracts',
+        queryParams: {
+          'page': page.toString(),
+          'limit': limit.toString(),
+          if (email != null) 'email': email,
+          if (status != null) 'status': status,
+          if (startDate != null) 'start_date': startDate,
+          if (endDate != null) 'end_date': endDate,
+          if (contractType != null) 'contract_type': contractType,
+        },
+      );
+
+      final contractsJson = response['contracts'] as List<dynamic>;
+      return contractsJson.map((json) => ContractModel.fromJson(json)).toList();
+    } catch (e) {
+      if (e is ServerFailure) {
+        throw ServerFailure(e.message);
+      } else if (e is NetworkFailure) {
+        throw NetworkFailure(e.message);
+      }
+      throw ServerFailure('Không thể lấy hợp đồng: $e');
+    }
+  }
+
+  @override
+  Future<ContractModel> getContractById(int contractId) async {
+    try {
+      final response = await apiService.get('/contracts/$contractId');
+      return ContractModel.fromJson(response);
+    } catch (e) {
+      if (e is ServerFailure) {
+        throw ServerFailure(e.message);
+      } else if (e is NetworkFailure) {
+        throw NetworkFailure(e.message);
+      }
+      throw ServerFailure('Không thể lấy hợp đồng: $e');
+    }
+  }
+
+  @override
+  Future<ContractModel> createContract(ContractModel contract, int areaId) async {
+    try {
+      final jsonData = contract.toJson()..['area_id'] = areaId;
+      final response = await apiService.post(
+        '/admin/contracts',
+        jsonData,
+      );
+      return ContractModel.fromJson(response);
+    } catch (e) {
+      if (e is ServerFailure) {
+        throw ServerFailure(e.message);
+      } else if (e is NetworkFailure) {
+        throw NetworkFailure(e.message);
+      }
+      throw ServerFailure('Không thể tạo hợp đồng: $e');
+    }
+  }
+
+  @override
+  Future<ContractModel> updateContract(int contractId, ContractModel contract, int areaId) async {
+    try {
+      final jsonData = contract.toJson()..['area_id'] = areaId;
+      final response = await apiService.put(
+        '/admin/contracts/$contractId',
+        jsonData,
+      );
+      return ContractModel.fromJson(response);
+    } catch (e) {
+      if (e is ServerFailure) {
+        throw ServerFailure(e.message);
+      } else if (e is NetworkFailure) {
+        throw NetworkFailure(e.message);
+      }
+      throw ServerFailure('Không thể cập nhật hợp đồng: $e');
+    }
+  }
+
+  @override
+  Future<void> deleteContract(int contractId) async {
+    try {
+      await apiService.delete('/admin/contracts/$contractId');
+    } catch (e) {
+      if (e is ServerFailure) {
+        throw ServerFailure(e.message);
+      } else if (e is NetworkFailure) {
+        throw NetworkFailure(e.message);
+      }
+      throw ServerFailure('Không thể xóa hợp đồng: $e');
+    }
+  }
+
+  @override
+  Future<void> updateContractStatus() async {
+    try {
+      await apiService.post('/admin/update-contract-status', {});
+    } catch (e) {
+      if (e is ServerFailure) {
+        throw ServerFailure(e.message);
+      } else if (e is NetworkFailure) {
+        throw NetworkFailure(e.message);
+      }
+      throw ServerFailure('Không thể cập nhật trạng thái hợp đồng: $e');
+    }
+  }
+}
