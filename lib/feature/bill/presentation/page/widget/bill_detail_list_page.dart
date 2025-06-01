@@ -19,10 +19,10 @@ import '../../../../../common/constants/colors.dart';
 import '../../../../../common/widget/custom_data_table.dart';
 import '../../../../../common/widget/filterbox.dart';
 import '../../../../room/domain/entities/area_entity.dart';
-import '../../../../room/presentations/area_bloc/area_bloc.dart';
-import '../../../../room/presentations/area_bloc/area_event.dart';
-import '../../../../room/presentations/area_bloc/area_state.dart';
-import '../../../../room/presentations/bloc/room_bloc.dart';
+import '../../../../room/presentations/bloc/area_bloc/area_bloc.dart';
+import '../../../../room/presentations/bloc/area_bloc/area_event.dart';
+import '../../../../room/presentations/bloc/area_bloc/area_state.dart';
+import '../../../../room/presentations/bloc/room_bloc/room_bloc.dart';
 import '../../../../service/data/models/service_model.dart';
 import '../../../../service/domain/entities/service_entity.dart';
 
@@ -801,7 +801,7 @@ class _BillDetailListPageState extends State<BillDetailListPage>
                                                   .map((area) =>
                                                       DropdownMenuItem<String>(
                                                         value: area,
-                                                        child: Text(area),
+                                                        child: Text(area == 'All' ? 'Tất cả' : area),
                                                       ))
                                                   .toList(),
                                               onChanged: (value) {
@@ -849,10 +849,9 @@ class _BillDetailListPageState extends State<BillDetailListPage>
                                                         child: Text(
                                                           status == 'SUBMITTED'
                                                               ? 'Đã gửi về'
-                                                              : status ==
-                                                                      'NOT_SUBMITTED'
+                                                              : status == 'NOT_SUBMITTED'
                                                                   ? 'Chưa gửi về'
-                                                                  : 'Tất cả trạng thái',
+                                                                  : 'Tất cả',
                                                         ),
                                                       ))
                                                   .toList(),
@@ -1008,10 +1007,9 @@ class _BillDetailListPageState extends State<BillDetailListPage>
                                                         child: Text(
                                                           status == 'CREATED'
                                                               ? 'Đã tạo hóa đơn'
-                                                              : status ==
-                                                                      'NOT_CREATED'
+                                                              : status == 'NOT_CREATED'
                                                                   ? 'Chưa tạo hóa đơn'
-                                                                  : 'Tất cả trạng thái',
+                                                                  : 'Tất cả',
                                                         ),
                                                       ))
                                                   .toList(),
@@ -1062,7 +1060,7 @@ class _BillDetailListPageState extends State<BillDetailListPage>
                                                               ? 'Đã thanh toán'
                                                               : status == 'NOT_PAID'
                                                                   ? 'Chưa thanh toán'
-                                                                  : 'Tất cả trạng thái',
+                                                                  : 'Tất cả',
                                                         ),
                                                       ))
                                                   .toList(),

@@ -22,7 +22,7 @@ class AdminDrawer extends StatelessWidget {
       headerIcon: Icons.admin_panel_settings,
       items: [
         DrawerItem(
-          title: 'Dashboard',
+          title: 'Trang chủ',
           icon: Iconsax.home,
           route: '/dashboard',
         ),

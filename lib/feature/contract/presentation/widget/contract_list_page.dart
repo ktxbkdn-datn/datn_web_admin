@@ -12,9 +12,9 @@ import '../../../contract/presentation/bloc/contract_state.dart';
 import '../../../contract/presentation/widget/contract_detail_dialog.dart';
 import '../../../contract/presentation/widget/create_contract_dialog.dart';
 import '../../../room/domain/entities/area_entity.dart';
-import '../../../room/presentations/area_bloc/area_bloc.dart';
-import '../../../room/presentations/area_bloc/area_event.dart';
-import '../../../room/presentations/area_bloc/area_state.dart';
+import '../../../room/presentations/bloc/area_bloc/area_bloc.dart';
+import '../../../room/presentations/bloc/area_bloc/area_event.dart';
+import '../../../room/presentations/bloc/area_bloc/area_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
@@ -314,7 +314,7 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
                                                 _applyFilters();
                                               });
                                             },
-                                            hintText: 'Search contracts by room or user...',
+                                            hintText: 'tìm kiếm theo tên phòng hoặc email người dùng',
                                             initialValue: _searchQuery,
                                           ),
                                         ),
@@ -333,7 +333,7 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
                                           ),
                                         ),
                                         icon: const Icon(Icons.refresh),
-                                        label: const Text('Refresh'),
+                                        label: const Text('Làm mới'),
                                       ),
                                       const SizedBox(width: 10),
                                       ElevatedButton.icon(

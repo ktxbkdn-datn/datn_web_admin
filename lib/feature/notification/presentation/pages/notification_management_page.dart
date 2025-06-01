@@ -72,7 +72,7 @@ class _NotificationManagementPageState extends State<NotificationManagementPage>
               headerIcon: Iconsax.notification,
               items: [
                 DrawerItem(
-                  title: 'Dashboard',
+                  title: 'Trang chủ',
                   icon: Iconsax.home,
                   route: '/dashboard',
                 ),

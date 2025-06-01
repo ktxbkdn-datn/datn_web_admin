@@ -8,9 +8,9 @@ import '../../../../../common/widget/pagination_controls.dart';
 import '../../../../../common/widget/custom_data_table.dart';
 import '../../../../../common/constants/colors.dart';
 import '../../../domain/entities/area_entity.dart';
-import '../../area_bloc/area_bloc.dart';
-import '../../area_bloc/area_event.dart';
-import '../../area_bloc/area_state.dart';
+import '../../bloc/area_bloc/area_bloc.dart';
+import '../../bloc/area_bloc/area_event.dart';
+import '../../bloc/area_bloc/area_state.dart';
 import '../area/create_area_dialog.dart';
 import '../area/edit_area_dialog.dart';
 
@@ -159,7 +159,7 @@ class _AreaListTabState extends State<AreaListTab> with AutomaticKeepAliveClient
                                 child: Row(
                                   children: [
                                     FilterTab(
-                                      label: 'All Areas (${_areas.length})',
+                                      label: 'Tất cả khu vực (${_areas.length})',
                                       isSelected: _filterStatus == 'All',
                                       onTap: () {
                                         setState(() {
@@ -185,7 +185,7 @@ class _AreaListTabState extends State<AreaListTab> with AutomaticKeepAliveClient
                                           _saveLocalData();
                                         });
                                       },
-                                      hintText: 'Search areas...',
+                                      hintText: 'Tìm kiếm khu vực...',
                                       initialValue: _searchQuery,
                                     ),
                                   ),
@@ -201,7 +201,7 @@ class _AreaListTabState extends State<AreaListTab> with AutomaticKeepAliveClient
                                           ),
                                         ),
                                         icon: const Icon(Icons.refresh),
-                                        label: const Text('Refresh'),
+                                        label: const Text('Làm mới'),
                                       ),
                                       const SizedBox(width: 10),
                                       ElevatedButton.icon(

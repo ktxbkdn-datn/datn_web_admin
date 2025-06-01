@@ -14,9 +14,9 @@ import 'package:datn_web_admin/feature/register/presentation/page/registration_m
 import 'package:datn_web_admin/feature/report/presentation/bloc/report/report_bloc.dart';
 import 'package:datn_web_admin/feature/report/presentation/bloc/rp_image/rp_image_bloc.dart';
 import 'package:datn_web_admin/feature/report/presentation/page/report_management_page.dart';
-import 'package:datn_web_admin/feature/room/presentations/area_bloc/area_bloc.dart';
-import 'package:datn_web_admin/feature/room/presentations/bloc/room_bloc.dart';
-import 'package:datn_web_admin/feature/room/presentations/bloc_ri/room_image_bloc.dart';
+import 'package:datn_web_admin/feature/room/presentations/bloc/area_bloc/area_bloc.dart';
+import 'package:datn_web_admin/feature/room/presentations/bloc/room_bloc/room_bloc.dart';
+import 'package:datn_web_admin/feature/room/presentations/bloc/room_image_bloc/room_image_bloc.dart';
 import 'package:datn_web_admin/feature/service/presentation/bloc/service_bloc.dart';
 import 'package:datn_web_admin/feature/service/presentation/page/service_management_page.dart';
 import 'package:datn_web_admin/feature/user/presentation/bloc/user_bloc.dart';

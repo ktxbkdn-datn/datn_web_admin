@@ -123,7 +123,7 @@ class _UserListTabState extends State<UserListTab> {
                                         _saveLocalData();
                                       });
                                     },
-                                    hintText: 'Search users...',
+                                    hintText: 'Tìm kiếm người dùng...',
                                     initialValue: _searchQuery,
                                   ),
                                 ),
@@ -142,7 +142,7 @@ class _UserListTabState extends State<UserListTab> {
                                             ),
                                           ),
                                           icon: const Icon(Icons.refresh),
-                                          label: const Text('Refresh'),
+                                          label: const Text('Làm mới'),
                                         ),
                                         const SizedBox(width: 10),
                                         ElevatedButton.icon(

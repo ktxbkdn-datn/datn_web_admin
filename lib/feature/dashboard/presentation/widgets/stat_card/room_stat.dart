@@ -3,7 +3,7 @@ import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_page/
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:datn_web_admin/feature/room/domain/entities/room_entity.dart';
-import 'package:datn_web_admin/feature/room/presentations/bloc/room_bloc.dart';
+import 'package:datn_web_admin/feature/room/presentations/bloc/room_bloc/room_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../stat_card.dart';
@@ -84,7 +84,7 @@ class _RoomStatCardState extends State<RoomStatCard> {
           Color changeColor = percentageOccupied > 50 ? Colors.red : Colors.green;
 
           return StatCard(
-            title: 'Total Available Rooms',
+            title: 'Tổng số phòng còn trống',
             value: totalRooms,
             percentageChange: percentageOccupiedText, // Phần trăm phòng đã có người ở
             lastMonthTotal: totalRooms, // Gán tổng số phòng vào lastMonthTotal

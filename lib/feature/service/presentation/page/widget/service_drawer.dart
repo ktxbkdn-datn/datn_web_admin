@@ -21,7 +21,7 @@ class ServiceDrawer extends StatelessWidget {
       headerIcon: Iconsax.electricity,
       items:  [
         DrawerItem(
-          title: 'Dashboard',
+          title: 'Trang chủ',
           icon: Iconsax.home,
           route: '/dashboard',
         ),

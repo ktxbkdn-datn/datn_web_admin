@@ -577,7 +577,7 @@ class _AdminListPageState extends State<AdminListPage> with AutomaticKeepAliveCl
                                 child: Row(
                                   children: [
                                     FilterTab(
-                                      label: 'All Admins (${_allAdmins.length})',
+                                      label: 'Tất cả Admin (${_allAdmins.length})',
                                       isSelected: _filterStatus == 'All',
                                       onTap: () {
                                         setState(() {
@@ -603,7 +603,7 @@ class _AdminListPageState extends State<AdminListPage> with AutomaticKeepAliveCl
                                           _saveLocalData();
                                         });
                                       },
-                                      hintText: 'Search admins...',
+                                      hintText: 'Tìm kiếm admin...',
                                       initialValue: _searchQuery,
                                     ),
                                   ),

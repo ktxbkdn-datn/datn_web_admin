@@ -9,10 +9,10 @@ import 'package:datn_web_admin/feature/bill/presentation/bloc/bill_bloc.dart';
 import 'package:datn_web_admin/feature/bill/presentation/bloc/bill_event.dart';
 import 'package:datn_web_admin/feature/room/domain/entities/area_entity.dart';
 import 'package:datn_web_admin/feature/room/domain/entities/room_entity.dart';
-import 'package:datn_web_admin/feature/room/presentations/area_bloc/area_bloc.dart';
-import 'package:datn_web_admin/feature/room/presentations/area_bloc/area_event.dart';
-import 'package:datn_web_admin/feature/room/presentations/area_bloc/area_state.dart';
-import 'package:datn_web_admin/feature/room/presentations/bloc/room_bloc.dart';
+import 'package:datn_web_admin/feature/room/presentations/bloc/area_bloc/area_bloc.dart';
+import 'package:datn_web_admin/feature/room/presentations/bloc/area_bloc/area_event.dart';
+import 'package:datn_web_admin/feature/room/presentations/bloc/area_bloc/area_state.dart';
+import 'package:datn_web_admin/feature/room/presentations/bloc/room_bloc/room_bloc.dart';
 import 'package:datn_web_admin/feature/bill/presentation/page/widget/bill_detail_dialog.dart';
 import 'package:datn_web_admin/feature/service/data/models/service_model.dart';
 import 'package:datn_web_admin/feature/service/domain/entities/service_entity.dart';
@@ -276,6 +276,9 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
             (bill.roomDetails?.name.toLowerCase() ?? '').contains(_searchQuery.toLowerCase());
         return matchesStatus && matchesArea && matchesService && matchesMonthYear && matchesBillStatus && matchesSearch;
       }).map((model) => model.toEntity()).toList();
+
+      // Sort bills by createdAt in descending order (newest first)
+      _bills.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     });
   }
 
@@ -562,7 +565,7 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                                                   underline: const SizedBox(),
                                                   items: uniqueAreas.map((area) => DropdownMenuItem<String>(
                                                     value: area,
-                                                    child: Text(area),
+                                                    child: Text(area == 'All' ? 'Tất cả' : area),
                                                   )).toList(),
                                                   onChanged: (value) {
                                                     setState(() {
@@ -607,7 +610,7 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                                                           ? 'Chưa thanh toán'
                                                           : status == 'PAID'
                                                           ? 'Đã thanh toán'
-                                                          : 'Tất cả trạng thái',
+                                                          : 'Tất cả',
                                                     ),
                                                   )).toList(),
                                                   onChanged: (value) {
@@ -648,7 +651,7 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                                                   underline: const SizedBox(),
                                                   items: uniqueServices.map((service) => DropdownMenuItem<String>(
                                                     value: service,
-                                                    child: Text(service),
+                                                    child: Text(service == 'All' ? 'Tất cả' : service),
                                                   )).toList(),
                                                   onChanged: (value) {
                                                     setState(() {
@@ -749,7 +752,7 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                                                           ? 'Đã tạo hóa đơn'
                                                           : status == 'NOT_CREATED'
                                                           ? 'Chưa tạo hóa đơn'
-                                                          : 'Tất cả trạng thái',
+                                                          : 'Tất cả',
                                                     ),
                                                   )).toList(),
                                                   onChanged: (value) {

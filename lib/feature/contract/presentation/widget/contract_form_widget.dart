@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../room/presentations/area_bloc/area_bloc.dart';
-import '../../../room/presentations/area_bloc/area_state.dart';
+import '../../../room/presentations/bloc/area_bloc/area_bloc.dart';
+import '../../../room/presentations/bloc/area_bloc/area_state.dart';
 
 class ContractFormWidget extends StatelessWidget {
   final GlobalKey<FormState> formKey;

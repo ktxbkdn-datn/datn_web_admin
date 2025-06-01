@@ -24,9 +24,9 @@ import '../../../../feature/room/domain/usecases/get_room_image.dart';
 import '../../../../feature/room/domain/usecases/reorder_room_images.dart';
 import '../../../../feature/room/domain/usecases/update_room.dart';
 import '../../../../feature/room/domain/usecases/upload_room_image.dart';
-import '../../../../feature/room/presentations/area_bloc/area_bloc.dart';
-import '../../../../feature/room/presentations/bloc/room_bloc.dart';
-import '../../../../feature/room/presentations/bloc_ri/room_image_bloc.dart';
+import '../../../../feature/room/presentations/bloc/area_bloc/area_bloc.dart';
+import '../../../../feature/room/presentations/bloc/room_bloc/room_bloc.dart';
+import '../../../../feature/room/presentations/bloc/room_image_bloc/room_image_bloc.dart';
 import '../../network/api_client.dart';
 
 final getIt = GetIt.instance;

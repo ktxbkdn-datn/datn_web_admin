@@ -455,7 +455,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                                             ),
                                             const SizedBox(height: 4),
                                             Text(
-                                              'Khám phá thông tin và hoạt động về ký túc xá của bạn',
+                                              'Khám phá thông tin và quản lý hoạt động về ký túc xá của bạn',
                                               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,

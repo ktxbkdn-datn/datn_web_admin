@@ -1,11 +1,11 @@
 // lib/src/features/room/presentation/bloc/area_bloc.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/entities/area_entity.dart';
-import '../../domain/usecases/area/create_area.dart';
-import '../../domain/usecases/area/delete_area.dart';
-import '../../domain/usecases/area/get_all_areas.dart';
-import '../../domain/usecases/area/get_area_by_id.dart';
-import '../../domain/usecases/area/update_area.dart';
+import '../../../domain/entities/area_entity.dart';
+import '../../../domain/usecases/area/create_area.dart';
+import '../../../domain/usecases/area/delete_area.dart';
+import '../../../domain/usecases/area/get_all_areas.dart';
+import '../../../domain/usecases/area/get_area_by_id.dart';
+import '../../../domain/usecases/area/update_area.dart';
 import 'area_event.dart';
 import 'area_state.dart';
 

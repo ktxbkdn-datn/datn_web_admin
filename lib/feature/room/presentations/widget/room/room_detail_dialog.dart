@@ -6,8 +6,8 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import '../../../../../common/constants/api_string.dart';
 import '../../../domain/entities/room_entity.dart';
-import '../../bloc_ri/room_image_bloc.dart';
-import '../../bloc_ri/room_image_state.dart';
+import '../../bloc/room_image_bloc/room_image_bloc.dart';
+import '../../bloc/room_image_bloc/room_image_state.dart';
 
 final String baseUrl = APIbaseUrl;
 

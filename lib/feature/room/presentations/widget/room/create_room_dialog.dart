@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../area_bloc/area_bloc.dart';
-import '../../bloc/room_bloc.dart';
+import '../../bloc/area_bloc/area_bloc.dart';
+import '../../bloc/room_bloc/room_bloc.dart';
 import 'room_form_widget.dart';
 
 class CreateRoomDialog extends StatefulWidget {

@@ -1,8 +1,8 @@
 // lib/src/features/room/presentation/widgets/create_area_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../area_bloc/area_bloc.dart';
-import '../../area_bloc/area_event.dart';
+import '../../bloc/area_bloc/area_bloc.dart';
+import '../../bloc/area_bloc/area_event.dart';
 
 class CreateAreaDialog extends StatefulWidget {
   const CreateAreaDialog({Key? key}) : super(key: key);

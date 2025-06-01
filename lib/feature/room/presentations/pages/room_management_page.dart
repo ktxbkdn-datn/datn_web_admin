@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:datn_web_admin/feature/room/presentations/bloc/room_bloc.dart';
+import 'package:datn_web_admin/feature/room/presentations/bloc/room_bloc/room_bloc.dart';
 import 'package:datn_web_admin/feature/room/presentations/widget/area/area_list_tab.dart';
 import 'package:datn_web_admin/feature/room/presentations/widget/room/room_drawer.dart';
-import '../area_bloc/area_bloc.dart';
-import '../area_bloc/area_event.dart';
-import '../area_bloc/area_state.dart';
+import '../bloc/area_bloc/area_bloc.dart';
+import '../bloc/area_bloc/area_event.dart';
+import '../bloc/area_bloc/area_state.dart';
 import '../widget/room/room_list_page.dart';
 
 class RoomManagementPage extends StatefulWidget {

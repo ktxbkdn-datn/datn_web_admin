@@ -2,8 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../domain/entities/area_entity.dart';
-import '../../area_bloc/area_bloc.dart';
-import '../../area_bloc/area_event.dart';
+import '../../bloc/area_bloc/area_bloc.dart';
+import '../../bloc/area_bloc/area_event.dart';
 class EditAreaDialog extends StatefulWidget {
   final AreaEntity area;
 

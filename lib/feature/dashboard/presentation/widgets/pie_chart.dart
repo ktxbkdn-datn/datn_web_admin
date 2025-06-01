@@ -98,11 +98,11 @@ class _ReportPieChartState extends State<ReportPieChart> {
   }
 
   Widget _buildPieChart(
-      BuildContext context,
-      List<ReportEntity> reports,
-      List<ReportTypeEntity> reportTypes,
-      DateTime month,
-      ) {
+    BuildContext context,
+    List<ReportEntity> reports,
+    List<ReportTypeEntity> reportTypes,
+    DateTime month,
+  ) {
     // Filter reports for the selected month
     final monthReports = reports.where((report) {
       if (report.createdAt == null) return false;
@@ -149,9 +149,35 @@ class _ReportPieChartState extends State<ReportPieChart> {
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
+            badgeWidget: Text(
+              reportType.name,
+              style: const TextStyle(fontSize: 0), // Hidden for tooltip use
+            ),
           ),
         );
       }
+    }
+
+    // Handle no data case
+    final isEmpty = sections.isEmpty;
+    if (isEmpty) {
+      sections.add(
+        PieChartSectionData(
+          color: Colors.grey,
+          value: 1,
+          title: 'Không có dữ liệu',
+          radius: 50,
+          titleStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+          badgeWidget: const Text(
+            'Không có dữ liệu',
+            style: TextStyle(fontSize: 0), // Hidden for tooltip use
+          ),
+        ),
+      );
     }
 
     return Row(
@@ -161,39 +187,42 @@ class _ReportPieChartState extends State<ReportPieChart> {
             height: 200,
             child: PieChart(
               PieChartData(
-                sections: sections.isNotEmpty
-                    ? sections
-                    : [
-                  PieChartSectionData(
-                    color: Colors.grey,
-                    value: 1,
-                    title: 'Không có dữ liệu',
-                    radius: 50,
-                    titleStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
+                sections: sections,
                 sectionsSpace: 2,
                 centerSpaceRadius: 40,
+                pieTouchData: PieTouchData(
+                  enabled: true,
+                  touchCallback: (FlTouchEvent event, PieTouchResponse? pieTouchResponse) {
+                    if (!event.isInterestedForInteractions ||
+                        pieTouchResponse == null ||
+                        pieTouchResponse.touchedSection == null) {
+                      return;
+                    }
+                    setState(() {}); // Refresh to update tooltip
+                  },
+                ),
               ),
+              swapAnimationDuration: const Duration(milliseconds: 150),
+              swapAnimationCurve: Curves.linear,
             ),
           ),
         ),
         const SizedBox(width: 16),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: reportTypes
-              .asMap()
-              .entries
-              .where((entry) => reportCounts.containsKey(entry.value.reportTypeId))
-              .map((entry) => _buildLegendItem(
-            entry.value.name,
-            colors[entry.key % colors.length],
-          ))
-              .toList(),
+          children: isEmpty
+              ? [
+                  _buildLegendItem('Không có dữ liệu', Colors.grey),
+                ]
+              : reportTypes
+                  .asMap()
+                  .entries
+                  .where((entry) => reportCounts.containsKey(entry.value.reportTypeId))
+                  .map((entry) => _buildLegendItem(
+                        entry.value.name,
+                        colors[entry.key % colors.length],
+                      ))
+                  .toList(),
         ),
       ],
     );
@@ -239,7 +268,7 @@ class _ReportPieChartState extends State<ReportPieChart> {
                           value: selectedYear,
                           items: List.generate(
                             10,
-                                (index) {
+                            (index) {
                               final year = DateTime.now().year - 5 + index;
                               return DropdownMenuItem<int>(
                                 value: year,

@@ -4,9 +4,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../../../../common/constants/api_string.dart';
 import '../../../domain/entities/room_entity.dart';
-import '../../bloc/room_bloc.dart';
-import '../../bloc_ri/room_image_bloc.dart';
-import '../../bloc_ri/room_image_state.dart';
+import '../../bloc/room_bloc/room_bloc.dart';
+import '../../bloc/room_image_bloc/room_image_bloc.dart';
+import '../../bloc/room_image_bloc/room_image_state.dart';
 import 'image_drop_area.dart';
 import 'room_form_widget.dart';
 

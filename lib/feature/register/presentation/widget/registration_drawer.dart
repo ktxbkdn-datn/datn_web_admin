@@ -22,7 +22,7 @@ class RegistrationDrawer extends StatelessWidget {
       headerIcon: Iconsax.path,
       items: [
         DrawerItem(
-          title: 'Dashboard',
+          title: 'Trang chủ',
           icon: Iconsax.home,
           route: '/dashboard',
         ),

@@ -20,7 +20,7 @@ class UserDrawer extends StatelessWidget {
       headerIcon: Iconsax.people,
       items: [
         DrawerItem(
-          title: 'Dashboard',
+          title: 'Trang chủ',
           icon: Iconsax.home,
           route: '/dashboard',
         ),

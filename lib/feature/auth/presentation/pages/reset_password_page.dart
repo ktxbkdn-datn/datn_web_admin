@@ -24,8 +24,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   bool _obscureConfirmPassword = true;
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     // Nhận email từ tham số điều hướng
     final arguments = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (arguments != null && arguments['email'] != null) {
@@ -57,9 +57,9 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const Text(
-                  'Dormitory Management',
+                  'Quản Lý Ký Túc Xá',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 44,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),
@@ -68,15 +68,11 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Iconsax.lock,
-                      size: 40,
-                      color: Colors.grey,
-                    ),
+                  
                     const SizedBox(width: 16),
                     Flexible(
                       child: Text(
-                        'Reset Password for Dormitory Management',
+                        'Khôi phục mật khẩu của bạn',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -92,7 +88,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   controller: _emailController,
                   readOnly: true,
                   decoration: InputDecoration(
-                    hintText: 'Enter your email',
+                    hintText: 'Nhập email của bạn',
                     hintStyle: const TextStyle(color: Colors.grey),
                     filled: true,
                     fillColor: Colors.grey[200],
@@ -117,7 +113,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 TextFormField(
                   controller: _codeController,
                   decoration: InputDecoration(
-                    hintText: 'Enter reset code',
+                    hintText: 'Nhập mã xác nhận',
                     hintStyle: const TextStyle(color: Colors.grey),
                     filled: true,
                     fillColor: Colors.grey[200],
@@ -142,7 +138,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   controller: _newPasswordController,
                   obscureText: _obscureNewPassword,
                   decoration: InputDecoration(
-                    hintText: 'Enter your new password',
+                    hintText: 'Nhâp mật khẩu mới',
                     hintStyle: const TextStyle(color: Colors.grey),
                     filled: true,
                     fillColor: Colors.grey[200],
@@ -180,7 +176,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   controller: _confirmPasswordController,
                   obscureText: _obscureConfirmPassword,
                   decoration: InputDecoration(
-                    hintText: 'Confirm your password',
+                    hintText: 'Xác nhận mật khẩu mới',
                     hintStyle: const TextStyle(color: Colors.grey),
                     filled: true,
                     fillColor: Colors.grey[200],
@@ -226,14 +222,14 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                             onPressed: state.isLoading
                                 ? null
                                 : () {
-                              if (_formKey.currentState!.validate()) {
-                                context.read<AuthBloc>().add(ResetPasswordSubmitted(
-                                  email: _emailController.text,
-                                  newPassword: _newPasswordController.text,
-                                  code: _codeController.text,
-                                ));
-                              }
-                            },
+                                    if (_formKey.currentState!.validate()) {
+                                      context.read<AuthBloc>().add(ResetPasswordSubmitted(
+                                            email: _emailController.text,
+                                            newPassword: _newPasswordController.text,
+                                            code: _codeController.text,
+                                          ));
+                                    }
+                                  },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF007BFF),
                               minimumSize: const Size(double.infinity, 48),
@@ -242,8 +238,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                               ),
                             ),
                             child: const Text(
-                              'Continue',
-                              style: TextStyle(fontSize: 16, color: Colors.white),
+                              'Tiếp tục',
+                              style: TextStyle(fontSize: 20, color: Colors.white),
                             ),
                           ),
                         ),
@@ -261,24 +257,33 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                     Get.back();
                   },
                   child: const Text(
-                    'Cancel',
+                    'Huỷ bỏ',
                     style: TextStyle(fontSize: 16, color: Colors.grey),
                   ),
                 ),
                 BlocListener<AuthBloc, AuthState>(
                   listener: (context, state) {
-                    print('AuthState updated:');
-                    print('Success Message: ${state.successMessage}');
-                    print('Error: ${state.error}');
                     if (state.successMessage != null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(state.successMessage!)),
+                      Get.snackbar(
+                        'Thành công',
+                        state.successMessage!,
+                        snackPosition: SnackPosition.TOP,
+                        backgroundColor: Colors.green,
+                        colorText: Colors.white,
+                        margin: const EdgeInsets.all(16),
+                        duration: const Duration(seconds: 3),
                       );
                       Get.offAllNamed('/login');
                     }
                     if (state.error != null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(state.error!)),
+                      Get.snackbar(
+                        'Lỗi',
+                        state.error!,
+                        snackPosition: SnackPosition.TOP,
+                        backgroundColor: Colors.red,
+                        colorText: Colors.white,
+                        margin: const EdgeInsets.all(16),
+                        duration: const Duration(seconds: 3),
                       );
                     }
                   },

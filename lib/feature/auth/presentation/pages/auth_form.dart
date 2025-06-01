@@ -43,7 +43,7 @@ class _AuthFormState extends State<AuthForm> {
             TextFormField(
               controller: _usernameController,
               decoration: InputDecoration(
-                hintText: widget.isAdmin ? 'Username' : 'Email',
+                hintText: widget.isAdmin ? 'Tài khoản' : 'Email',
                 hintStyle: const TextStyle(color: Colors.grey),
                 filled: true,
                 fillColor: Colors.grey[200],
@@ -58,7 +58,7 @@ class _AuthFormState extends State<AuthForm> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return widget.isAdmin ? 'Username không được để trống' : 'Email không được để trống';
+                  return widget.isAdmin ? 'Tài khoản không được để trống' : 'Email không được để trống';
                 }
                 if (!widget.isAdmin) {
                   final emailRegex = RegExp(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$');
@@ -73,7 +73,7 @@ class _AuthFormState extends State<AuthForm> {
               controller: _passwordController,
               obscureText: _obscureText,
               decoration: InputDecoration(
-                hintText: 'Password',
+                hintText: 'Mật khẩu',
                 hintStyle: const TextStyle(color: Colors.grey),
                 filled: true,
                 fillColor: Colors.grey[200],
@@ -129,7 +129,7 @@ class _AuthFormState extends State<AuthForm> {
                     ),
                   ),
                   child: const Text(
-                    'Login',
+                    'Đăng nhập',
                     style: TextStyle(fontSize: 16, color: Colors.white),
                   ),
                 );

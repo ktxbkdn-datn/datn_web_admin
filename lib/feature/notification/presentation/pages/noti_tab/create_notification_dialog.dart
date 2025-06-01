@@ -4,9 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
-import '../../../../room/presentations/area_bloc/area_bloc.dart';
-import '../../../../room/presentations/area_bloc/area_event.dart';
-import '../../../../room/presentations/area_bloc/area_state.dart';
+import '../../../../room/presentations/bloc/area_bloc/area_bloc.dart';
+import '../../../../room/presentations/bloc/area_bloc/area_event.dart';
+import '../../../../room/presentations/bloc/area_bloc/area_state.dart';
 import '../../bloc/noti/notification_bloc.dart';
 import '../../bloc/noti/notification_event.dart';
 import '../../bloc/noti/notification_state.dart';

@@ -21,7 +21,7 @@ class BillDrawer extends StatelessWidget {
       headerIcon: Iconsax.receipt,
       items:  [
         DrawerItem(
-          title: 'Dashboard',
+          title: 'Trang chủ',
           icon: Iconsax.home,
           route: '/dashboard',
         ),

@@ -90,9 +90,9 @@ class _CustomDrawerState extends State<CustomDrawer>
                   color: Colors.blueGrey[800],
                   child: Center(
                     child: _isExpanded
-                        ? const Text(
+                        ?  Text(
                             // Sử dụng const để tối ưu
-                            'Quản lý', // Thay bằng widget.title nếu cần động
+                            widget.title, // Thay bằng widget.title nếu cần động
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 20,

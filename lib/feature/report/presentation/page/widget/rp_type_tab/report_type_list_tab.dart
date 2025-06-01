@@ -204,7 +204,7 @@ class _ReportTypeListTabState extends State<ReportTypeListTab> with AutomaticKee
                                           ),
                                         ),
                                         icon: const Icon(Icons.refresh),
-                                        label: const Text('Refresh'),
+                                        label: const Text('Làm mới'),
                                       ),
                                       const SizedBox(width: 10),
                                       ElevatedButton.icon(

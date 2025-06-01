@@ -7,11 +7,11 @@ import '../../../../../common/widget/pagination_controls.dart';
 import '../../../../../common/constants/colors.dart';
 import '../../../domain/entities/area_entity.dart';
 import '../../../domain/entities/room_entity.dart';
-import '../../area_bloc/area_bloc.dart';
-import '../../area_bloc/area_event.dart';
-import '../../area_bloc/area_state.dart';
-import '../../bloc/room_bloc.dart';
-import '../../bloc_ri/room_image_bloc.dart';
+import '../../bloc/area_bloc/area_bloc.dart';
+import '../../bloc/area_bloc/area_event.dart';
+import '../../bloc/area_bloc/area_state.dart';
+import '../../bloc/room_bloc/room_bloc.dart';
+import '../../bloc/room_image_bloc/room_image_bloc.dart';
 import 'create_room_dialog.dart';
 import 'edit_room_dialog.dart';
 import 'room_detail_dialog.dart';
@@ -115,6 +115,24 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
     }
   }
 
+  // Helper method to get translated status text for display
+  String _getStatusDisplayText(String status) {
+    switch (status) {
+      case 'AVAILABLE':
+        return 'Còn trống';
+      case 'OCCUPIED':
+        return 'Hết chỗ';
+      case 'RESERVED':
+        return 'Đã đặt';
+      case 'MAINTENANCE':
+        return 'Bảo trì';
+      case 'DISABLED':
+        return 'Không hoạt động';
+      default:
+        return 'Không xác định';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -214,7 +232,7 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                                 child: Row(
                                   children: [
                                     FilterTab(
-                                      label: 'All (${_allRooms.length})',
+                                      label: 'Tất cả phòng (${_allRooms.length})',
                                       isSelected: _filterStatus == 'All',
                                       onTap: () {
                                         setState(() {
@@ -227,7 +245,7 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                                     ),
                                     const SizedBox(width: 10),
                                     FilterTab(
-                                      label: 'Available (${_allRooms.where((room) => room.status == 'AVAILABLE').length})',
+                                      label: 'Phòng còn trống (${_allRooms.where((room) => room.status == 'AVAILABLE').length})',
                                       isSelected: _filterStatus == 'AVAILABLE',
                                       onTap: () {
                                         setState(() {
@@ -240,20 +258,20 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                                     ),
                                     const SizedBox(width: 10),
                                     FilterTab(
-                                      label: 'Occupied (${_allRooms.where((room) => room.status == 'OCCUPIED').length})',
+                                      label: 'Phòng hết chỗ (${_allRooms.where((room) => room.status == 'OCCUPIED').length})',
                                       isSelected: _filterStatus == 'OCCUPIED',
                                       onTap: () {
-                                        setState() {
+                                        setState(() {
                                           _filterStatus = 'OCCUPIED';
                                           _currentPage = 1;
                                           _saveLocalData();
                                           _applyFilters();
-                                        };
+                                        });
                                       },
                                     ),
                                     const SizedBox(width: 10),
                                     FilterTab(
-                                      label: 'Maintenance (${_allRooms.where((room) => room.status == 'MAINTENANCE').length})',
+                                      label: 'Phòng đang bảo trì (${_allRooms.where((room) => room.status == 'MAINTENANCE').length})',
                                       isSelected: _filterStatus == 'MAINTENANCE',
                                       onTap: () {
                                         setState(() {
@@ -308,9 +326,9 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                                                       child: Text('Tất cả khu vực'),
                                                     ),
                                                     ...uniqueAreas.map((area) => DropdownMenuItem<int>(
-                                                      value: area.areaId,
-                                                      child: Text(area.name),
-                                                    )),
+                                                          value: area.areaId,
+                                                          child: Text(area.name),
+                                                        )),
                                                   ],
                                                   onChanged: (value) {
                                                     setState(() {
@@ -336,7 +354,7 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                                                 _applyFilters();
                                               });
                                             },
-                                            hintText: 'Search rooms...',
+                                            hintText: 'Tìm kiếm phòng...',
                                             initialValue: _searchQuery,
                                           ),
                                         ),
@@ -355,7 +373,7 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                                           ),
                                         ),
                                         icon: const Icon(Icons.delete),
-                                        label: const Text('Delete Selected'),
+                                        label: const Text('Xoá phòng đã chọn'),
                                       ),
                                       const SizedBox(width: 10),
                                       ElevatedButton.icon(
@@ -367,7 +385,7 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                                           ),
                                         ),
                                         icon: const Icon(Icons.refresh),
-                                        label: const Text('Refresh'),
+                                        label: const Text('Làm mới'),
                                       ),
                                       const SizedBox(width: 10),
                                       ElevatedButton.icon(
@@ -384,7 +402,7 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                                           ),
                                         ),
                                         icon: const Icon(Icons.add),
-                                        label: const Text('Add a new room'),
+                                        label: const Text('Thêm phòng mới'),
                                       ),
                                     ],
                                   ),
@@ -417,105 +435,105 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                               return isLoading && _isInitialLoad
                                   ? const Center(child: CircularProgressIndicator())
                                   : errorMessage != null
-                                  ? Center(child: Text('Lỗi: $errorMessage'))
-                                  : paginatedRooms.isEmpty
-                                  ? const Center(child: Text('Không có phòng nào'))
-                                  : Column(
-                                children: [
-                                  GenericDataTable<RoomEntity>(
-                                    headers: const [
-                                      '',
-                                      'Tên phòng',
-                                      'Số người / Sức chứa',
-                                      'Trạng thái',
-                                      '',
-                                    ],
-                                    data: paginatedRooms,
-                                    columnWidths: _columnWidths,
-                                    cellBuilder: (room, index) {
-                                      switch (index) {
-                                        case 0:
-                                          return Checkbox(
-                                            value: _selectedRoomIds.contains(room.roomId),
-                                            onChanged: (value) {
-                                              _toggleSelection(room.roomId);
-                                            },
-                                          );
-                                        case 1:
-                                          return Text(
-                                            room.name,
-                                            style: const TextStyle(fontWeight: FontWeight.bold),
-                                            textAlign: TextAlign.center,
-                                            overflow: TextOverflow.ellipsis,
-                                          );
-                                        case 2:
-                                          return Row(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              const Icon(Icons.person, size: 16),
-                                              const SizedBox(width: 4),
-                                              Text('${room.currentPersonNumber}/${room.capacity}'),
-                                            ],
-                                          );
-                                        case 3:
-                                          return Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: _getStatusColor(room.status),
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                            child: Text(
-                                              room.status,
-                                              style: const TextStyle(color: Colors.white),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          );
-                                        case 4:
-                                          return Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              IconButton(
-                                                icon: const Icon(Icons.visibility),
-                                                onPressed: () {
-                                                  context.read<RoomBloc>().add(GetRoomByIdEvent(room.roomId));
-                                                  context.read<RoomImageBloc>().add(GetRoomImagesEvent(room.roomId));
-                                                  showDialog(
-                                                    context: context,
-                                                    barrierDismissible: false,
-                                                    builder: (dialogContext) => RoomDetailDialog(room: room),
-                                                  );
-                                                },
-                                              ),
-                                              IconButton(
-                                                icon: const Icon(Icons.edit),
-                                                onPressed: () {
-                                                  showDialog(
-                                                    context: context,
-                                                    builder: (context) => EditRoomDialog(room: room),
-                                                  );
-                                                },
-                                              ),
-                                            ],
-                                          );
-                                        default:
-                                          return const SizedBox();
-                                      }
-                                    },
-                                  ),
-                                  PaginationControls(
-                                    currentPage: _currentPage,
-                                    totalItems: _rooms.length,
-                                    limit: _limit,
-                                    onPageChanged: (page) {
-                                      setState(() {
-                                        _currentPage = page;
-                                        _saveLocalData();
-                                      });
-                                    },
-                                  ),
-                                ],
-                              );
+                                      ? Center(child: Text('Lỗi: $errorMessage'))
+                                      : paginatedRooms.isEmpty
+                                          ? const Center(child: Text('Không có phòng nào'))
+                                          : Column(
+                                              children: [
+                                                GenericDataTable<RoomEntity>(
+                                                  headers: const [
+                                                    '',
+                                                    'Tên phòng',
+                                                    'Số người / Sức chứa',
+                                                    'Trạng thái',
+                                                    '',
+                                                  ],
+                                                  data: paginatedRooms,
+                                                  columnWidths: _columnWidths,
+                                                  cellBuilder: (room, index) {
+                                                    switch (index) {
+                                                      case 0:
+                                                        return Checkbox(
+                                                          value: _selectedRoomIds.contains(room.roomId),
+                                                          onChanged: (value) {
+                                                            _toggleSelection(room.roomId);
+                                                          },
+                                                        );
+                                                      case 1:
+                                                        return Text(
+                                                          room.name,
+                                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                                          textAlign: TextAlign.center,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        );
+                                                      case 2:
+                                                        return Row(
+                                                          mainAxisAlignment: MainAxisAlignment.center,
+                                                          children: [
+                                                            const Icon(Icons.person, size: 16),
+                                                            const SizedBox(width: 4),
+                                                            Text('${room.currentPersonNumber}/${room.capacity}'),
+                                                          ],
+                                                        );
+                                                      case 3:
+                                                        return Container(
+                                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                          decoration: BoxDecoration(
+                                                            color: _getStatusColor(room.status),
+                                                            borderRadius: BorderRadius.circular(12),
+                                                          ),
+                                                          child: Text(
+                                                            _getStatusDisplayText(room.status), // Use translated text
+                                                            style: const TextStyle(color: Colors.white),
+                                                            textAlign: TextAlign.center,
+                                                          ),
+                                                        );
+                                                      case 4:
+                                                        return Row(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          mainAxisAlignment: MainAxisAlignment.center,
+                                                          children: [
+                                                            IconButton(
+                                                              icon: const Icon(Icons.visibility),
+                                                              onPressed: () {
+                                                                context.read<RoomBloc>().add(GetRoomByIdEvent(room.roomId));
+                                                                context.read<RoomImageBloc>().add(GetRoomImagesEvent(room.roomId));
+                                                                showDialog(
+                                                                  context: context,
+                                                                  barrierDismissible: false,
+                                                                  builder: (dialogContext) => RoomDetailDialog(room: room),
+                                                                );
+                                                              },
+                                                            ),
+                                                            IconButton(
+                                                              icon: const Icon(Icons.edit),
+                                                              onPressed: () {
+                                                                showDialog(
+                                                                  context: context,
+                                                                  builder: (context) => EditRoomDialog(room: room),
+                                                                );
+                                                              },
+                                                            ),
+                                                          ],
+                                                        );
+                                                      default:
+                                                        return const SizedBox();
+                                                    }
+                                                  },
+                                                ),
+                                                PaginationControls(
+                                                  currentPage: _currentPage,
+                                                  totalItems: _rooms.length,
+                                                  limit: _limit,
+                                                  onPageChanged: (page) {
+                                                    setState(() {
+                                                      _currentPage = page;
+                                                      _saveLocalData();
+                                                    });
+                                                  },
+                                                ),
+                                              ],
+                                            );
                             },
                           ),
                         ),

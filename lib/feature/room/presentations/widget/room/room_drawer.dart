@@ -23,7 +23,7 @@ class RoomDrawer extends StatelessWidget {
       headerIcon: Iconsax.house,
       items: [
         DrawerItem(
-          title: 'Dashboard',
+          title: 'Trang chủ',
           icon: Iconsax.home,
           route: '/dashboard',
         ),

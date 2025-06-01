@@ -19,7 +19,7 @@ class ContractDrawer extends StatelessWidget {
       headerIcon: Iconsax.document,
       items: [
         DrawerItem(
-          title: 'Dashboard',
+          title: 'Trang chủ',
           icon: Iconsax.home,
           route: '/dashboard',
         ),

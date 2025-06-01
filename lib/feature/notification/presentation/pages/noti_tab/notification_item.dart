@@ -180,6 +180,20 @@ class _NotificationItemState extends State<NotificationItem> {
     return widget.chewieControllers[url];
   }
 
+  // Helper method to get translated targetType text for display
+  String _getTargetTypeDisplayText(String? targetType) {
+    switch (targetType) {
+      case 'ALL':
+        return 'Mọi người';
+      case 'ROOM':
+        return 'Phòng';
+      case 'USER':
+        return 'Người dùng cụ thể';
+      default:
+        return 'Không xác định';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final notification = widget.notification;
@@ -247,7 +261,7 @@ class _NotificationItemState extends State<NotificationItem> {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
-                                  'Target: ${widget.notification.targetType}',
+                                  'Đối tượng: ${_getTargetTypeDisplayText(widget.notification.targetType)}', // Use translated text
                                   style: const TextStyle(fontSize: 14, color: Colors.blue),
                                 ),
                               ),
@@ -255,7 +269,7 @@ class _NotificationItemState extends State<NotificationItem> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            notification.title ?? 'Untitled',
+                            notification.title ?? 'Không có tiêu đề',
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: Colors.black87,

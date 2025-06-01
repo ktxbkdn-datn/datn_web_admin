@@ -6,9 +6,9 @@ import '../../../../../common/constants/colors.dart';
 import '../bloc/statistic_bloc.dart';
 import '../bloc/statistic_event.dart';
 import '../bloc/statistic_state.dart';
-import '../../../room/presentations/area_bloc/area_bloc.dart';
-import '../../../room/presentations/area_bloc/area_event.dart';
-import '../../../room/presentations/area_bloc/area_state.dart';
+import '../../../room/presentations/bloc/area_bloc/area_bloc.dart';
+import '../../../room/presentations/bloc/area_bloc/area_event.dart';
+import '../../../room/presentations/bloc/area_bloc/area_state.dart';
 import '../../domain/entities/consumption.dart';
 
 class DashboardBarChart extends StatefulWidget {

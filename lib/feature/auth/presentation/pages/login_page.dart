@@ -49,7 +49,7 @@ class LoginPage extends StatelessWidget {
                                   ),
                                   child: const Center(
                                     child: Text(
-                                      'Failed to load logo\nCheck assets/logo/logo.jpg',
+                                      'Lỗi khi tải logo',
                                       textAlign: TextAlign.center,
                                       style: TextStyle(color: Colors.grey),
                                     ),
@@ -123,21 +123,21 @@ class LoginPage extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Checkbox(
-                            value: false,
-                            onChanged: (value) {
-                              // Placeholder for Remember me functionality
-                            },
-                          ),
-                          const Text('Remember me', style: TextStyle(color: Colors.grey)),
-                        ],
-                      ),
+                      // Row(
+                      //   children: [
+                      //     Checkbox(
+                      //       value: false,
+                      //       onChanged: (value) {
+                      //         // Placeholder for Remember me functionality
+                      //       },
+                      //     ),
+                      //     const Text('Remember me', style: TextStyle(color: Colors.grey)),
+                      //   ],
+                      // ),
                       TextButton(
                         onPressed: () => Navigator.pushNamed(context, '/forgot-password'),
                         child: const Text(
-                          'Forgot Password?',
+                          'Quên Mật Khẩu?',
                           style: TextStyle(color: Colors.blue),
                         ),
                       ),

@@ -1,12 +1,12 @@
 // lib/src/features/dashboard/presentation/widgets/report_stat_card.dart
 import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_page/report_stat_page.dart';
 import 'package:datn_web_admin/feature/report/presentation/bloc/report/report_bloc.dart';
+import 'package:datn_web_admin/feature/report/presentation/bloc/report/report_event.dart';
 import 'package:datn_web_admin/feature/report/presentation/bloc/report/report_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../../common/constants/colors.dart';
 import 'package:intl/intl.dart';
-
 
 class ReportStatCard extends StatelessWidget {
   const ReportStatCard({Key? key}) : super(key: key);
@@ -22,6 +22,85 @@ class ReportStatCard extends StatelessWidget {
       },
       child: BlocBuilder<ReportBloc, ReportState>(
         builder: (context, state) {
+          // Hiển thị loading khi trạng thái là Initial hoặc Loading
+          if (state is ReportInitial || state is ReportLoading) {
+            return Stack(
+              children: [
+                // Glassmorphism Background
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppColors.glassmorphismStart, AppColors.glassmorphismEnd],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                ),
+                Container(
+                  width: MediaQuery.of(context).size.width * 0.25,
+                  height: MediaQuery.of(context).size.height * 0.2,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 10,
+                        offset: Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+              ],
+            );
+          }
+
+          // Hiển thị lỗi với nút "Thử lại"
+          if (state is ReportError) {
+            return Stack(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppColors.glassmorphismStart, AppColors.glassmorphismEnd],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                ),
+                Container(
+                  width: MediaQuery.of(context).size.width * 0.25,
+                  height: MediaQuery.of(context).size.height * 0.2,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 10,
+                        offset: Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Lỗi: ${state.message}', style: const TextStyle(color: Colors.red)),
+                        TextButton(
+                          onPressed: () => context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000)),
+                          child: const Text('Thử lại'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+
+          // Xử lý trạng thái ReportsLoaded
           int currentMonthCount = 0;
           int previousMonthCount = 0;
           String percentageChange = '~0%';
@@ -34,7 +113,7 @@ class ReportStatCard extends StatelessWidget {
               DateTime(now.year, now.month - 1, now.day),
             );
 
-            // Count reports for current month
+            // Đếm báo cáo cho tháng hiện tại
             currentMonthCount = state.reports.where((report) {
               if (report.createdAt == null) return false;
               final reportDate = DateFormat('yyyy-MM').format(
@@ -43,7 +122,7 @@ class ReportStatCard extends StatelessWidget {
               return reportDate == currentMonth;
             }).length;
 
-            // Count reports for previous month
+            // Đếm báo cáo cho tháng trước
             previousMonthCount = state.reports.where((report) {
               if (report.createdAt == null) return false;
               final reportDate = DateFormat('yyyy-MM').format(
@@ -52,7 +131,7 @@ class ReportStatCard extends StatelessWidget {
               return reportDate == previousMonth;
             }).length;
 
-            // Calculate percentage change
+            // Tính phần trăm thay đổi
             if (previousMonthCount > 0) {
               final change = ((currentMonthCount - previousMonthCount) / previousMonthCount) * 100;
               percentageChange = '${change >= 0 ? '+' : ''}${change.toStringAsFixed(1)}%';

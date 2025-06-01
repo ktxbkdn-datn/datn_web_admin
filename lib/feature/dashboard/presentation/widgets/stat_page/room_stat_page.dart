@@ -3,9 +3,9 @@ import 'package:datn_web_admin/feature/dashboard/domain/entities/room_status.dar
 import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_bloc.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_event.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_state.dart';
-import 'package:datn_web_admin/feature/room/presentations/area_bloc/area_bloc.dart';
-import 'package:datn_web_admin/feature/room/presentations/area_bloc/area_event.dart';
-import 'package:datn_web_admin/feature/room/presentations/area_bloc/area_state.dart';
+import 'package:datn_web_admin/feature/room/presentations/bloc/area_bloc/area_bloc.dart';
+import 'package:datn_web_admin/feature/room/presentations/bloc/area_bloc/area_event.dart';
+import 'package:datn_web_admin/feature/room/presentations/bloc/area_bloc/area_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -46,7 +46,6 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Thống kê trạng thái phòng'),
         backgroundColor: Colors.white,
         elevation: 1,
       ),

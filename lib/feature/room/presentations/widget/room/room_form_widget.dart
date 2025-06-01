@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../area_bloc/area_bloc.dart';
-import '../../area_bloc/area_state.dart';
+import '../../bloc/area_bloc/area_bloc.dart';
+import '../../bloc/area_bloc/area_state.dart';
 import 'image_drop_area.dart';
 
 class RoomFormWidget extends StatelessWidget {

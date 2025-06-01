@@ -102,16 +102,16 @@ class _ReportManagementPageState extends State<ReportManagementPage> with Single
               headerIcon: Iconsax.ticket,
               items: [
                 DrawerItem(
-                  title: 'Dashboard',
+                  title: 'Trang chủ',
                   icon: Iconsax.home,
                   route: '/dashboard',
                 ),
                 DrawerItem(
-                  title: 'Danh sách Report',
+                  title: 'Danh sách Báo cáo',
                   icon: Iconsax.message_text,
                 ),
                 DrawerItem(
-                  title: 'Tạo Report Type',
+                  title: 'Tạo Loại Báo cáo',
                   icon: Iconsax.message_add,
                 ),
 

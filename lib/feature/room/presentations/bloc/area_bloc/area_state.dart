@@ -1,5 +1,5 @@
 // lib/src/features/room/presentation/bloc/area_state.dart
-import '../../domain/entities/area_entity.dart';
+import '../../../domain/entities/area_entity.dart';
 
 class AreaState {
   final bool isLoading;
