@@ -40,45 +40,26 @@ class ContractFormWidget extends StatelessWidget {
     this.showStatusField = false,
   }) : super(key: key);
 
+  // Generate list of room names (101 to 512)
+  List<String> _generateRoomNames() {
+    List<String> rooms = [];
+    for (int floor = 1; floor <= 5; floor++) {
+      for (int room = 1; room <= 12; room++) {
+        rooms.add('$floor${room.toString().padLeft(2, '0')}');
+      }
+    }
+    return rooms;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final roomNames = _generateRoomNames();
+
     return Form(
       key: formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextFormField(
-            controller: roomNameController,
-            decoration: const InputDecoration(
-              labelText: 'Tên phòng',
-              border: OutlineInputBorder(),
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Tên phòng không được để trống';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: userEmailController,
-            decoration: const InputDecoration(
-              labelText: 'Email người dùng',
-              border: OutlineInputBorder(),
-            ),
-            keyboardType: TextInputType.emailAddress,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Email không được để trống';
-              }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                return 'Email không hợp lệ';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
           BlocBuilder<AreaBloc, AreaState>(
             builder: (context, areaState) {
               return DropdownButtonFormField<int>(
@@ -101,6 +82,62 @@ class ContractFormWidget extends StatelessWidget {
                   return null;
                 },
               );
+            },
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            decoration: const InputDecoration(
+              labelText: 'Tên phòng',
+              border: OutlineInputBorder(),
+            ),
+            value: roomNameController.text.isNotEmpty &&
+                    roomNames.contains(roomNameController.text)
+                ? roomNameController.text
+                : null,
+            onChanged: (value) {
+              if (value != null) {
+                roomNameController.text = value;
+              }
+            },
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Tên phòng không được để trống';
+              }
+              return null;
+            },
+            dropdownColor: Colors.white,
+            menuMaxHeight: 300,
+            isExpanded: true,
+            hint: const Text('Chọn phòng'),
+            items: roomNames.map((room) {
+              return DropdownMenuItem<String>(
+                value: room,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text(
+                    room,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: userEmailController,
+            decoration: const InputDecoration(
+              labelText: 'Email người dùng',
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.emailAddress,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Email không được để trống';
+              }
+              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                return 'Email không hợp lệ';
+              }
+              return null;
             },
           ),
           const SizedBox(height: 16),
@@ -150,20 +187,19 @@ class ContractFormWidget extends StatelessWidget {
           ],
           TextFormField(
             controller: startDateController,
-            readOnly: true, // Không cho phép nhập tay
+            readOnly: true,
             decoration: const InputDecoration(
               labelText: 'Ngày bắt đầu (YYYY-MM-DD)',
               border: OutlineInputBorder(),
               suffixIcon: Icon(Icons.calendar_today),
             ),
-            onTap: onStartDateTap, // Gọi DatePicker khi nhấn
+            onTap: onStartDateTap,
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Ngày bắt đầu không được để trống';
               }
               try {
                 DateTime date = DateTime.parse(value);
-                // Chỉ lấy ngày, bỏ thời gian
                 DateTime dateOnly = DateTime(date.year, date.month, date.day);
                 DateTime now = DateTime.now();
                 DateTime today = DateTime(now.year, now.month, now.day);
@@ -179,13 +215,13 @@ class ContractFormWidget extends StatelessWidget {
           const SizedBox(height: 16),
           TextFormField(
             controller: endDateController,
-            readOnly: true, // Không cho phép nhập tay
+            readOnly: true,
             decoration: const InputDecoration(
               labelText: 'Ngày kết thúc (YYYY-MM-DD)',
               border: OutlineInputBorder(),
               suffixIcon: Icon(Icons.calendar_today),
             ),
-            onTap: onEndDateTap, // Gọi DatePicker khi nhấn
+            onTap: onEndDateTap,
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Ngày kết thúc không được để trống';
@@ -193,7 +229,6 @@ class ContractFormWidget extends StatelessWidget {
               try {
                 DateTime endDate = DateTime.parse(value);
                 DateTime startDate = DateTime.parse(startDateController.text);
-                // Chỉ lấy ngày, bỏ thời gian
                 DateTime endDateOnly = DateTime(endDate.year, endDate.month, endDate.day);
                 DateTime startDateOnly = DateTime(startDate.year, startDate.month, startDate.day);
                 if (endDateOnly.isBefore(startDateOnly)) {

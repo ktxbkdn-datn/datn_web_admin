@@ -364,7 +364,7 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
                                           ),
                                         ),
                                         icon: const Icon(Icons.add),
-                                        label: const Text('Add a new contract'),
+                                        label: const Text('Tạo hợp đồng'),
                                       ),
                                     ],
                                   ),
