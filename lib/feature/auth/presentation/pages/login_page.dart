@@ -107,10 +107,9 @@ class LoginPage extends StatelessWidget {
                             onSubmit: (username, password) {
                               context.read<AuthBloc>().add(
                                 AdminLoginSubmitted(
-                                  // username: username,
-                                  // password: password,
-                                  username: "admin0001",
-                                  password: "NewPass12345!",
+                                  username: username,
+                                  password: password,
+                              
                                   context: context,
                                 ),
                               );
