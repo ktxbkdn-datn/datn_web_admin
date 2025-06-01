@@ -28,9 +28,9 @@ class _DashboardBarChartState extends State<DashboardBarChart> {
   void initState() {
     super.initState();
     // Tải danh sách khu vực
-    context.read<AreaBloc>().add( FetchAreasEvent(page: 1, limit: 100));
-    // Tải dữ liệu tiêu thụ ban đầu (không có areaId cụ thể)
-    context.read<StatisticsBloc>().add(FetchMonthlyConsumption(year: _selectedYear));
+    context.read<AreaBloc>().add(FetchAreasEvent(page: 1, limit: 100));
+    // Tải dữ liệu tiêu thụ ban đầu
+    _fetchData();
   }
 
   @override
@@ -95,15 +95,16 @@ class _DashboardBarChartState extends State<DashboardBarChart> {
                         } else if (areaState.error != null) {
                           return const Text('Lỗi tải khu vực');
                         }
-                        return DropdownButton<int>(
+                        List<DropdownMenuItem<int?>> items = [
+                          const DropdownMenuItem(value: null, child: Text('Tất cả')),
+                          ...areaState.areas.map((area) => DropdownMenuItem(
+                                value: area.areaId,
+                                child: Text(area.name),
+                              )),
+                        ];
+                        return DropdownButton<int?>(
                           value: _selectedAreaId,
-                          hint: const Text('Chọn khu vực'),
-                          items: areaState.areas
-                              .map((area) => DropdownMenuItem(
-                                    value: area.areaId,
-                                    child: Text(area.name),
-                                  ))
-                              .toList(),
+                          items: items,
                           onChanged: (value) {
                             setState(() {
                               _selectedAreaId = value;
@@ -132,9 +133,44 @@ class _DashboardBarChartState extends State<DashboardBarChart> {
                         }
                       },
                     ),
+                    const SizedBox(width: 8),
+                    // Nút refresh
+                    IconButton(
+                      icon: const Icon(Icons.refresh, color: Colors.green),
+                      tooltip: 'Làm mới dữ liệu',
+                      onPressed: _fetchData,
+                    ),
                   ],
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            // Hiển thị khu vực đang xem
+            BlocBuilder<StatisticsBloc, StatisticsState>(
+              builder: (context, state) {
+                if (state is ConsumptionLoaded && state.consumptionData.isNotEmpty) {
+                  Consumption consumption;
+                  if (_selectedAreaId != null) {
+                    consumption = state.consumptionData.firstWhere(
+                      (c) => c.areaId == _selectedAreaId,
+                      orElse: () => state.consumptionData.first,
+                    );
+                  } else {
+                    consumption = state.consumptionData.firstWhere(
+                      (c) => c.areaId == 0,
+                      orElse: () => state.consumptionData.first,
+                    );
+                  }
+                  return Text(
+                    'Khu vực: ${consumption.areaName}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.black54,
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
             ),
             const SizedBox(height: 16),
             BlocBuilder<StatisticsBloc, StatisticsState>(
@@ -148,105 +184,122 @@ class _DashboardBarChartState extends State<DashboardBarChart> {
                     return const Center(child: Text('Không có dữ liệu cho khu vực này'));
                   }
 
-                  // Lọc dữ liệu theo khu vực được chọn
-                  Consumption? consumption;
+                  Consumption consumption;
                   if (_selectedAreaId != null) {
                     consumption = state.consumptionData.firstWhere(
                       (c) => c.areaId == _selectedAreaId,
-                      orElse: () => state.consumptionData.first, // Mặc định lấy khu vực đầu tiên nếu không khớp
+                      orElse: () => state.consumptionData.first,
                     );
                   } else {
-                    consumption = state.consumptionData.first; // Mặc định lấy khu vực đầu tiên
+                    consumption = state.consumptionData.firstWhere(
+                      (c) => c.areaId == 0,
+                      orElse: () => state.consumptionData.first,
+                    );
                   }
 
                   final services = _getServices(consumption);
+                  if (services.isEmpty) {
+                    return const Center(child: Text('Không có dịch vụ nào để hiển thị'));
+                  }
+
                   final colors = _generateColors(services.length);
                   final maxY = _getMaxY(consumption, services);
 
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      final chartWidth = constraints.maxWidth > 640 ? 640.0 : constraints.maxWidth;
-                      final chartHeight = (maxY * 10).clamp(200.0, 400.0);
+                  return AnimatedOpacity(
+                    opacity: state is ConsumptionLoaded ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 300),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final chartWidth = constraints.maxWidth > 640 ? 640.0 : constraints.maxWidth;
+                        final chartHeight = (maxY * 10).clamp(200.0, 400.0);
 
-                      return SizedBox(
-                        height: 200,
-                        child: Scrollbar(
-                          controller: _verticalScrollController,
-                          thumbVisibility: true,
-                          child: SingleChildScrollView(
+                        return SizedBox(
+                          height: 200,
+                          child: Scrollbar(
                             controller: _verticalScrollController,
-                            scrollDirection: Axis.vertical,
-                            child: Scrollbar(
-                              controller: _horizontalScrollController,
-                              thumbVisibility: true,
-                              child: SingleChildScrollView(
+                            thumbVisibility: true,
+                            child: SingleChildScrollView(
+                              controller: _verticalScrollController,
+                              scrollDirection: Axis.vertical,
+                              child: Scrollbar(
                                 controller: _horizontalScrollController,
-                                scrollDirection: Axis.horizontal,
-                                child: SizedBox(
-                                  width: chartWidth,
-                                  height: chartHeight,
-                                  child: BarChart(
-                                    BarChartData(
-                                      alignment: BarChartAlignment.spaceAround,
-                                      barTouchData: BarTouchData(
-                                        enabled: true,
-                                        handleBuiltInTouches: false,
-                                        touchTooltipData: BarTouchTooltipData(
-                                          getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                                            final service = services[rodIndex];
-                                            final month = groupIndex + 1;
-                                            final value = consumption!.months[month]?[service] ?? 0.0;
-                                            final unit = consumption.serviceUnits[service] ?? '';
-                                            return BarTooltipItem(
-                                              '$service\n$value $unit',
-                                              const TextStyle(color: Colors.white, fontSize: 12),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                      titlesData: FlTitlesData(
-                                        show: true,
-                                        bottomTitles: AxisTitles(
-                                          sideTitles: SideTitles(
-                                            showTitles: true,
-                                            getTitlesWidget: (value, meta) {
-                                              final month = value.toInt() + 1;
-                                              return Text(
-                                                'T$month',
-                                                style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                thumbVisibility: true,
+                                child: SingleChildScrollView(
+                                  controller: _horizontalScrollController,
+                                  scrollDirection: Axis.horizontal,
+                                  child: SizedBox(
+                                    width: chartWidth,
+                                    height: chartHeight,
+                                    child: BarChart(
+                                      BarChartData(
+                                        alignment: BarChartAlignment.spaceAround,
+                                        barTouchData: BarTouchData(
+                                          enabled: true,
+                                          handleBuiltInTouches: true,
+                                          touchTooltipData: BarTouchTooltipData(
+                                            tooltipPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            tooltipMargin: 20,
+                                            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                                              final service = services[rodIndex];
+                                              final month = groupIndex + 1;
+                                              final value = consumption.months[month]?[service] ?? 0.0;
+                                              final unit = consumption.serviceUnits[service] ?? '';
+                                              return BarTooltipItem(
+                                                'Tháng $month\n$service: $value $unit',
+                                                const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.normal,
+                                                ),
+                                                textAlign: TextAlign.center,
                                               );
                                             },
                                           ),
                                         ),
-                                        leftTitles: AxisTitles(
-                                          sideTitles: SideTitles(
-                                            showTitles: true,
-                                            reservedSize: 30,
-                                            getTitlesWidget: (value, meta) {
-                                              return Text(
-                                                value.toInt().toString(),
-                                                style: const TextStyle(fontSize: 10, color: Colors.grey),
-                                              );
-                                            },
+                                        titlesData: FlTitlesData(
+                                          show: true,
+                                          bottomTitles: AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: true,
+                                              getTitlesWidget: (value, meta) {
+                                                final month = value.toInt() + 1;
+                                                return Text(
+                                                  'T$month',
+                                                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                                );
+                                              },
+                                            ),
                                           ),
+                                          leftTitles: AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: true,
+                                              reservedSize: 30,
+                                              getTitlesWidget: (value, meta) {
+                                                return Text(
+                                                  value.toInt().toString(),
+                                                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                         ),
-                                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                        borderData: FlBorderData(show: false),
+                                        gridData: const FlGridData(show: true),
+                                        barGroups: List.generate(12, (month) => _buildBarGroup(month, consumption, services, colors)),
+                                        minY: 0,
+                                        maxY: maxY * 1.2,
                                       ),
-                                      borderData: FlBorderData(show: false),
-                                      gridData: const FlGridData(show: true),
-                                      barGroups: List.generate(12, (month) => _buildBarGroup(month, consumption!, services, colors)),
-                                      minY: 0,
-                                      maxY: maxY,
                                     ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   );
                 }
                 return const Center(child: Text('Không có dữ liệu'));
@@ -256,14 +309,17 @@ class _DashboardBarChartState extends State<DashboardBarChart> {
             BlocBuilder<StatisticsBloc, StatisticsState>(
               builder: (context, state) {
                 if (state is ConsumptionLoaded && state.consumptionData.isNotEmpty) {
-                  Consumption? consumption;
+                  Consumption consumption;
                   if (_selectedAreaId != null) {
                     consumption = state.consumptionData.firstWhere(
                       (c) => c.areaId == _selectedAreaId,
                       orElse: () => state.consumptionData.first,
                     );
                   } else {
-                    consumption = state.consumptionData.first;
+                    consumption = state.consumptionData.firstWhere(
+                      (c) => c.areaId == 0,
+                      orElse: () => state.consumptionData.first,
+                    );
                   }
 
                   final services = _getServices(consumption);
@@ -273,7 +329,7 @@ class _DashboardBarChartState extends State<DashboardBarChart> {
                     runSpacing: 4,
                     children: List.generate(services.length, (index) {
                       final service = services[index];
-                      final unit = consumption!.serviceUnits[service] ?? '';
+                      final unit = consumption.serviceUnits[service] ?? '';
                       return Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [

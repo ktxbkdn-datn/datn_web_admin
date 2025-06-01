@@ -26,7 +26,7 @@ class DashboardDrawer extends StatelessWidget {
     }).toList();
 
     return CustomDrawer(
-      title: 'Management',
+      title: 'Quản lý',
       headerIcon: Iconsax.home,
       items: drawerItems,
       selectedIndex: selectedIndex,

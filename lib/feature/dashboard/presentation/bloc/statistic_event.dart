@@ -1,4 +1,3 @@
-// lib/src/features/statistics/presentation/bloc/statistic_event.dart
 import 'package:equatable/equatable.dart';
 
 abstract class StatisticsEvent extends Equatable {
@@ -11,7 +10,7 @@ abstract class StatisticsEvent extends Equatable {
 class FetchMonthlyConsumption extends StatisticsEvent {
   final int? year;
   final int? month;
-  final int? areaId; // Thêm areaId
+  final int? areaId;
 
   const FetchMonthlyConsumption({
     this.year,
@@ -21,4 +20,133 @@ class FetchMonthlyConsumption extends StatisticsEvent {
 
   @override
   List<Object?> get props => [year, month, areaId];
+}
+
+class FetchRoomStatusStats extends StatisticsEvent {
+  final int? year;
+  final int? month;
+  final int? quarter;
+  final int? areaId;
+
+  const FetchRoomStatusStats({
+    this.year,
+    this.month,
+    this.quarter,
+    this.areaId,
+  });
+
+  @override
+  List<Object?> get props => [year, month, quarter, areaId];
+}
+
+class FetchRoomCapacityStats extends StatisticsEvent {
+  final int? year;
+  final int? month;
+  final int? quarter;
+  final int? areaId;
+
+  const FetchRoomCapacityStats({
+    this.year,
+    this.month,
+    this.quarter,
+    this.areaId,
+  });
+
+  @override
+  List<Object?> get props => [year, month, quarter, areaId];
+}
+
+class FetchContractStats extends StatisticsEvent {
+  final int? year;
+  final int? month;
+  final int? quarter;
+  final int? areaId;
+
+  const FetchContractStats({
+    this.year,
+    this.month,
+    this.quarter,
+    this.areaId,
+  });
+
+  @override
+  List<Object?> get props => [year, month, quarter, areaId];
+}
+
+class FetchUserStats extends StatisticsEvent {
+  final int? areaId;
+
+  const FetchUserStats({
+    this.areaId,
+  });
+
+  @override
+  List<Object?> get props => [areaId];
+}
+
+class FetchUserMonthlyStats extends StatisticsEvent {
+  final int? year;
+  final int? month;
+  final int? quarter;
+  final int? areaId;
+
+  const FetchUserMonthlyStats({
+    this.year,
+    this.month,
+    this.quarter,
+    this.areaId,
+  });
+
+  @override
+  List<Object?> get props => [year, month, quarter, areaId];
+}
+
+class FetchOccupancyRateStats extends StatisticsEvent {
+  final int? areaId;
+
+  const FetchOccupancyRateStats({
+    this.areaId,
+  });
+
+  @override
+  List<Object?> get props => [areaId];
+}
+
+class FetchReportStats extends StatisticsEvent {
+  final int? year;
+  final int? month;
+  final int? areaId;
+
+  const FetchReportStats({
+    this.year,
+    this.month,
+    this.areaId,
+  });
+
+  @override
+  List<Object?> get props => [year, month, areaId];
+}
+
+class LoadCachedRoomStatsEvent extends StatisticsEvent {
+  const LoadCachedRoomStatsEvent();
+  @override
+  List<Object?> get props => [];
+}
+
+class LoadCachedUserMonthlyStatsEvent extends StatisticsEvent {
+  const LoadCachedUserMonthlyStatsEvent();
+  @override
+  List<Object?> get props => [];
+}
+
+class LoadCachedReportStatsEvent extends StatisticsEvent {
+  const LoadCachedReportStatsEvent();
+  @override
+  List<Object?> get props => [];
+}
+
+class LoadCachedUserStatsEvent extends StatisticsEvent {
+  const LoadCachedUserStatsEvent();
+  @override
+  List<Object?> get props => [];
 }

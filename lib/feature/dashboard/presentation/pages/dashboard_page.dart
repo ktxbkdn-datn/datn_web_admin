@@ -1,4 +1,6 @@
 // lib/src/features/dashboard/presentation/widgets/dashboard_page.dart
+import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_bloc.dart';
+import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_event.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_card/report_stat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -42,7 +44,7 @@ class DashboardPage extends StatefulWidget {
   _DashboardPageState createState() => _DashboardPageState();
 }
 
-class _DashboardPageState extends State<DashboardPage> {
+class _DashboardPageState extends State<DashboardPage> with RouteAware {
   int _selectedIndex = 0;
   AdminEntity? _currentAdmin;
   int _currentReportTypePage = 0;
@@ -50,16 +52,14 @@ class _DashboardPageState extends State<DashboardPage> {
   bool _isLoading = false;
 
   final List<MenuItem> menuItems = const [
-    MenuItem(title: 'Users', icon: Iconsax.people, route: '/users'),
-    MenuItem(title: 'Rooms', icon: Iconsax.house, route: '/rooms'),
-    MenuItem(title: 'Contracts', icon: Iconsax.document, route: '/contracts'),
-    MenuItem(title: 'Registrations', icon: Iconsax.path, route: '/registrations'),
-    MenuItem(title: 'Reports', icon: Iconsax.ticket, route: '/reports'),
-    MenuItem(title: 'Notifications', icon: Iconsax.notification, route: '/notifications'),
-    MenuItem(title: 'Services', icon: Iconsax.electricity, route: '/services'),
-    MenuItem(title: 'Monthly Bills', icon: Iconsax.receipt, route: '/bills'),
-
-    // MenuItem(title: 'Admin Management', icon: Iconsax.personalcard, route: '/admin-management'),
+    MenuItem(title: 'Người dùng', icon: Iconsax.people, route: '/users'),
+    MenuItem(title: 'Phòng', icon: Iconsax.house, route: '/rooms'),
+    MenuItem(title: 'Hợp đồng', icon: Iconsax.document, route: '/contracts'),
+    MenuItem(title: 'Đăng kí', icon: Iconsax.path, route: '/registrations'),
+    MenuItem(title: 'Báo cáo', icon: Iconsax.ticket, route: '/reports'),
+    MenuItem(title: 'Thông báo', icon: Iconsax.notification, route: '/notifications'),
+    MenuItem(title: 'Dịch vụ', icon: Iconsax.electricity, route: '/services'),
+    MenuItem(title: 'Hoá đơn tháng', icon: Iconsax.receipt, route: '/bills'),
   ];
 
   @override
@@ -67,6 +67,34 @@ class _DashboardPageState extends State<DashboardPage> {
     super.initState();
     _loadLocalAdmin();
     _fetchAdmin();
+    context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
+    context.read<RegistrationBloc>().add(const FetchRegistrations(page: 1, limit: 1000));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Đăng ký RouteObserver
+    final ModalRoute? route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  // Gọi khi quay lại trang DashboardPage
+  @override
+  void didPopNext() {
+    // Khi quay lại trang này, làm mới dữ liệu
+    context.read<StatisticsBloc>().add(FetchMonthlyConsumption(
+      year: DateTime.now().year, // Sử dụng năm hiện tại
+      areaId: null, // Mặc định là null (tất cả khu vực)
+    ));
     context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
     context.read<RegistrationBloc>().add(const FetchRegistrations(page: 1, limit: 1000));
   }
@@ -106,7 +134,6 @@ class _DashboardPageState extends State<DashboardPage> {
     });
   }
 
-  // Hàm xử lý nội dung cho danh sách đăng ký
   Widget buildRegistrationContent(RegistrationState state, BuildContext context) {
     switch (state.runtimeType) {
       case RegistrationLoading:
@@ -120,12 +147,12 @@ class _DashboardPageState extends State<DashboardPage> {
         final pendingRegistrations = allRegistrations
             .where((reg) => reg.status == 'PENDING')
             .toList()
-          ..sort((a, b) => a.createdAt.compareTo(b.createdAt)); // Oldest first
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
         final processedRegistrations = allRegistrations
             .where((reg) => reg.status != 'PENDING')
             .toList()
-          ..sort((a, b) => a.createdAt.compareTo(b.createdAt)); // Oldest first
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
         final displayRegistrations = [...pendingRegistrations];
         if (displayRegistrations.length < 3) {
@@ -167,12 +194,12 @@ class _DashboardPageState extends State<DashboardPage> {
             displayRegistrations.isEmpty
                 ? const Text('Không có đăng ký nào')
                 : Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: displayRegistrations.map((reg) {
-                return RegistrationCard(registration: reg);
-              }).toList(),
-            ),
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: displayRegistrations.map((reg) {
+                      return RegistrationCard(registration: reg);
+                    }).toList(),
+                  ),
           ],
         );
 
@@ -185,7 +212,6 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  // Hàm xử lý nội dung cho danh sách báo cáo
   Widget buildReportContent(ReportState state, BuildContext context) {
     switch (state.runtimeType) {
       case ReportsLoaded:
@@ -230,7 +256,7 @@ class _DashboardPageState extends State<DashboardPage> {
           ..sort((a, b) {
             final aDate = a.createdAt != null ? DateTime.parse(a.createdAt!) : DateTime(0);
             final bDate = b.createdAt != null ? DateTime.parse(b.createdAt!) : DateTime(0);
-            return bDate.compareTo(aDate); // Newest first, to match MaintenanceRequestCard
+            return bDate.compareTo(aDate);
           });
 
         final displayReports = [...pendingReports];
@@ -274,8 +300,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 IconButton(
                   onPressed: _currentReportTypePage > 0
                       ? () async {
-                    await _changePage(_currentReportTypePage - 1);
-                  }
+                          await _changePage(_currentReportTypePage - 1);
+                        }
                       : null,
                   icon: const Icon(Icons.arrow_back_ios, size: 16),
                 ),
@@ -288,8 +314,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 IconButton(
                   onPressed: _currentReportTypePage < reportTypeIds.length - 1
                       ? () async {
-                    await _changePage(_currentReportTypePage + 1);
-                  }
+                          await _changePage(_currentReportTypePage + 1);
+                        }
                       : null,
                   icon: const Icon(Icons.arrow_forward_ios, size: 16),
                 ),
@@ -314,7 +340,6 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  // Hàm xây dựng tiêu đề báo cáo
   Widget buildReportHeader(ReportState state) {
     String typeName = 'Không xác định';
     int unassignedCount = 0;
@@ -422,9 +447,9 @@ class _DashboardPageState extends State<DashboardPage> {
                                             Text(
                                               'Xin chào, $adminName!',
                                               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.black87,
-                                              ),
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.black87,
+                                                  ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -466,8 +491,8 @@ class _DashboardPageState extends State<DashboardPage> {
                                                 onPressed: state.isLoading
                                                     ? null
                                                     : () {
-                                                  context.read<AuthBloc>().add(LogoutSubmitted());
-                                                },
+                                                        context.read<AuthBloc>().add(LogoutSubmitted());
+                                                      },
                                                 style: ElevatedButton.styleFrom(
                                                   backgroundColor: Colors.red,
                                                   shape: RoundedRectangleBorder(
@@ -541,35 +566,35 @@ class _DashboardPageState extends State<DashboardPage> {
                                 builder: (context, constraints) {
                                   return constraints.maxWidth > 600
                                       ? Row(
-                                    children: [
-                                      const Expanded(child: DashboardBarChart()),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.end,
                                           children: [
+                                            const Expanded(child: DashboardBarChart()),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.end,
+                                                children: [
+                                                  const ReportPieChart(),
+                                                  const SizedBox(height: 16),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : Column(
+                                          children: [
+                                            const DashboardBarChart(),
+                                            const SizedBox(height: 16),
                                             const ReportPieChart(),
                                             const SizedBox(height: 16),
+                                            Align(
+                                              alignment: Alignment.centerRight,
+                                              child: TextButton(
+                                                onPressed: () {},
+                                                child: const Text('Xem chi tiết', style: TextStyle(color: Colors.blue)),
+                                              ),
+                                            ),
                                           ],
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                      : Column(
-                                    children: [
-                                      const DashboardBarChart(),
-                                      const SizedBox(height: 16),
-                                      const ReportPieChart(),
-                                      const SizedBox(height: 16),
-                                      Align(
-                                        alignment: Alignment.centerRight,
-                                        child: TextButton(
-                                          onPressed: () {},
-                                          child: const Text('Xem chi tiết', style: TextStyle(color: Colors.blue)),
-                                        ),
-                                      ),
-                                    ],
-                                  );
+                                        );
                                 },
                               ),
                             ),
@@ -591,107 +616,107 @@ class _DashboardPageState extends State<DashboardPage> {
                                 builder: (context, constraints) {
                                   return constraints.maxWidth > 600
                                       ? Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            BlocBuilder<RegistrationBloc, RegistrationState>(
-                                              builder: (context, state) => buildRegistrationContent(state, context),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  BlocBuilder<RegistrationBloc, RegistrationState>(
+                                                    builder: (context, state) => buildRegistrationContent(state, context),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    mainAxisAlignment: MainAxisAlignment.start,
+                                                    children: [
+                                                      BlocBuilder<ReportBloc, ReportState>(
+                                                        builder: (context, state) => buildReportHeader(state),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      TextButton(
+                                                        onPressed: () {
+                                                          Navigator.pushNamed(
+                                                            context,
+                                                            '/reports',
+                                                            arguments: {'initialTab': 0, 'statusFilter': 'PENDING'},
+                                                          );
+                                                        },
+                                                        child: const Text('Xem tất cả', style: TextStyle(color: Colors.blue)),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      IconButton(
+                                                        onPressed: () {
+                                                          context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
+                                                        },
+                                                        icon: const Icon(Icons.refresh, color: Colors.green),
+                                                        tooltip: 'Làm mới',
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 10),
+                                                  BlocBuilder<ReportBloc, ReportState>(
+                                                    builder: (context, state) => buildReportContent(state, context),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                           ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                        )
+                                      : Column(
                                           children: [
-                                            Row(
-                                              mainAxisAlignment: MainAxisAlignment.start,
+                                            Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
-                                                BlocBuilder<ReportBloc, ReportState>(
-                                                  builder: (context, state) => buildReportHeader(state),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                TextButton(
-                                                  onPressed: () {
-                                                    Navigator.pushNamed(
-                                                      context,
-                                                      '/reports',
-                                                      arguments: {'initialTab': 0, 'statusFilter': 'PENDING'},
-                                                    );
-                                                  },
-                                                  child: const Text('Xem tất cả', style: TextStyle(color: Colors.blue)),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                IconButton(
-                                                  onPressed: () {
-                                                    context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
-                                                  },
-                                                  icon: const Icon(Icons.refresh, color: Colors.green),
-                                                  tooltip: 'Làm mới',
+                                                BlocBuilder<RegistrationBloc, RegistrationState>(
+                                                  builder: (context, state) => buildRegistrationContent(state, context),
                                                 ),
                                               ],
                                             ),
-                                            const SizedBox(height: 10),
-                                            BlocBuilder<ReportBloc, ReportState>(
-                                              builder: (context, state) => buildReportContent(state, context),
+                                            const SizedBox(height: 16),
+                                            Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  mainAxisAlignment: MainAxisAlignment.start,
+                                                  children: [
+                                                    BlocBuilder<ReportBloc, ReportState>(
+                                                      builder: (context, state) => buildReportHeader(state),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    TextButton(
+                                                      onPressed: () {
+                                                        Navigator.pushNamed(
+                                                          context,
+                                                          '/reports',
+                                                          arguments: {'initialTab': 0, 'statusFilter': 'PENDING'},
+                                                        );
+                                                      },
+                                                      child: const Text('Xem tất cả', style: TextStyle(color: Colors.blue)),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    IconButton(
+                                                      onPressed: () {
+                                                        context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
+                                                      },
+                                                      icon: const Icon(Icons.refresh, color: Colors.green),
+                                                      tooltip: 'Làm mới',
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 10),
+                                                BlocBuilder<ReportBloc, ReportState>(
+                                                  builder: (context, state) => buildReportContent(state, context),
+                                                ),
+                                              ],
                                             ),
                                           ],
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                      : Column(
-                                    children: [
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          BlocBuilder<RegistrationBloc, RegistrationState>(
-                                            builder: (context, state) => buildRegistrationContent(state, context),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.start,
-                                            children: [
-                                              BlocBuilder<ReportBloc, ReportState>(
-                                                builder: (context, state) => buildReportHeader(state),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              TextButton(
-                                                onPressed: () {
-                                                  Navigator.pushNamed(
-                                                    context,
-                                                    '/reports',
-                                                    arguments: {'initialTab': 0, 'statusFilter': 'PENDING'},
-                                                  );
-                                                },
-                                                child: const Text('Xem tất cả', style: TextStyle(color: Colors.blue)),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              IconButton(
-                                                onPressed: () {
-                                                  context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
-                                                },
-                                                icon: const Icon(Icons.refresh, color: Colors.green),
-                                                tooltip: 'Làm mới',
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 10),
-                                          BlocBuilder<ReportBloc, ReportState>(
-                                            builder: (context, state) => buildReportContent(state, context),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  );
+                                        );
                                 },
                               ),
                             ),
@@ -755,7 +780,6 @@ class _DashboardPageState extends State<DashboardPage> {
     required String assignedTo,
     required String status,
   }) {
-    // Xác định icon và màu dựa trên trạng thái
     IconData statusIcon;
     Color statusColor;
 
@@ -881,3 +905,6 @@ class MenuItem {
     required this.route,
   });
 }
+
+// Định nghĩa RouteObserver ở cấp độ toàn cục
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();

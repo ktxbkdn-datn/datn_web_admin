@@ -92,7 +92,7 @@ class _CustomDrawerState extends State<CustomDrawer>
                     child: _isExpanded
                         ? const Text(
                             // Sử dụng const để tối ưu
-                            'Management', // Thay bằng widget.title nếu cần động
+                            'Quản lý', // Thay bằng widget.title nếu cần động
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 20,

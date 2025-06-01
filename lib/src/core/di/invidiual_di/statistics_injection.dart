@@ -1,12 +1,10 @@
+import 'package:datn_web_admin/feature/dashboard/data/datasource/statistic_datasource.dart';
+import 'package:datn_web_admin/feature/dashboard/data/repository/statistics_repository_impl.dart';
+import 'package:datn_web_admin/feature/dashboard/domain/repository/statistics_repository.dart';
+import 'package:datn_web_admin/feature/dashboard/domain/usecase/statistic_usecase.dart';
+import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_bloc.dart';
+import 'package:datn_web_admin/src/core/network/api_client.dart';
 import 'package:get_it/get_it.dart';
-
-import '../../../../feature/dashboard/data/datasource/statistic_datasource.dart';
-import '../../../../feature/dashboard/data/repository/statistics_repository_impl.dart';
-import '../../../../feature/dashboard/domain/repository/statistics_repository.dart';
-import '../../../../feature/dashboard/domain/usecase/statistic_usecase.dart';
-import '../../../../feature/dashboard/presentation/bloc/statistic_bloc.dart';
-import '../../network/api_client.dart';
-
 
 final getIt = GetIt.instance;
 
@@ -21,15 +19,70 @@ void registerStatisticsDependencies() {
     StatisticsRepositoryImpl(getIt<StatisticsRemoteDataSource>()),
   );
 
-  // Đăng ký UseCase
+  // Đăng ký Use Cases
   getIt.registerSingleton<GetMonthlyConsumption>(
     GetMonthlyConsumption(getIt<StatisticsRepository>()),
   );
 
+  getIt.registerSingleton<GetRoomStatusStats>(
+    GetRoomStatusStats(getIt<StatisticsRepository>()),
+  );
+
+  getIt.registerSingleton<GetRoomCapacityStats>(
+    GetRoomCapacityStats(getIt<StatisticsRepository>()),
+  );
+
+  getIt.registerSingleton<GetContractStats>(
+    GetContractStats(getIt<StatisticsRepository>()),
+  );
+
+  getIt.registerSingleton<GetUserStats>(
+    GetUserStats(getIt<StatisticsRepository>()),
+  );
+
+  getIt.registerSingleton<GetUserMonthlyStats>(
+    GetUserMonthlyStats(getIt<StatisticsRepository>()),
+  );
+
+  getIt.registerSingleton<GetOccupancyRateStats>(
+    GetOccupancyRateStats(getIt<StatisticsRepository>()),
+  );
+
+  getIt.registerSingleton<GetReportStats>(
+    GetReportStats(getIt<StatisticsRepository>()),
+  );
+
+  getIt.registerSingleton<LoadCachedRoomStats>(
+    LoadCachedRoomStats(getIt<StatisticsRepository>()),
+  );
+
+  getIt.registerSingleton<LoadCachedUserMonthlyStats>(
+    LoadCachedUserMonthlyStats(getIt<StatisticsRepository>()),
+  );
+
+  getIt.registerSingleton<LoadCachedReportStats>(
+    LoadCachedReportStats(getIt<StatisticsRepository>()),
+  );
+
+  getIt.registerSingleton<LoadCachedUserStats>(
+    LoadCachedUserStats(getIt<StatisticsRepository>()),
+  );
+
   // Đăng ký Bloc
   getIt.registerFactory<StatisticsBloc>(
-        () => StatisticsBloc(
+    () => StatisticsBloc(
       getMonthlyConsumption: getIt<GetMonthlyConsumption>(),
+      getRoomStatusStats: getIt<GetRoomStatusStats>(),
+      getRoomCapacityStats: getIt<GetRoomCapacityStats>(),
+      getContractStats: getIt<GetContractStats>(),
+      getUserStats: getIt<GetUserStats>(),
+      getUserMonthlyStats: getIt<GetUserMonthlyStats>(),
+      getOccupancyRateStats: getIt<GetOccupancyRateStats>(),
+      getReportStats: getIt<GetReportStats>(),
+      loadCachedRoomStats: getIt<LoadCachedRoomStats>(),
+      loadCachedUserMonthlyStats: getIt<LoadCachedUserMonthlyStats>(),
+      loadCachedReportStats: getIt<LoadCachedReportStats>(),
+      loadCachedUserStats: getIt<LoadCachedUserStats>(),
     ),
   );
 }

@@ -646,7 +646,7 @@ class _BillDetailListPageState extends State<BillDetailListPage>
               print('Monthly bills loaded: ${_allMonthlyBills.length}');
             } else if (state is MonthlyBillsCreated) {
               String message = state.billsCreated.isNotEmpty
-                  ? 'Hóa đơn được tạo thành công cho các phòng: ${state.billsCreated.map((bill) => bill['room_id']).join(', ')}'
+                  ? 'Hóa đơn được tạo thành công '
                   : 'Không có hóa đơn nào được tạo';
               if (state.errors.isNotEmpty) {
                 message += '\nLỗi:';
