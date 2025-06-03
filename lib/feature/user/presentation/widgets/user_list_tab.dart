@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import '../../../../common/widget/custom_data_table.dart';
 import '../../../../common/widget/pagination_controls.dart';
 import '../../../../common/widget/search_bar.dart';
+import '../../../../common/widget/filter_tab.dart';
 import '../../../../common/constants/colors.dart';
 import '../../data/model/user_model.dart';
 import '../../domain/entities/user_entity.dart';
@@ -23,44 +23,83 @@ class UserListTab extends StatefulWidget {
 
 class _UserListTabState extends State<UserListTab> {
   int _currentPage = 1;
-  static const int _limit = 12;
+  static const int _limit = 10;
   String _searchQuery = '';
-  List<UserModel> _users = [];
-  bool _isInitialLoad = true;
-  final List<double> _columnWidths = [200.0, 200.0, 100.0]; // Họ và Tên, Email, Hành động
+  String? _emailFilter;
+  String? _fullnameFilter;
+  String? _phoneFilter;
+  String? _classNameFilter;
+  List<UserEntity> _users = [];
+  int _totalItems = 0;
+  final List<double> _columnWidths = [200.0, 200.0, 100.0];
 
   @override
   void initState() {
     super.initState();
     _loadLocalData();
-    context.read<UserBloc>().add(FetchUsersEvent(page: 1, limit: 1000));
+    _fetchUsers();
   }
 
   Future<void> _loadLocalData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    _currentPage = prefs.getInt('user_currentPage') ?? 1;
-    _searchQuery = prefs.getString('user_searchQuery') ?? '';
-    String? usersJson = prefs.getString('users');
-    if (usersJson != null) {
-      List<dynamic> usersList = jsonDecode(usersJson);
-      setState(() {
-        _users = usersList.map((json) => UserModel.fromJson(json)).toList();
-      });
-    }
+    setState(() {
+      _currentPage = prefs.getInt('user_currentPage') ?? 1;
+      _searchQuery = prefs.getString('user_searchQuery') ?? '';
+      _emailFilter = prefs.getString('user_emailFilter');
+      _fullnameFilter = prefs.getString('user_fullnameFilter');
+      _phoneFilter = prefs.getString('user_phoneFilter');
+      _classNameFilter = prefs.getString('user_classNameFilter');
+    });
+    _fetchUsers();
   }
 
   Future<void> _saveLocalData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setInt('user_currentPage', _currentPage);
     await prefs.setString('user_searchQuery', _searchQuery);
+    if (_emailFilter != null) {
+      await prefs.setString('user_emailFilter', _emailFilter!);
+    } else {
+      await prefs.remove('user_emailFilter');
+    }
+    if (_fullnameFilter != null) {
+      await prefs.setString('user_fullnameFilter', _fullnameFilter!);
+    } else {
+      await prefs.remove('user_fullnameFilter');
+    }
+    if (_phoneFilter != null) {
+      await prefs.setString('user_phoneFilter', _phoneFilter!);
+    } else {
+      await prefs.remove('user_phoneFilter');
+    }
+    if (_classNameFilter != null) {
+      await prefs.setString('user_classNameFilter', _classNameFilter!);
+    } else {
+      await prefs.remove('user_classNameFilter');
+    }
   }
 
   void _fetchUsers() {
-    context.read<UserBloc>().add(FetchUsersEvent(page: 1, limit: 1000));
+    context.read<UserBloc>().add(FetchUsersEvent(
+      page: _currentPage,
+      limit: _limit,
+      email: _emailFilter,
+      fullname: _fullnameFilter,
+      phone: _phoneFilter,
+      className: _classNameFilter,
+    ));
   }
 
-  String formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  void _applyFilters(String? email, String? fullname, String? phone, String? className) {
+    setState(() {
+      _emailFilter = email?.isNotEmpty == true ? email : null;
+      _fullnameFilter = fullname?.isNotEmpty == true ? fullname : null;
+      _phoneFilter = phone?.isNotEmpty == true ? phone : null;
+      _classNameFilter = className?.isNotEmpty == true ? className : null;
+      _currentPage = 1;
+      _saveLocalData();
+      _fetchUsers();
+    });
   }
 
   @override
@@ -87,10 +126,51 @@ class _UserListTabState extends State<UserListTab> {
             ),
             child: Scaffold(
               backgroundColor: Colors.transparent,
-              body: BlocListener<UserBloc, UserState>(
-                listener: (context, state) {
-                  // Không cần đóng dialog ở đây, để EditUserDialog tự xử lý
-                },
+              body: MultiBlocListener(
+                listeners: [
+                  BlocListener<UserBloc, UserState>(
+                    listener: (context, state) {
+                      if (state is UserError) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Lỗi: ${state.message}'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      } else if (state is UserDeleted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Xóa người dùng thành công!'),
+                            backgroundColor: Colors.green,
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      } else if (state is UserCreated) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Tạo người dùng thành công!'),
+                            backgroundColor: Colors.green,
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      } else if (state is UserUpdated) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Cập nhật người dùng thành công!'),
+                            backgroundColor: Colors.green,
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      } else if (state is UserLoaded) {
+                        setState(() {
+                          _users = state.users;
+                          _totalItems = state.totalItems;
+                        });
+                        _saveLocalData();
+                      }
+                    },
+                  ),
+                ],
                 child: Column(
                   children: [
                     Padding(
@@ -111,6 +191,19 @@ class _UserListTabState extends State<UserListTab> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  FilterTab(
+                                    label: 'Tất cả người dùng ($_totalItems)',
+                                    isSelected: true,
+                                    onTap: () {},
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -121,6 +214,7 @@ class _UserListTabState extends State<UserListTab> {
                                         _searchQuery = value;
                                         _currentPage = 1;
                                         _saveLocalData();
+                                        _fetchUsers();
                                       });
                                     },
                                     hintText: 'Tìm kiếm người dùng...',
@@ -130,7 +224,7 @@ class _UserListTabState extends State<UserListTab> {
                                 const SizedBox(width: 16),
                                 BlocBuilder<UserBloc, UserState>(
                                   builder: (context, state) {
-                                    bool isLoading = state.isLoading;
+                                    bool isLoading = state is UserLoading;
                                     return Row(
                                       children: [
                                         ElevatedButton.icon(
@@ -149,11 +243,17 @@ class _UserListTabState extends State<UserListTab> {
                                           onPressed: isLoading
                                               ? null
                                               : () {
-                                            showDialog(
-                                              context: context,
-                                              builder: (context) => const FilterDialog(),
-                                            );
-                                          },
+                                                  showDialog(
+                                                    context: context,
+                                                    builder: (context) => FilterDialog(
+                                                      onApply: _applyFilters,
+                                                      initialEmail: _emailFilter,
+                                                      initialFullname: _fullnameFilter,
+                                                      initialPhone: _phoneFilter,
+                                                      initialClassName: _classNameFilter,
+                                                    ),
+                                                  );
+                                                },
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: Colors.blue,
                                             shape: RoundedRectangleBorder(
@@ -178,116 +278,87 @@ class _UserListTabState extends State<UserListTab> {
                       child: SingleChildScrollView(
                         child: BlocBuilder<UserBloc, UserState>(
                           builder: (context, state) {
-                            bool isLoading = state.isLoading;
+                            bool isLoading = state is UserLoading;
                             String? errorMessage;
 
-                            if (state.users.isNotEmpty) {
-                              _users = state.users.map((user) => UserModel(
-                                userId: user.userId,
-                                fullname: user.fullname,
-                                email: user.email,
-                                phone: user.phone,
-                                dateOfBirth: user.dateOfBirth,
-                                cccd: user.cccd,
-                                className: user.className,
-                                createdAt: user.createdAt,
-                                isDeleted: user.isDeleted,
-                                deletedAt: user.deletedAt,
-                                version: user.version,
-                              )).toList();
-                              _isInitialLoad = false;
-                              _saveLocalData();
-                            } else if (state.error != null) {
-                              errorMessage = state.error;
+                            if (state is UserError) {
+                              errorMessage = state.message;
                             }
 
-                            List<UserModel> filteredUsers = _users.where((user) {
-                              bool matchesSearch = _searchQuery.isEmpty ||
-                                  user.fullname.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                                  user.email.toLowerCase().contains(_searchQuery.toLowerCase());
-                              return matchesSearch;
-                            }).toList();
-
-                            int startIndex = (_currentPage - 1) * _limit;
-                            int endIndex = startIndex + _limit;
-                            if (endIndex > filteredUsers.length) endIndex = filteredUsers.length;
-                            List<UserModel> paginatedUsers = startIndex < filteredUsers.length
-                                ? filteredUsers.sublist(startIndex, endIndex)
-                                : [];
-
-                            return isLoading && _isInitialLoad
+                            return isLoading
                                 ? const Center(child: CircularProgressIndicator())
                                 : errorMessage != null
-                                ? Center(child: Text('Lỗi: $errorMessage'))
-                                : paginatedUsers.isEmpty
-                                ? const Center(child: Text('Không tìm thấy người dùng nào'))
-                                : Column(
-                              children: [
-                                GenericDataTable<UserModel>(
-                                  headers: const [
-                                    'Họ và Tên',
-                                    'Email',
-                                    '',
-                                  ],
-                                  data: paginatedUsers,
-                                  columnWidths: _columnWidths,
-                                  cellBuilder: (user, index) {
-                                    switch (index) {
-                                      case 0:
-                                        return Text(
-                                          user.fullname,
-                                          style: const TextStyle(fontWeight: FontWeight.bold),
-                                          overflow: TextOverflow.ellipsis,
-                                          textAlign: TextAlign.center,
-                                        );
-                                      case 1:
-                                        return Text(
-                                          user.email,
-                                          style: const TextStyle(fontSize: 14),
-                                          overflow: TextOverflow.ellipsis,
-                                          textAlign: TextAlign.center,
-                                        );
-                                      case 2:
-                                        return Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            IconButton(
-                                              icon: const Icon(Icons.edit, color: Colors.black),
-                                              onPressed: () {
-                                                showDialog(
-                                                  context: context,
-                                                  builder: (context) => EditUserDialog(user: user),
-                                                );
-                                              },
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(Icons.delete, color: Colors.black),
-                                              onPressed: () {
-                                                context.read<UserBloc>().add(DeleteUserEvent(user.userId));
-                                              },
-                                            ),
-                                          ],
-                                        );
-                                      default:
-                                        return const SizedBox();
-                                    }
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                                PaginationControls(
-                                  currentPage: _currentPage,
-                                  totalItems: filteredUsers.length,
-                                  limit: _limit,
-                                  onPageChanged: (page) {
-                                    setState(() {
-                                      _currentPage = page;
-                                      _saveLocalData();
-                                    });
-                                  },
-                                ),
-                              ],
-                            );
+                                    ? Center(child: Text('Lỗi: $errorMessage'))
+                                    : _users.isEmpty
+                                        ? const Center(child: Text('Không tìm thấy người dùng nào'))
+                                        : Column(
+                                            children: [
+                                              GenericDataTable<UserEntity>(
+                                                headers: const [
+                                                  'Họ và Tên',
+                                                  'Email',
+                                                  '',
+                                                ],
+                                                data: _users,
+                                                columnWidths: _columnWidths,
+                                                cellBuilder: (user, index) {
+                                                  switch (index) {
+                                                    case 0:
+                                                      return Text(
+                                                        user.fullname,
+                                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                                        overflow: TextOverflow.ellipsis,
+                                                        textAlign: TextAlign.center,
+                                                      );
+                                                    case 1:
+                                                      return Text(
+                                                        user.email,
+                                                        style: const TextStyle(fontSize: 14),
+                                                        overflow: TextOverflow.ellipsis,
+                                                        textAlign: TextAlign.center,
+                                                      );
+                                                    case 2:
+                                                      return Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        mainAxisAlignment: MainAxisAlignment.center,
+                                                        children: [
+                                                          IconButton(
+                                                            icon: const Icon(Icons.edit, color: Colors.black),
+                                                            onPressed: () {
+                                                              showDialog(
+                                                                context: context,
+                                                                builder: (context) => EditUserDialog(user: user),
+                                                              );
+                                                            },
+                                                          ),
+                                                          IconButton(
+                                                            icon: const Icon(Icons.delete, color: Colors.black),
+                                                            onPressed: () {
+                                                              context.read<UserBloc>().add(DeleteUserEvent(user.userId));
+                                                            },
+                                                          ),
+                                                        ],
+                                                      );
+                                                    default:
+                                                      return const SizedBox();
+                                                  }
+                                                },
+                                              ),
+                                              const SizedBox(height: 16),
+                                              PaginationControls(
+                                                currentPage: _currentPage,
+                                                totalItems: _totalItems,
+                                                limit: _limit,
+                                                onPageChanged: (page) {
+                                                  setState(() {
+                                                    _currentPage = page;
+                                                    _saveLocalData();
+                                                    _fetchUsers();
+                                                  });
+                                                },
+                                              ),
+                                            ],
+                                          );
                           },
                         ),
                       ),

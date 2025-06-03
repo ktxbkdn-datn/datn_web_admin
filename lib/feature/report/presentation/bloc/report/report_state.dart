@@ -1,4 +1,3 @@
-// lib/src/features/report/presentations/bloc_r/report_state.dart
 import 'package:equatable/equatable.dart';
 import '../../../domain/entities/report_entity.dart';
 
@@ -15,11 +14,12 @@ class ReportLoading extends ReportState {}
 
 class ReportsLoaded extends ReportState {
   final List<ReportEntity> reports;
+  final int totalItems;
 
-  const ReportsLoaded({required this.reports});
+  const ReportsLoaded({required this.reports, required this.totalItems});
 
   @override
-  List<Object> get props => [reports];
+  List<Object> get props => [reports, totalItems];
 }
 
 class ReportLoaded extends ReportState {

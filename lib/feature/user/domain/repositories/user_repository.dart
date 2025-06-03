@@ -1,10 +1,9 @@
-// lib/src/features/user/domain/repositories/user_repository.dart
 import 'package:dartz/dartz.dart';
 import '../../../../src/core/error/failures.dart';
 import '../entities/user_entity.dart';
 
 abstract class UserRepository {
-  Future<Either<Failure, List<UserEntity>>> getAllUsers({
+  Future<Either<Failure, (List<UserEntity>, int)>> getAllUsers({
     int page,
     int limit,
     String? email,
@@ -28,5 +27,4 @@ abstract class UserRepository {
     String? className,
   });
   Future<Either<Failure, void>> deleteUser(int userId);
-
 }

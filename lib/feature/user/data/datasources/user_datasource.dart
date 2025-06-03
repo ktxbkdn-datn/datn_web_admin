@@ -1,10 +1,6 @@
-// lib/src/features/user/data/datasources/user_datasource.dart
-
 import 'package:datn_web_admin/feature/user/domain/entities/user_entity.dart';
-
 import '../../../../src/core/error/failures.dart';
 import '../../../../src/core/network/api_client.dart';
-
 import '../model/user_model.dart';
 
 class UserDataSource {
@@ -12,7 +8,7 @@ class UserDataSource {
 
   UserDataSource(this.apiService);
 
-  Future<List<UserEntity>> getAllUsers({
+  Future<(List<UserModel>, int)> getAllUsers({
     int page = 1,
     int limit = 10,
     String? email,
@@ -33,11 +29,12 @@ class UserDataSource {
         },
       );
       if (response.containsKey('users')) {
-        final users = (response['users'] as List<dynamic>)
+        final usersJson = response['users'] as List<dynamic>? ?? [];
+        final totalItems = (response['total'] as int?) ?? 0;
+        final users = usersJson
             .map((json) => UserModel.fromJson(json as Map<String, dynamic>))
-            .map((model) => model.toEntity())
             .toList();
-        return users;
+        return (users, totalItems);
       }
       throw ServerFailure(response['message'] ?? 'Lỗi lấy danh sách người dùng');
     } catch (e) {
@@ -48,12 +45,11 @@ class UserDataSource {
     }
   }
 
-  Future<UserEntity> getUserById(int userId) async {
+  Future<UserModel> getUserById(int userId) async {
     try {
       final response = await apiService.get('/users/$userId');
       if (response.containsKey('user_id')) {
-        final model = UserModel.fromJson(response);
-        return model.toEntity();
+        return UserModel.fromJson(response);
       }
       throw ServerFailure(response['message'] ?? 'Lỗi lấy thông tin người dùng');
     } catch (e) {
@@ -64,7 +60,7 @@ class UserDataSource {
     }
   }
 
-  Future<UserEntity> createUser({
+  Future<UserModel> createUser({
     required String email,
     required String fullname,
     String? phone,
@@ -79,8 +75,7 @@ class UserDataSource {
         },
       );
       if (response.containsKey('user') && response['user'].containsKey('user_id')) {
-        final model = UserModel.fromJson(response['user']);
-        return model.toEntity();
+        return UserModel.fromJson(response['user']);
       }
       throw ServerFailure(response['message'] ?? 'Lỗi tạo người dùng');
     } catch (e) {
@@ -91,7 +86,7 @@ class UserDataSource {
     }
   }
 
-  Future<UserEntity> updateUser({
+  Future<UserModel> updateUser({
     required int userId,
     String? fullname,
     String? email,
@@ -113,8 +108,7 @@ class UserDataSource {
         },
       );
       if (response.containsKey('user_id')) {
-        final model = UserModel.fromJson(response);
-        return model.toEntity();
+        return UserModel.fromJson(response);
       }
       throw ServerFailure(response['message'] ?? 'Lỗi cập nhật người dùng');
     } catch (e) {
@@ -125,11 +119,9 @@ class UserDataSource {
     }
   }
 
-
   Future<void> deleteUser(int userId) async {
     try {
       await apiService.delete('/admin/users/$userId');
-      // Không cần xử lý dữ liệu trả về vì DELETE không cần dữ liệu
     } catch (e) {
       if (e is ServerFailure) {
         throw e;

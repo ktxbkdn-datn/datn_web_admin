@@ -1,13 +1,8 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
-
 import 'package:datn_web_admin/feature/register/presentation/bloc/registration_event.dart';
 import 'package:datn_web_admin/feature/register/presentation/bloc/registration_state.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../domain/usecase/registration_usecase.dart';
 
-import '../../domain/usecase/delete_registration.dart';
-import '../../domain/usecase/get_all_registration.dart';
-import '../../domain/usecase/get_registration_by_id.dart';
-import '../../domain/usecase/set_meeting_datetime.dart';
-import '../../domain/usecase/update_registration.dart';
 
 class RegistrationBloc extends Bloc<RegistrationEvent, RegistrationState> {
   final GetAllRegistrations getAllRegistrations;
@@ -30,37 +25,42 @@ class RegistrationBloc extends Bloc<RegistrationEvent, RegistrationState> {
     on<DeleteRegistrationsBatchEvent>(_onDeleteRegistrationsBatch);
   }
 
-  Future<void> _onFetchRegistrations(FetchRegistrations event, Emitter<RegistrationState> emit) async {
+  Future<void> _onFetchRegistrations(
+    FetchRegistrations event,
+    Emitter<RegistrationState> emit,
+  ) async {
     emit(RegistrationLoading());
     final result = await getAllRegistrations(
       page: event.page,
       limit: event.limit,
       status: event.status,
-      roomId: event.roomId,
       nameStudent: event.nameStudent,
-      meetingDatetime: event.meetingDatetime,
     );
     result.fold(
-          (failure) => emit(RegistrationError(failure.message)),
-          (registrations) => emit(RegistrationsLoaded(
-        registrations: registrations,
-        total: registrations.length, // Cần lấy từ API nếu có
-        pages: 1, // Cần lấy từ API nếu có
-        currentPage: event.page,
+      (failure) => emit(RegistrationError(failure.message)),
+      (tuple) => emit(RegistrationsLoaded(
+        registrations: tuple.$1,
+        total: tuple.$2,
       )),
     );
   }
 
-  Future<void> _onFetchRegistrationById(FetchRegistrationById event, Emitter<RegistrationState> emit) async {
+  Future<void> _onFetchRegistrationById(
+    FetchRegistrationById event,
+    Emitter<RegistrationState> emit,
+  ) async {
     emit(RegistrationLoading());
     final result = await getRegistrationById(event.id);
     result.fold(
-          (failure) => emit(RegistrationError(failure.message)),
-          (registration) => emit(RegistrationDetailLoaded(registration)),
+      (failure) => emit(RegistrationError(failure.message)),
+      (registration) => emit(RegistrationLoaded(registration)),
     );
   }
 
-  Future<void> _onUpdateRegistrationStatus(UpdateRegistrationStatusEvent event, Emitter<RegistrationState> emit) async {
+  Future<void> _onUpdateRegistrationStatus(
+    UpdateRegistrationStatusEvent event,
+    Emitter<RegistrationState> emit,
+  ) async {
     emit(RegistrationLoading());
     final result = await updateRegistrationStatus(
       id: event.id,
@@ -68,12 +68,15 @@ class RegistrationBloc extends Bloc<RegistrationEvent, RegistrationState> {
       rejectionReason: event.rejectionReason,
     );
     result.fold(
-          (failure) => emit(RegistrationError(failure.message)),
-          (registration) => emit(RegistrationUpdated(registration)),
+      (failure) => emit(RegistrationError(failure.message)),
+      (registration) => emit(RegistrationUpdated(registration)),
     );
   }
 
-  Future<void> _onSetMeetingDatetime(SetMeetingDatetimeEvent event, Emitter<RegistrationState> emit) async {
+  Future<void> _onSetMeetingDatetime(
+    SetMeetingDatetimeEvent event,
+    Emitter<RegistrationState> emit,
+  ) async {
     emit(RegistrationLoading());
     final result = await setMeetingDatetime(
       id: event.id,
@@ -81,19 +84,21 @@ class RegistrationBloc extends Bloc<RegistrationEvent, RegistrationState> {
       meetingLocation: event.meetingLocation,
     );
     result.fold(
-          (failure) => emit(RegistrationError(failure.message)),
-          (registration) => emit(RegistrationUpdated(registration)),
+      (failure) => emit(RegistrationError(failure.message)),
+      (registration) => emit(RegistrationUpdated(registration)),
     );
   }
 
-  Future<void> _onDeleteRegistrationsBatch(DeleteRegistrationsBatchEvent event, Emitter<RegistrationState> emit) async {
+  Future<void> _onDeleteRegistrationsBatch(
+    DeleteRegistrationsBatchEvent event,
+    Emitter<RegistrationState> emit,
+  ) async {
     emit(RegistrationLoading());
     final result = await deleteRegistrationsBatch(event.registrationIds);
     result.fold(
-          (failure) => emit(RegistrationError(failure.message)),
-          (response) => emit(RegistrationsDeleted(
+      (failure) => emit(RegistrationError(failure.message)),
+      (response) => emit(RegistrationsDeleted(
         deletedIds: response['deleted_ids'] as List<int>,
-        errors: response['errors'] as List<Map<String, dynamic>>,
         message: response['message'] as String?,
       )),
     );

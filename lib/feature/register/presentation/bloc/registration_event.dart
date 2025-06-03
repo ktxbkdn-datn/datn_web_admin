@@ -11,21 +11,17 @@ class FetchRegistrations extends RegistrationEvent {
   final int page;
   final int limit;
   final String? status;
-  final int? roomId;
   final String? nameStudent;
-  final String? meetingDatetime;
 
   const FetchRegistrations({
-    this.page = 1,
-    this.limit = 10,
+    required this.page,
+    required this.limit,
     this.status,
-    this.roomId,
     this.nameStudent,
-    this.meetingDatetime,
   });
 
   @override
-  List<Object?> get props => [page, limit, status, roomId, nameStudent, meetingDatetime];
+  List<Object?> get props => [page, limit, status, nameStudent];
 }
 
 class FetchRegistrationById extends RegistrationEvent {

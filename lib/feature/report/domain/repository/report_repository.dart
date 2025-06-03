@@ -1,15 +1,16 @@
-// lib/src/features/report/domain/repositories/report_repository.dart
 import 'package:dartz/dartz.dart';
 import '../../../../src/core/error/failures.dart';
 import '../entities/report_entity.dart';
 
 abstract class ReportRepository {
-  Future<Either<Failure, List<ReportEntity>>> getAllReports({
+  Future<Either<Failure, (List<ReportEntity>, int)>> getAllReports({
     int page,
     int limit,
     int? userId,
     int? roomId,
     String? status,
+    int? reportTypeId,
+    String? searchQuery,
   });
 
   Future<Either<Failure, ReportEntity>> getReportById(int reportId);

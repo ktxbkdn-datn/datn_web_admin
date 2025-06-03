@@ -1,4 +1,3 @@
-// lib/src/features/dashboard/presentation/widgets/bar_chart.dart
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -27,10 +26,14 @@ class _DashboardBarChartState extends State<DashboardBarChart> {
   @override
   void initState() {
     super.initState();
-    // Tải danh sách khu vực
-    context.read<AreaBloc>().add(FetchAreasEvent(page: 1, limit: 100));
-    // Tải dữ liệu tiêu thụ ban đầu
+    // Load cached data and fetch fresh data
+    context.read<StatisticsBloc>().add(LoadCachedConsumption(
+      year: _selectedYear,
+      areaId: _selectedAreaId,
+    ));
     _fetchData();
+    // Fetch areas
+    context.read<AreaBloc>().add(FetchAreasEvent(page: 1, limit: 100));
   }
 
   @override
@@ -41,14 +44,17 @@ class _DashboardBarChartState extends State<DashboardBarChart> {
   }
 
   void _fetchData() {
+    print('DashboardBarChart: Fetching consumption data for year $_selectedYear, areaId $_selectedAreaId'); // Debug log
     context.read<StatisticsBloc>().add(FetchMonthlyConsumption(
       year: _selectedYear,
+      month: null,
       areaId: _selectedAreaId,
     ));
   }
 
   @override
   Widget build(BuildContext context) {
+    print('DashboardBarChart: Building widget'); // Debug log
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -109,6 +115,10 @@ class _DashboardBarChartState extends State<DashboardBarChart> {
                             setState(() {
                               _selectedAreaId = value;
                             });
+                            context.read<StatisticsBloc>().add(LoadCachedConsumption(
+                              year: _selectedYear,
+                              areaId: value,
+                            ));
                             _fetchData();
                           },
                         );
@@ -129,6 +139,10 @@ class _DashboardBarChartState extends State<DashboardBarChart> {
                           setState(() {
                             _selectedYear = year;
                           });
+                          context.read<StatisticsBloc>().add(LoadCachedConsumption(
+                            year: year,
+                            areaId: _selectedAreaId,
+                          ));
                           _fetchData();
                         }
                       },
@@ -149,18 +163,7 @@ class _DashboardBarChartState extends State<DashboardBarChart> {
             BlocBuilder<StatisticsBloc, StatisticsState>(
               builder: (context, state) {
                 if (state is ConsumptionLoaded && state.consumptionData.isNotEmpty) {
-                  Consumption consumption;
-                  if (_selectedAreaId != null) {
-                    consumption = state.consumptionData.firstWhere(
-                      (c) => c.areaId == _selectedAreaId,
-                      orElse: () => state.consumptionData.first,
-                    );
-                  } else {
-                    consumption = state.consumptionData.firstWhere(
-                      (c) => c.areaId == 0,
-                      orElse: () => state.consumptionData.first,
-                    );
-                  }
+                  Consumption consumption = _getConsumption(state.consumptionData);
                   return Text(
                     'Khu vực: ${consumption.areaName}',
                     style: const TextStyle(
@@ -176,37 +179,30 @@ class _DashboardBarChartState extends State<DashboardBarChart> {
             BlocBuilder<StatisticsBloc, StatisticsState>(
               builder: (context, state) {
                 if (state is StatisticsLoading) {
+                  print('DashboardBarChart: Displaying loading indicator'); // Debug log
                   return const Center(child: CircularProgressIndicator());
                 } else if (state is StatisticsError) {
+                  print('DashboardBarChart: Error: ${state.message}'); // Debug log
                   return Center(child: Text('Lỗi: ${state.message}'));
                 } else if (state is ConsumptionLoaded) {
                   if (state.consumptionData.isEmpty) {
-                    return const Center(child: Text('Không có dữ liệu cho khu vực này'));
+                    print('DashboardBarChart: No data available'); // Debug log
+                    return const Center(child: Text('Không có dữ liệu'));
                   }
 
-                  Consumption consumption;
-                  if (_selectedAreaId != null) {
-                    consumption = state.consumptionData.firstWhere(
-                      (c) => c.areaId == _selectedAreaId,
-                      orElse: () => state.consumptionData.first,
-                    );
-                  } else {
-                    consumption = state.consumptionData.firstWhere(
-                      (c) => c.areaId == 0,
-                      orElse: () => state.consumptionData.first,
-                    );
-                  }
-
+                  Consumption consumption = _getConsumption(state.consumptionData);
                   final services = _getServices(consumption);
                   if (services.isEmpty) {
+                    print('DashboardBarChart: No services to display'); // Debug log
                     return const Center(child: Text('Không có dịch vụ nào để hiển thị'));
                   }
 
                   final colors = _generateColors(services.length);
                   final maxY = _getMaxY(consumption, services);
 
+                  print('DashboardBarChart: Rendering chart with ${services.length} services'); // Debug log
                   return AnimatedOpacity(
-                    opacity: state is ConsumptionLoaded ? 1.0 : 0.0,
+                    opacity: 1.0,
                     duration: const Duration(milliseconds: 300),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
@@ -309,19 +305,7 @@ class _DashboardBarChartState extends State<DashboardBarChart> {
             BlocBuilder<StatisticsBloc, StatisticsState>(
               builder: (context, state) {
                 if (state is ConsumptionLoaded && state.consumptionData.isNotEmpty) {
-                  Consumption consumption;
-                  if (_selectedAreaId != null) {
-                    consumption = state.consumptionData.firstWhere(
-                      (c) => c.areaId == _selectedAreaId,
-                      orElse: () => state.consumptionData.first,
-                    );
-                  } else {
-                    consumption = state.consumptionData.firstWhere(
-                      (c) => c.areaId == 0,
-                      orElse: () => state.consumptionData.first,
-                    );
-                  }
-
+                  Consumption consumption = _getConsumption(state.consumptionData);
                   final services = _getServices(consumption);
                   final colors = _generateColors(services.length);
                   return Wrap(
@@ -355,6 +339,20 @@ class _DashboardBarChartState extends State<DashboardBarChart> {
         ),
       ),
     );
+  }
+
+  Consumption _getConsumption(List<Consumption> consumptionData) {
+    if (_selectedAreaId != null) {
+      return consumptionData.firstWhere(
+        (c) => c.areaId == _selectedAreaId,
+        orElse: () => consumptionData.first,
+      );
+    } else {
+      return consumptionData.firstWhere(
+        (c) => c.areaId == 0,
+        orElse: () => consumptionData.first,
+      );
+    }
   }
 
   List<String> _getServices(Consumption consumption) {

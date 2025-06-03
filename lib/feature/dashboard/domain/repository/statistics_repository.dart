@@ -9,7 +9,6 @@ import '../entities/user_monthly_stats.dart';
 import '../entities/occupancy_rate.dart';
 import '../entities/report_stats.dart';
 
-
 abstract class StatisticsRepository {
   Future<Either<Failure, List<Consumption>>> getMonthlyConsumption({
     required int? year,
@@ -22,6 +21,22 @@ abstract class StatisticsRepository {
     int? month,
     int? quarter,
     int? areaId,
+    int? roomId,
+  });
+
+  Future<Either<Failure, List<Map<String, dynamic>>>> getRoomStatusSummary({
+    required int year,
+    int? areaId,
+  });
+
+  Future<Either<Failure, List<Map<String, dynamic>>>> getUserSummary({
+    required int year,
+    int? areaId,
+  });
+
+  Future<Either<Failure, void>> triggerManualSnapshot({
+    required int year,
+    int? month,
   });
 
   Future<Either<Failure, List<RoomCapacity>>> getRoomCapacityStats({
@@ -47,6 +62,7 @@ abstract class StatisticsRepository {
     int? month,
     int? quarter,
     int? areaId,
+    int? roomId,
   });
 
   Future<Either<Failure, List<OccupancyRate>>> getOccupancyRateStats({
@@ -63,4 +79,7 @@ abstract class StatisticsRepository {
   Future<Either<Failure, List<UserMonthlyStats>>> loadCachedUserMonthlyStats();
   Future<Either<Failure, List<ReportStats>>> loadCachedReportStats();
   Future<Either<Failure, List<UserStats>>> loadCachedUserStats();
+
+  Future<Either<Failure, void>> saveConsumption(List<Consumption> stats, int year, int? areaId);
+  Future<Either<Failure, List<Consumption>>> loadCachedConsumption(int year, int? areaId);
 }

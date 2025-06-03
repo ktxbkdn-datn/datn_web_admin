@@ -1,16 +1,15 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dartz/dartz.dart';
 import 'package:datn_web_admin/src/core/error/failures.dart';
-
 import 'package:datn_web_admin/feature/bill/presentation/bloc/bill_event.dart';
 import 'package:datn_web_admin/feature/bill/presentation/bloc/bill_state.dart';
-
 import '../../domain/usecase/create_monthly_bill_bulk.dart' as use_case;
 import '../../domain/usecase/delete_paid_bills.dart' as use_case;
 import '../../domain/usecase/get_all_bill_details.dart' as use_case;
 import '../../domain/usecase/get_all_monthly_bills.dart' as use_case;
 import '../../domain/usecase/delete_bill_detail.dart' as use_case;
 import '../../domain/usecase/delete_monthly_bill.dart' as use_case;
+import '../../domain/entities/monthly_bill_entity.dart';
 
 class BillBloc extends Bloc<BillEvent, BillState> {
   final use_case.CreateMonthlyBillsBulk createMonthlyBillsBulk;
@@ -19,6 +18,9 @@ class BillBloc extends Bloc<BillEvent, BillState> {
   final use_case.DeletePaidBills deletePaidBills;
   final use_case.DeleteBillDetail deleteBillDetail;
   final use_case.DeleteMonthlyBill deleteMonthlyBill;
+
+  final Map<int, (List<MonthlyBill>, int)> _pageCache = {};
+  static const int _maxCachedPages = 5;
 
   BillBloc({
     required this.createMonthlyBillsBulk,
@@ -36,6 +38,18 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     on<DeleteMonthlyBillEvent>(_onDeleteMonthlyBill);
   }
 
+  void _clearCache() {
+    _pageCache.clear();
+  }
+
+  void _cachePage(int page, List<MonthlyBill> bills, int total) {
+    _pageCache[page] = (bills, total);
+    if (_pageCache.length > _maxCachedPages) {
+      final oldestPage = _pageCache.keys.reduce((a, b) => a < b ? a : b);
+      _pageCache.remove(oldestPage);
+    }
+  }
+
   Future<void> _onCreateMonthlyBillsBulk(CreateMonthlyBillsBulk event, Emitter<BillState> emit) async {
     emit(BillLoading());
     final result = await createMonthlyBillsBulk(
@@ -44,11 +58,14 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     );
     result.fold(
           (failure) => emit(BillError(failure.message)),
-          (response) => emit(MonthlyBillsCreated(
-        billsCreated: response['bills_created'] ?? [],
-        errors: response['errors'] ?? [],
-        message: response['message'] ?? 'Tạo hóa đơn hàng tháng hoàn tất',
-      )),
+          (response) {
+        _clearCache();
+        emit(MonthlyBillsCreated(
+          billsCreated: response['bills_created'] ?? [],
+          errors: response['errors'] ?? [],
+          message: response['message'] ?? 'Tạo hóa đơn hàng tháng hoàn tất',
+        ));
+      },
     );
   }
 
@@ -67,16 +84,32 @@ class BillBloc extends Bloc<BillEvent, BillState> {
   }
 
   Future<void> _onFetchAllMonthlyBills(FetchAllMonthlyBills event, Emitter<BillState> emit) async {
+    if (_pageCache.containsKey(event.page)) {
+      final (cachedBills, cachedTotal) = _pageCache[event.page]!;
+      emit(MonthlyBillsLoaded(
+        monthlyBills: cachedBills,
+        total: cachedTotal,
+        pages: (cachedTotal / event.limit).ceil(),
+        currentPage: event.page,
+      ));
+      return;
+    }
+
     emit(BillLoading());
-    final result = await getAllMonthlyBills();
+    final result = await getAllMonthlyBills(page: event.page, limit: event.limit);
     result.fold(
           (failure) => emit(BillError(failure.message)),
-          (monthlyBills) => emit(MonthlyBillsLoaded(
-        monthlyBills: monthlyBills,
-        total: monthlyBills.length,
-        pages: (monthlyBills.length / event.limit).ceil(),
-        currentPage: event.page,
-      )),
+          (data) {
+        final monthlyBills = data.$1;
+        final total = data.$2;
+        _cachePage(event.page, monthlyBills, total);
+        emit(MonthlyBillsLoaded(
+          monthlyBills: monthlyBills,
+          total: total,
+          pages: (total / event.limit).ceil(),
+          currentPage: event.page,
+        ));
+      },
     );
   }
 
@@ -85,11 +118,14 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     final result = await deletePaidBills(event.billIds);
     result.fold(
           (failure) => emit(BillError(failure.message)),
-          (deletedIds) => emit(PaidBillsDeleted(
-        deletedMonthlyBillIds: deletedIds['deleted_monthly_bills'] ?? [],
-        deletedBillDetailIds: deletedIds['deleted_bill_details'] ?? [],
-        message: 'Xóa các hóa đơn đã thanh toán thành công',
-      )),
+          (deletedIds) {
+        _clearCache();
+        emit(PaidBillsDeleted(
+          deletedMonthlyBillIds: deletedIds['deleted_monthly_bills'] ?? [],
+          deletedBillDetailIds: deletedIds['deleted_bill_details'] ?? [],
+          message: 'Xóa các hóa đơn đã thanh toán thành công',
+        ));
+      },
     );
   }
 
@@ -116,10 +152,13 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     final result = await deleteMonthlyBill(event.billId);
     result.fold(
           (failure) => emit(BillError(failure.message)),
-          (_) => emit(MonthlyBillDeleted(
-        deletedId: event.billId,
-        message: 'Xóa hóa đơn hàng tháng thành công',
-      )),
+          (_) {
+        _clearCache();
+        emit(MonthlyBillDeleted(
+          deletedId: event.billId,
+          message: 'Xóa hóa đơn hàng tháng thành công',
+        ));
+      },
     );
   }
 }

@@ -1,4 +1,3 @@
-// notification_repository.dart
 import 'package:dartz/dartz.dart';
 import 'package:http/http.dart' as http;
 import '../../../../src/core/error/failures.dart';
@@ -10,7 +9,7 @@ abstract class NotificationRepository {
     int limit = 10,
   });
 
-  Future<Either<Failure, List<Notification>>> getAllNotifications({
+  Future<Either<Failure, (List<Notification>, int)>> getAllNotifications({
     int page = 1,
     int limit = 10,
     String? targetType,

@@ -184,7 +184,7 @@ class _CreateNotificationDialogState extends State<CreateNotificationDialog> {
   bool _hasShownErrorMessage = false;
   bool _isSubmitting = false;
   bool _isRefreshing = false;
-  static const int MAX_FILES = 15;
+  static const int MAX_FILES = 20; // Tăng từ 15 lên 20
   static const int MAX_VIDEOS = 1;
   static const int MAX_IMAGES = 10;
   static const int MAX_DOCUMENTS = 5;

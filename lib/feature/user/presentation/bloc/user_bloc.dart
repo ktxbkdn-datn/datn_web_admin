@@ -1,9 +1,6 @@
 import 'package:bloc/bloc.dart';
+import 'package:datn_web_admin/feature/user/domain/usecases/user_usecase.dart';
 import '../../domain/entities/user_entity.dart';
-import '../../domain/usecases/create_user.dart';
-import '../../domain/usecases/delete_user.dart';
-import '../../domain/usecases/get_all_users.dart';
-import '../../domain/usecases/update_user.dart';
 import 'user_event.dart';
 import 'user_state.dart';
 
@@ -13,12 +10,17 @@ class UserBloc extends Bloc<UserEvent, UserState> {
   final UpdateUser updateUser;
   final DeleteUser deleteUser;
 
+  // Cache for loaded pages
+  final Map<int, List<UserEntity>> _pageCache = {};
+  int _currentPage = 1;
+  int _totalItems = 0;
+
   UserBloc({
     required this.getAllUsers,
     required this.createUser,
     required this.updateUser,
     required this.deleteUser,
-  }) : super(const UserState()) {
+  }) : super(UserInitial()) {
     on<FetchUsersEvent>(_onFetchUsers);
     on<CreateUserEvent>(_onCreateUser);
     on<UpdateUserEvent>(_onUpdateUser);
@@ -26,7 +28,14 @@ class UserBloc extends Bloc<UserEvent, UserState> {
   }
 
   Future<void> _onFetchUsers(FetchUsersEvent event, Emitter<UserState> emit) async {
-    emit(state.copyWith(isLoading: true, error: null, successMessage: null));
+    emit(UserLoading());
+
+    // Check cache first
+    if (_pageCache.containsKey(event.page) && event.page != _currentPage) {
+      emit(UserLoaded(users: _pageCache[event.page]!, totalItems: _totalItems));
+      return;
+    }
+
     try {
       final result = await getAllUsers(
         page: event.page,
@@ -37,28 +46,22 @@ class UserBloc extends Bloc<UserEvent, UserState> {
         className: event.className,
       );
       result.fold(
-            (failure) => emit(state.copyWith(
-          isLoading: false,
-          error: failure.message,
-          successMessage: null,
-        )),
-            (users) => emit(state.copyWith(
-          isLoading: false,
-          users: users,
-          successMessage: null,
-        )),
+        (failure) => emit(UserError(message: failure.message)),
+        (data) {
+          final (users, total) = data;
+          _currentPage = event.page;
+          _totalItems = total;
+          _pageCache[event.page] = users; // Cache the page
+          emit(UserLoaded(users: users, totalItems: total));
+        },
       );
     } catch (e) {
-      emit(state.copyWith(
-        isLoading: false,
-        error: 'Lỗi không xác định: $e',
-        successMessage: null,
-      ));
+      emit(UserError(message: 'Lỗi không xác định: $e'));
     }
   }
 
   Future<void> _onCreateUser(CreateUserEvent event, Emitter<UserState> emit) async {
-    emit(state.copyWith(isLoading: true, error: null, successMessage: null));
+    emit(UserLoading());
     try {
       final result = await createUser(
         email: event.email,
@@ -66,31 +69,21 @@ class UserBloc extends Bloc<UserEvent, UserState> {
         phone: event.phone,
       );
       result.fold(
-            (failure) => emit(state.copyWith(
-          isLoading: false,
-          error: failure.message,
-          successMessage: null,
-        )),
-            (user) {
-          final updatedUsers = List<UserEntity>.from(state.users)..add(user);
-          emit(state.copyWith(
-            isLoading: false,
-            users: updatedUsers,
-            successMessage: 'Tạo người dùng thành công',
-          ));
+        (failure) => emit(UserError(message: failure.message)),
+        (user) {
+          emit(UserCreated(user: user));
+          // Clear cache and re-fetch current page
+          _pageCache.clear();
+          add(FetchUsersEvent(page: _currentPage, limit: 10));
         },
       );
     } catch (e) {
-      emit(state.copyWith(
-        isLoading: false,
-        error: 'Lỗi không xác định: $e',
-        successMessage: null,
-      ));
+      emit(UserError(message: 'Lỗi không xác định: $e'));
     }
   }
 
   Future<void> _onUpdateUser(UpdateUserEvent event, Emitter<UserState> emit) async {
-    emit(state.copyWith(isLoading: true, error: null, successMessage: null));
+    emit(UserLoading());
     try {
       final result = await updateUser(
         userId: event.userId,
@@ -102,63 +95,34 @@ class UserBloc extends Bloc<UserEvent, UserState> {
         className: event.className,
       );
       result.fold(
-            (failure) => emit(state.copyWith(
-          isLoading: false,
-          error: failure.message,
-          successMessage: null,
-        )),
-            (user) {
-          final updatedUsers = state.users.map((u) {
-            if (u.userId == event.userId) {
-              return user;
-            }
-            return u;
-          }).toList();
-          print('UpdateUser successful for user ID: ${event.userId}');
-          emit(state.copyWith(
-            users: updatedUsers,
-            isLoading: false,
-            successMessage: 'Cập nhật người dùng thành công!',
-          ));
-          Future.delayed(const Duration(milliseconds: 500), () {
-            add(FetchUsersEvent(page: 1, limit: 1000));
-          });
+        (failure) => emit(UserError(message: failure.message)),
+        (user) {
+          emit(UserUpdated(user: user));
+          // Clear cache and re-fetch current page
+          _pageCache.clear();
+          add(FetchUsersEvent(page: _currentPage, limit: 10));
         },
       );
     } catch (e) {
-      emit(state.copyWith(
-        isLoading: false,
-        error: 'Lỗi không xác định: $e',
-        successMessage: null,
-      ));
+      emit(UserError(message: 'Lỗi không xác định: $e'));
     }
   }
 
   Future<void> _onDeleteUser(DeleteUserEvent event, Emitter<UserState> emit) async {
-    emit(state.copyWith(isLoading: true, error: null, successMessage: null));
+    emit(UserLoading());
     try {
       final result = await deleteUser(event.userId);
       result.fold(
-            (failure) => emit(state.copyWith(
-          isLoading: false,
-          error: failure.message,
-          successMessage: null,
-        )),
-            (_) {
-          final updatedUsers = state.users.where((u) => u.userId != event.userId).toList();
-          emit(state.copyWith(
-            isLoading: false,
-            users: updatedUsers,
-            successMessage: 'Xóa người dùng thành công',
-          ));
+        (failure) => emit(UserError(message: failure.message)),
+        (_) {
+          emit(UserDeleted(userId: event.userId));
+          // Clear cache and re-fetch current page
+          _pageCache.clear();
+          add(FetchUsersEvent(page: _currentPage, limit: 10));
         },
       );
     } catch (e) {
-      emit(state.copyWith(
-        isLoading: false,
-        error: 'Lỗi không xác định: $e',
-        successMessage: null,
-      ));
+      emit(UserError(message: 'Lỗi không xác định: $e'));
     }
   }
 }

@@ -1,12 +1,9 @@
 import 'package:bloc/bloc.dart';
+import 'package:datn_web_admin/feature/room/domain/usecases/room_usecase.dart';
 import 'package:equatable/equatable.dart';
 import 'package:dartz/dartz.dart';
 import '../../../domain/entities/room_entity.dart';
-import '../../../domain/usecases/create_room.dart';
-import '../../../domain/usecases/delete_room.dart';
-import '../../../domain/usecases/get_all_rooms.dart';
-import '../../../domain/usecases/get_room_by_id.dart';
-import '../../../domain/usecases/update_room.dart';
+
 
 part 'room_event.dart';
 part 'room_state.dart';

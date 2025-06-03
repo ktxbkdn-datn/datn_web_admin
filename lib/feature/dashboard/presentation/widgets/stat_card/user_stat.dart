@@ -1,16 +1,13 @@
-// lib/src/features/dashboard/presentation/widgets/user_stat.dart
 import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_page/user_stat_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../../../user/domain/entities/user_entity.dart';
-import '../../../../user/data/model/user_model.dart'; // Thêm import cho UserModel
 import '../../../../user/presentation/bloc/user_bloc.dart';
 import '../../../../user/presentation/bloc/user_state.dart';
 import '../../../../user/presentation/bloc/user_event.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_card.dart';
-
 
 class UserStatCard extends StatefulWidget {
   const UserStatCard({Key? key}) : super(key: key);
@@ -20,39 +17,109 @@ class UserStatCard extends StatefulWidget {
 }
 
 class _UserStatCardState extends State<UserStatCard> {
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Gửi FetchUsersEvent ngay khi widget được khởi tạo
-    context.read<UserBloc>().add(FetchUsersEvent(page: 1, limit: 1000)); // Lấy tất cả người dùng
-  }
+  List<UserEntity> _allUsers = [];
+  int _totalUsers = 0;
+  int _totalThisMonth = 0;
+  int _lastMonthTotal = 0;
+  bool _isFetching = false;
+  bool _isCacheValid = false;
 
   @override
   void initState() {
     super.initState();
-    didChangeDependencies();
+    _loadStatsFromCache().then((_) {
+      if (!_isCacheValid) {
+        _fetchAllUsers();
+      }
+    });
   }
 
-  // Lưu danh sách người dùng vào bộ nhớ cục bộ
-  Future<void> _saveUsers(List<UserEntity> users) async {
+  Future<void> _loadStatsFromCache() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    // Cast users sang List<UserModel> để gọi toJson
-    List<UserModel> userModels = users.map((user) => UserModel(
-          userId: user.userId,
-          fullname: user.fullname,
-          email: user.email,
-          phone: user.phone,
-          dateOfBirth: user.dateOfBirth,
-          cccd: user.cccd,
-          className: user.className,
-          createdAt: user.createdAt,
-          isDeleted: user.isDeleted,
-          deletedAt: user.deletedAt,
-          version: user.version,
-        )).toList();
-    String usersJson = jsonEncode(userModels.map((user) => user.toJson()).toList());
-    await prefs.setString('users', usersJson);
-    print('Saved users to SharedPreferences: ${users.length} users');
+    setState(() {
+      _totalUsers = prefs.getInt('totalUsers') ?? 0;
+      _totalThisMonth = prefs.getInt('totalThisMonth') ?? 0;
+      _lastMonthTotal = prefs.getInt('lastMonthTotal') ?? 0;
+      _isCacheValid = _totalUsers > 0; // Consider cache valid if we have totalUsers
+    });
+    print('Loaded stats from cache: Total=$_totalUsers, ThisMonth=$_totalThisMonth, LastMonth=$_lastMonthTotal');
+  }
+
+  Future<void> _fetchAllUsers() async {
+    if (_isFetching) return;
+    setState(() {
+      _isFetching = true;
+    });
+
+    int page = 1;
+    const int limit = 100; // Fetch in smaller chunks to avoid memory issues
+    List<UserEntity> fetchedUsers = [];
+    int totalItems = 0;
+
+    try {
+      while (true) {
+        context.read<UserBloc>().add(FetchUsersEvent(page: page, limit: limit));
+        await Future.delayed(const Duration(milliseconds: 100)); // Wait for state update
+
+        // Access the state manually since we're not in a BlocBuilder context
+        final state = context.read<UserBloc>().state;
+        if (state is UserLoaded) {
+          fetchedUsers.addAll(state.users);
+          totalItems = state.totalItems;
+
+          if (fetchedUsers.length >= totalItems) {
+            break; // We've fetched all users
+          }
+          page++;
+        } else if (state is UserError) {
+          throw Exception(state.message);
+        }
+      }
+
+      setState(() {
+        _allUsers = fetchedUsers;
+        _totalUsers = totalItems;
+        _calculateStats();
+        _isCacheValid = true;
+      });
+      await _saveStats(totalItems, _totalThisMonth, _lastMonthTotal);
+    } catch (e) {
+      print('Error fetching users: $e');
+    } finally {
+      setState(() {
+        _isFetching = false;
+      });
+    }
+  }
+
+  Future<void> _saveStats(int totalUsers, int totalThisMonth, int lastMonthTotal) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('totalUsers', totalUsers);
+    await prefs.setInt('totalThisMonth', totalThisMonth);
+    await prefs.setInt('lastMonthTotal', lastMonthTotal);
+    print('Saved stats to SharedPreferences: Total=$totalUsers, ThisMonth=$totalThisMonth, LastMonth=$lastMonthTotal');
+  }
+
+  void _calculateStats() {
+    // Xác định tháng hiện tại (tháng 6, 2025) và tháng trước (tháng 5, 2025)
+    final now = DateTime(2025, 6, 2); // Current date as per system time
+    final currentMonthStart = DateTime(now.year, now.month, 1); // Đầu tháng 6
+    final currentMonthEnd =
+        DateTime(now.year, now.month + 1, 1).subtract(const Duration(days: 1)); // Cuối tháng 6
+    final lastMonthStart = DateTime(now.year, now.month - 1, 1); // Đầu tháng 5
+    final lastMonthEnd = currentMonthStart.subtract(const Duration(days: 1)); // Cuối tháng 5
+
+    // Tính tổng số người dùng tháng trước (tháng 5)
+    _lastMonthTotal = _allUsers.where((user) {
+      return user.createdAt.isAfter(lastMonthStart) &&
+          user.createdAt.isBefore(lastMonthEnd.add(const Duration(days: 1)));
+    }).length;
+
+    // Tính tổng số người dùng tháng này (tháng 6)
+    _totalThisMonth = _allUsers.where((user) {
+      return user.createdAt.isAfter(currentMonthStart) &&
+          user.createdAt.isBefore(currentMonthEnd.add(const Duration(days: 1)));
+    }).length;
   }
 
   @override
@@ -64,73 +131,48 @@ class _UserStatCardState extends State<UserStatCard> {
           MaterialPageRoute(builder: (context) => const UserStatsPage()),
         );
       },
-      child: BlocBuilder<UserBloc, UserState>(
-        builder: (context, state) {
-          // Kiểm tra trạng thái và lấy danh sách users một cách an toàn
-          List<UserEntity> users = [];
-          bool isLoading = state.isLoading;
-
-          // Kiểm tra trực tiếp state.users.isNotEmpty thay vì state is UserLoaded || state is UserUpdated
-          if (state.users.isNotEmpty) {
-            users = state.users;
-            _saveUsers(users); // Lưu danh sách người dùng vào bộ nhớ cục bộ
+      child: BlocListener<UserBloc, UserState>(
+        listener: (context, state) {
+          if (state is UserCreated || state is UserUpdated || state is UserDeleted) {
+            // Re-fetch users when the user list changes
+            _fetchAllUsers();
           }
-
-          // Hiển thị loading nếu đang tải và chưa có dữ liệu
-          if (isLoading && users.isEmpty) {
-            return const SizedBox(
-              width: 200, // Đặt kích thước phù hợp với StatCard
-              height: 120,
-              child: Center(
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-
-          // Tổng số người dùng hiện tại
-          final totalUsers = users.length.toString();
-
-          // Xác định tháng hiện tại (tháng 4) và tháng trước (tháng 3)
-          final now = DateTime.now();
-          final currentMonthStart = DateTime(now.year, now.month, 1); // Đầu tháng 4
-          final currentMonthEnd =
-              DateTime(now.year, now.month + 1, 1).subtract(const Duration(days: 1)); // Cuối tháng 4
-          final lastMonthStart = DateTime(now.year, now.month - 1, 1); // Đầu tháng 3
-          final lastMonthEnd = currentMonthStart.subtract(const Duration(days: 1)); // Cuối tháng 3
-
-          // Tính tổng số người dùng tháng trước (tháng 3)
-          int lastMonthTotal = users.where((user) {
-            return user.createdAt.isAfter(lastMonthStart) &&
-                user.createdAt.isBefore(lastMonthEnd.add(const Duration(days: 1)));
-          }).length;
-
-          // Tính tổng số người dùng tháng này (tháng 4)
-          int totalThisMonth = users.where((user) {
-            return user.createdAt.isAfter(currentMonthStart) &&
-                user.createdAt.isBefore(currentMonthEnd.add(const Duration(days: 1)));
-          }).length;
-
-          // Tính phần trăm thay đổi
-          double percentageChange = lastMonthTotal > 0
-              ? ((totalThisMonth - lastMonthTotal) / lastMonthTotal * 100)
-              : totalThisMonth > 0
-                  ? 100.0 // Nếu tháng trước không có người dùng nhưng tháng này có, thì tăng 100%
-                  : 0.0; // Nếu cả hai tháng đều không có người dùng, thì 0%
-          String percentageChangeText = percentageChange.isFinite
-              ? '${percentageChange.toStringAsFixed(1)}%'
-              : '0%';
-
-          // Xác định màu thay đổi
-          Color changeColor = percentageChange < 0 ? Colors.red : Colors.green;
-
-          return StatCard(
-            title: 'Tổng số ',
-            value: totalUsers,
-            percentageChange: percentageChangeText,
-            lastMonthTotal: lastMonthTotal.toString(),
-            changeColor: changeColor,
-          );
         },
+        child: BlocBuilder<UserBloc, UserState>(
+          builder: (context, state) {
+            // Hiển thị loading nếu đang tải và chưa có dữ liệu
+            if (_isFetching && !_isCacheValid) {
+              return const SizedBox(
+                width: 200,
+                height: 120,
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
+
+            // Tính phần trăm thay đổi
+            double percentageChange = _lastMonthTotal > 0
+                ? ((_totalThisMonth - _lastMonthTotal) / _lastMonthTotal * 100)
+                : _totalThisMonth > 0
+                    ? 100.0 // Nếu tháng trước không có người dùng nhưng tháng này có, thì tăng 100%
+                    : 0.0; // Nếu cả hai tháng đều không có người dùng, thì 0%
+            String percentageChangeText = percentageChange.isFinite
+                ? '${percentageChange.toStringAsFixed(1)}%'
+                : '0%';
+
+            // Xác định màu thay đổi
+            Color changeColor = percentageChange < 0 ? Colors.red : Colors.green;
+
+            return StatCard(
+              title: 'Tổng số người dùng được tạo',
+              value: _totalUsers.toString(),
+              percentageChange: percentageChangeText,
+              lastMonthTotal: _lastMonthTotal.toString(),
+              changeColor: changeColor,
+            );
+          },
+        ),
       ),
     );
   }

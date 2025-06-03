@@ -8,6 +8,8 @@ import '../../domain/entities/user_monthly_stats.dart';
 import '../../domain/entities/occupancy_rate.dart';
 import '../../domain/entities/report_stats.dart';
 
+enum ErrorType { server, network, validation, unknown }
+
 abstract class StatisticsState extends Equatable {
   const StatisticsState();
 
@@ -19,13 +21,26 @@ class StatisticsInitial extends StatisticsState {}
 
 class StatisticsLoading extends StatisticsState {}
 
-class StatisticsError extends StatisticsState {
-  final String message;
+class PartialLoading extends StatisticsState {
+  final String requestType;
 
-  const StatisticsError(this.message);
+  const PartialLoading({required this.requestType});
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [requestType];
+}
+
+class StatisticsError extends StatisticsState {
+  final String message;
+  final ErrorType errorType;
+
+  const StatisticsError({
+    required this.message,
+    this.errorType = ErrorType.unknown,
+  });
+
+  @override
+  List<Object?> get props => [message, errorType];
 }
 
 class ConsumptionLoaded extends StatisticsState {
@@ -48,6 +63,39 @@ class RoomStatusLoaded extends StatisticsState {
 
   @override
   List<Object?> get props => [roomStatusData];
+}
+
+class RoomStatusSummaryLoaded extends StatisticsState {
+  final List<Map<String, dynamic>> summaryData;
+
+  const RoomStatusSummaryLoaded({
+    required this.summaryData,
+  });
+
+  @override
+  List<Object?> get props => [summaryData];
+}
+
+class UserSummaryLoaded extends StatisticsState {
+  final List<Map<String, dynamic>> summaryData;
+
+  const UserSummaryLoaded({
+    required this.summaryData,
+  });
+
+  @override
+  List<Object?> get props => [summaryData];
+}
+
+class ManualSnapshotTriggered extends StatisticsState {
+  final String message;
+
+  const ManualSnapshotTriggered({
+    required this.message,
+  });
+
+  @override
+  List<Object?> get props => [message];
 }
 
 class RoomCapacityLoaded extends StatisticsState {
@@ -83,7 +131,7 @@ class UserStatsLoaded extends StatisticsState {
   List<Object?> get props => [userStatsData];
 }
 
-class UserMonthlyStatsLoaded extends StatisticsState {
+class UserMonthlyStatsLoaded extends StatisticsState { // Renamed from UserMonthStatsLoaded
   final List<UserMonthlyStats> userMonthlyStatsData;
 
   const UserMonthlyStatsLoaded({

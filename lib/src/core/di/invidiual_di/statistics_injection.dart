@@ -67,6 +67,23 @@ void registerStatisticsDependencies() {
   getIt.registerSingleton<LoadCachedUserStats>(
     LoadCachedUserStats(getIt<StatisticsRepository>()),
   );
+  getIt.registerSingleton<GetRoomStatusSummary>(
+    GetRoomStatusSummary(getIt<StatisticsRepository>()),
+  );
+  getIt.registerSingleton<GetUserSummary>(
+    GetUserSummary(getIt<StatisticsRepository>()),
+  );
+  getIt.registerSingleton<TriggerManualSnapshot>(
+    TriggerManualSnapshot(getIt<StatisticsRepository>()),
+  );
+
+  // Register SaveConsumption and LoadCachedConsumption use cases
+  getIt.registerSingleton<SaveConsumption>(
+    SaveConsumption(getIt<StatisticsRepository>()),
+  );
+  getIt.registerSingleton<LoadCachedConsumption>(
+    LoadCachedConsumption(getIt<StatisticsRepository>()),
+  );
 
   // Đăng ký Bloc
   getIt.registerFactory<StatisticsBloc>(
@@ -83,6 +100,11 @@ void registerStatisticsDependencies() {
       loadCachedUserMonthlyStats: getIt<LoadCachedUserMonthlyStats>(),
       loadCachedReportStats: getIt<LoadCachedReportStats>(),
       loadCachedUserStats: getIt<LoadCachedUserStats>(),
+      getRoomStatusSummary: GetRoomStatusSummary(getIt<StatisticsRepository>()), 
+      getUserSummary: GetUserSummary(getIt<StatisticsRepository>()),
+      triggerManualSnapshot: TriggerManualSnapshot(getIt<StatisticsRepository>()),
+      saveConsumption: getIt<SaveConsumption>(),
+      loadCachedConsumption: getIt<LoadCachedConsumption>(),
     ),
   );
 }

@@ -25,6 +25,22 @@ abstract class StatisticsRemoteDataSource {
     int? month,
     int? quarter,
     int? areaId,
+    int? roomId,
+  });
+
+  Future<Either<Failure, List<Map<String, dynamic>>>> getRoomStatusSummary({
+    required int year,
+    int? areaId,
+  });
+
+  Future<Either<Failure, List<Map<String, dynamic>>>> getUserSummary({
+    required int year,
+    int? areaId,
+  });
+
+  Future<Either<Failure, void>> triggerManualSnapshot({
+    required int year,
+    int? month,
   });
 
   Future<Either<Failure, List<RoomCapacityModel>>> getRoomCapacityStats({
@@ -50,6 +66,7 @@ abstract class StatisticsRemoteDataSource {
     int? month,
     int? quarter,
     int? areaId,
+    int? roomId,
   });
 
   Future<Either<Failure, List<OccupancyRateModel>>> getOccupancyRateStats({
@@ -73,6 +90,9 @@ abstract class StatisticsRemoteDataSource {
 
   Future<Either<Failure, void>> saveUserStats(List<UserStatsModel> stats);
   Future<Either<Failure, List<UserStatsModel>>> loadUserStats();
+
+  Future<Either<Failure, void>> saveConsumption(List<ConsumptionModel> stats, int year, int? areaId);
+  Future<Either<Failure, List<ConsumptionModel>>> loadConsumption(int year, int? areaId);
 }
 
 class ReportStatsResponseModel {
@@ -97,6 +117,17 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
     int? areaId,
   }) async {
     try {
+      // Try loading from cache first
+      final cacheResult = await loadConsumption(year ?? DateTime.now().year, areaId);
+      if (cacheResult.isRight()) {
+        final cachedData = cacheResult.getOrElse(() => []);
+        if (cachedData.isNotEmpty) {
+          print('StatisticsRemoteDataSource: Loaded cached consumption data for year $year, areaId $areaId'); // Debug log
+          return Right(cachedData);
+        }
+      }
+
+      // Fetch from API if no cache
       final queryParams = <String, String>{};
       if (year != null) queryParams['year'] = year.toString();
       if (month != null) queryParams['month'] = month.toString();
@@ -109,9 +140,44 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
       final consumptionData = (response['data'] as List)
           .map((json) => ConsumptionModel.fromJson(json))
           .toList();
+      
+      // Cache the fetched data
+      await saveConsumption(consumptionData, year ?? DateTime.now().year, areaId);
       return Right(consumptionData);
     } catch (e) {
       return Left(_handleError(e));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> saveConsumption(List<ConsumptionModel> stats, int year, int? areaId) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String statsJson = jsonEncode(stats.map((stat) => stat.toJson()).toList());
+      String cacheKey = 'consumption_data_$year${areaId != null ? '_$areaId' : ''}';
+      await prefs.setString(cacheKey, statsJson);
+      print('StatisticsRemoteDataSource: Saved consumption data to cache with key $cacheKey'); // Debug log
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure('Failed to save consumption stats: ${e.toString()}'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<ConsumptionModel>>> loadConsumption(int year, int? areaId) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String cacheKey = 'consumption_data_$year${areaId != null ? '_$areaId' : ''}';
+      String? statsJson = prefs.getString(cacheKey);
+      if (statsJson == null) {
+        return Right([]);
+      }
+      List<dynamic> statsList = jsonDecode(statsJson);
+      final stats = statsList.map((json) => ConsumptionModel.fromJson(json)).toList();
+      print('StatisticsRemoteDataSource: Loaded consumption data from cache with key $cacheKey'); // Debug log
+      return Right(stats);
+    } catch (e) {
+      return Left(ServerFailure('Failed to load consumption stats: ${e.toString()}'));
     }
   }
 
@@ -121,6 +187,7 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
     int? month,
     int? quarter,
     int? areaId,
+    int? roomId,
   }) async {
     try {
       final queryParams = <String, String>{};
@@ -128,6 +195,7 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
       if (month != null) queryParams['month'] = month.toString();
       if (quarter != null) queryParams['quarter'] = quarter.toString();
       if (areaId != null) queryParams['area_id'] = areaId.toString();
+      if (roomId != null) queryParams['room_id'] = roomId.toString();
 
       final response = await apiService.get(
         '/api/statistics/rooms/status',
@@ -138,6 +206,65 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
           .toList();
       await saveRoomStats(roomStatusData);
       return Right(roomStatusData);
+    } catch (e) {
+      return Left(_handleError(e));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> getRoomStatusSummary({
+    required int year,
+    int? areaId,
+  }) async {
+    try {
+      final queryParams = <String, String>{'year': year.toString()};
+      if (areaId != null) queryParams['area_id'] = areaId.toString();
+
+      final response = await apiService.get(
+        '/api/statistics/rooms/status/summary',
+        queryParams: queryParams,
+      );
+      final summaryData = (response['data'] as List).cast<Map<String, dynamic>>();
+      return Right(summaryData);
+    } catch (e) {
+      return Left(_handleError(e));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> getUserSummary({
+    required int year,
+    int? areaId,
+  }) async {
+    try {
+      final queryParams = <String, String>{'year': year.toString()};
+      if (areaId != null) queryParams['area_id'] = areaId.toString();
+
+      final response = await apiService.get(
+        '/api/statistics/users/summary',
+        queryParams: queryParams,
+      );
+      final summaryData = (response['data'] as List).cast<Map<String, dynamic>>();
+      return Right(summaryData);
+    } catch (e) {
+      return Left(_handleError(e));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> triggerManualSnapshot({
+    required int year,
+    int? month,
+  }) async {
+    try {
+      final body = <String, dynamic>{'year': year};
+      if (month != null) body['month'] = month;
+
+      final response = await apiService.post(
+        '/api/statistics/snapshot',
+        body,
+      );
+      return Right(null);
     } catch (e) {
       return Left(_handleError(e));
     }
@@ -225,6 +352,7 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
     int? month,
     int? quarter,
     int? areaId,
+    int? roomId,
   }) async {
     try {
       final queryParams = <String, String>{};
@@ -232,6 +360,7 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
       if (month != null) queryParams['month'] = month.toString();
       if (quarter != null) queryParams['quarter'] = quarter.toString();
       if (areaId != null) queryParams['area_id'] = areaId.toString();
+      if (roomId != null) queryParams['room_id'] = roomId.toString();
 
       final response = await apiService.get(
         '/api/statistics/users/monthly',
@@ -304,11 +433,7 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
   Future<Either<Failure, void>> saveRoomStats(List<RoomStatusModel> stats) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      String statsJson = jsonEncode(stats.map((stat) => {
-        'areaId': stat.areaId,
-        'areaName': stat.areaName,
-        'statusCounts': stat.statusCounts,
-      }).toList());
+      String statsJson = jsonEncode(stats.map((stat) => stat.toJson()).toList());
       await prefs.setString('room_stats', statsJson);
       return const Right(null);
     } catch (e) {
@@ -325,11 +450,7 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
         return Right([]);
       }
       List<dynamic> statsList = jsonDecode(statsJson);
-      final stats = statsList.map((json) => RoomStatusModel(
-        areaId: json['areaId'],
-        areaName: json['areaName'],
-        statusCounts: Map<String, int>.from(json['statusCounts']),
-      )).toList();
+      final stats = statsList.map((json) => RoomStatusModel.fromJson(json)).toList();
       return Right(stats);
     } catch (e) {
       return Left(ServerFailure('Failed to load room stats: ${e.toString()}'));
@@ -340,15 +461,11 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
   Future<Either<Failure, void>> saveUserMonthlyStats(List<UserMonthlyStatsModel> stats) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      String statsJson = jsonEncode(stats.map((stat) => {
-        'areaId': stat.areaId,
-        'areaName': stat.areaName,
-        'months': stat.months,
-      }).toList());
-      await prefs.setString('user_stats', statsJson);
+      String statsJson = jsonEncode(stats.map((stat) => stat.toJson()).toList());
+      await prefs.setString('user_monthly_stats', statsJson);
       return const Right(null);
     } catch (e) {
-      return Left(ServerFailure('Failed to save user stats: ${e.toString()}'));
+      return Left(ServerFailure('Failed to save user monthly stats: ${e.toString()}'));
     }
   }
 
@@ -356,19 +473,15 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
   Future<Either<Failure, List<UserMonthlyStatsModel>>> loadUserMonthlyStats() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? statsJson = prefs.getString('user_stats');
+      String? statsJson = prefs.getString('user_monthly_stats');
       if (statsJson == null) {
         return Right([]);
       }
       List<dynamic> statsList = jsonDecode(statsJson);
-      final stats = statsList.map((json) => UserMonthlyStatsModel(
-        areaId: json['areaId'],
-        areaName: json['areaName'],
-        months: Map<int, int>.from(json['months']),
-      )).toList();
+      final stats = statsList.map((json) => UserMonthlyStatsModel.fromJson(json)).toList();
       return Right(stats);
     } catch (e) {
-      return Left(ServerFailure('Failed to load user stats: ${e.toString()}'));
+      return Left(ServerFailure('Failed to load user monthly stats: ${e.toString()}'));
     }
   }
 
@@ -376,19 +489,7 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
   Future<Either<Failure, void>> saveReportStats(List<ReportStatsModel> stats) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      String statsJson = jsonEncode(stats.map((stat) => {
-        'areaId': stat.areaId,
-        'areaName': stat.areaName,
-        'reportTypes': stat.reportTypes,
-        'years': stat.years.map((year, yearStats) => MapEntry(
-          year.toString(),
-          {
-            'total': yearStats.total,
-            'months': yearStats.months,
-            'types': yearStats.types,
-          },
-        )),
-      }).toList());
+      String statsJson = jsonEncode(stats.map((stat) => stat.toJson()).toList());
       await prefs.setString('report_stats', statsJson);
       return const Right(null);
     } catch (e) {
@@ -405,33 +506,7 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
         return Right([]);
       }
       List<dynamic> statsList = jsonDecode(statsJson);
-      final stats = statsList.map((json) {
-        final years = (json['years'] as Map<String, dynamic>).map(
-          (yearStr, yearData) {
-            final year = int.parse(yearStr);
-            final months = (yearData['months'] as Map<String, dynamic>).map(
-              (monthStr, monthData) => MapEntry(
-                int.parse(monthStr),
-                Map<String, int>.from(monthData),
-              ),
-            );
-            return MapEntry(
-              year,
-              ReportYearStats(
-                total: yearData['total'],
-                months: months,
-                types: Map<String, int>.from(yearData['types']),
-              ),
-            );
-          },
-        );
-        return ReportStatsModel(
-          areaId: json['areaId'],
-          areaName: json['areaName'],
-          reportTypes: Map<String, String>.from(json['reportTypes']),
-          years: years,
-        );
-      }).toList();
+      final stats = statsList.map((json) => ReportStatsModel.fromJson(json)).toList();
       return Right(stats);
     } catch (e) {
       return Left(ServerFailure('Failed to load report stats: ${e.toString()}'));
@@ -442,11 +517,7 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
   Future<Either<Failure, void>> saveUserStats(List<UserStatsModel> stats) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      String statsJson = jsonEncode(stats.map((stat) => {
-        'areaId': stat.areaId,
-        'areaName': stat.areaName,
-        'userCount': stat.userCount,
-      }).toList());
+      String statsJson = jsonEncode(stats.map((stat) => stat.toJson()).toList());
       await prefs.setString('user_stats_total', statsJson);
       return const Right(null);
     } catch (e) {
@@ -463,11 +534,7 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
         return Right([]);
       }
       List<dynamic> statsList = jsonDecode(statsJson);
-      final stats = statsList.map((json) => UserStatsModel(
-        areaId: json['areaId'],
-        areaName: json['areaName'],
-        userCount: json['userCount'],
-      )).toList();
+      final stats = statsList.map((json) => UserStatsModel.fromJson(json)).toList();
       return Right(stats);
     } catch (e) {
       return Left(ServerFailure('Failed to load user stats: ${e.toString()}'));

@@ -11,7 +11,7 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
   RegistrationRepositoryImpl(this.remoteDataSource);
 
   @override
-  Future<Either<Failure, List<Registration>>> getAllRegistrations({
+  Future<Either<Failure, (List<Registration>, int)>> getAllRegistrations({
     int page = 1,
     int limit = 10,
     String? status,
@@ -28,7 +28,10 @@ class RegistrationRepositoryImpl implements RegistrationRepository {
         nameStudent: nameStudent,
         meetingDatetime: meetingDatetime,
       );
-      return result.map((models) => models.map((model) => model.toEntity()).toList());
+      return result.map((tuple) => (
+            tuple.$1.map((model) => model.toEntity()).toList(),
+            tuple.$2,
+          ));
     } catch (e) {
       return Left(ServerFailure('Lỗi không xác định: $e'));
     }

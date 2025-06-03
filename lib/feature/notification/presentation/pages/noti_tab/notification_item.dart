@@ -3,6 +3,7 @@ import 'package:flutter/material.dart' hide Notification;
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:async/async.dart';
 
 import '../../../domain/entities/notification_entity.dart';
 import 'media_preview.dart';
@@ -101,12 +102,8 @@ class _NotificationItemState extends State<NotificationItem> {
       final urls = widget.chewieControllers.keys.toList();
       for (var url in urls) {
         if (url.contains('$notificationId')) {
-          widget.chewieControllers[url]?.pause();
-          widget.chewieControllers[url]?.dispose();
-          widget.chewieControllers.remove(url);
+          widget.chewieControllers[url]?.pause(); // Pause instead of dispose
           widget.videoControllers[url]?.pause();
-          widget.videoControllers[url]?.dispose();
-          widget.videoControllers.remove(url);
         }
       }
     }
@@ -114,6 +111,11 @@ class _NotificationItemState extends State<NotificationItem> {
   }
 
   Future<ChewieController?> _getChewieController(String url, int notificationId) async {
+    if (!mounted) {
+      print('Widget is not mounted, aborting controller creation for URL: $url');
+      return null;
+    }
+
     if (!widget.chewieControllers.containsKey(url)) {
       final fullUrl = '${widget.baseUrl}/notification_media/$url';
       if (fullUrl.isEmpty) {
@@ -133,12 +135,21 @@ class _NotificationItemState extends State<NotificationItem> {
         Uri.parse(fullUrl),
         httpHeaders: {'Authorization': 'Bearer $_authToken'},
       );
-      widget.videoControllers[url] = videoController;
+
+      final operation = CancelableOperation.fromFuture(
+        videoController.initialize().timeout(const Duration(seconds: 30), onTimeout: () {
+          throw TimeoutException('Video initialization timeout: $fullUrl');
+        }),
+      );
 
       try {
-        await videoController.initialize().timeout(const Duration(seconds: 30), onTimeout: () {
-          throw TimeoutException('Video initialization timeout: $fullUrl');
-        });
+        await operation.value;
+        if (!mounted) {
+          print('Widget disposed during video initialization, cleaning up: $fullUrl');
+          videoController.dispose();
+          return null;
+        }
+
         print('Video initialized successfully for notification $notificationId: $fullUrl');
 
         final chewieController = ChewieController(
@@ -167,13 +178,20 @@ class _NotificationItemState extends State<NotificationItem> {
           },
           placeholder: const Center(child: CircularProgressIndicator()),
         );
+        if (!mounted) {
+          print('Widget disposed after creating ChewieController, cleaning up: $fullUrl');
+          chewieController.dispose();
+          videoController.dispose();
+          return null;
+        }
         widget.chewieControllers[url] = chewieController;
+        widget.videoControllers[url] = videoController;
         return chewieController;
       } catch (error, stackTrace) {
         print('Error initializing video $fullUrl for notification $notificationId: $error');
         print('Stack trace: $stackTrace');
         videoController.dispose();
-        widget.videoControllers.remove(url);
+        await operation.cancel();
         return null;
       }
     }
@@ -261,7 +279,7 @@ class _NotificationItemState extends State<NotificationItem> {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
-                                  'Đối tượng: ${_getTargetTypeDisplayText(widget.notification.targetType)}', // Use translated text
+                                  'Đối tượng: ${_getTargetTypeDisplayText(widget.notification.targetType)}',
                                   style: const TextStyle(fontSize: 14, color: Colors.blue),
                                 ),
                               ),

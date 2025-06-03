@@ -1,5 +1,3 @@
-// lib/src/features/dashboard/presentation/widgets/room_stat_page.dart
-import 'package:datn_web_admin/feature/dashboard/domain/entities/room_status.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_bloc.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_event.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_state.dart';
@@ -9,7 +7,7 @@ import 'package:datn_web_admin/feature/room/presentations/bloc/area_bloc/area_st
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../../../../../common/constants/colors.dart';
+import 'package:logger/logger.dart';
 
 class RoomStatsPage extends StatefulWidget {
   const RoomStatsPage({Key? key}) : super(key: key);
@@ -23,11 +21,12 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
   int? _selectedAreaId;
   final ScrollController _horizontalScrollController = ScrollController();
   final ScrollController _verticalScrollController = ScrollController();
+  final Logger _logger = Logger();
 
   @override
   void initState() {
     super.initState();
-    context.read<StatisticsBloc>().add(FetchRoomStatusStats(year: _selectedYear));
+    _fetchData();
     context.read<AreaBloc>().add(FetchAreasEvent(page: 1, limit: 100));
   }
 
@@ -39,15 +38,45 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
   }
 
   void _fetchData() {
-    context.read<StatisticsBloc>().add(FetchRoomStatusStats(year: _selectedYear, areaId: _selectedAreaId));
+    _logger.i('Fetching room status summary for year: $_selectedYear, areaId: $_selectedAreaId');
+    context.read<StatisticsBloc>().add(FetchRoomStatusSummary(
+      year: _selectedYear,
+      areaId: _selectedAreaId,
+    ));
+  }
+
+  void _triggerSnapshot() {
+    _logger.i('Triggering manual snapshot for year: $_selectedYear');
+    context.read<StatisticsBloc>().add(TriggerManualSnapshot(
+      year: _selectedYear,
+      month: null, // Snapshot for the whole year
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: const Text(
+          'Thống kê trạng thái phòng hằng tháng',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+        ),
         backgroundColor: Colors.white,
         elevation: 1,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.black87),
+            tooltip: 'Làm mới dữ liệu',
+            onPressed: _fetchData,
+          ),
+          IconButton(
+            icon: const Icon(Icons.camera_alt, color: Colors.black87),
+            tooltip: 'Chụp snapshot',
+            onPressed: _triggerSnapshot,
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -57,14 +86,6 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Flexible(
-                  child: Text(
-                    'Thống kê trạng thái phòng',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                ),
                 Row(
                   children: [
                     BlocBuilder<AreaBloc, AreaState>(
@@ -72,6 +93,7 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
                         if (areaState.isLoading) {
                           return const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2));
                         } else if (areaState.error != null) {
+                          _logger.e('AreaBloc error: ${areaState.error}');
                           return const Text('Lỗi tải khu vực');
                         }
                         List<DropdownMenuItem<int?>> items = [
@@ -93,7 +115,7 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
                     const SizedBox(width: 8),
                     DropdownButton<int>(
                       value: _selectedYear,
-                      items: List.generate(6, (index) => 2020 + index)
+                      items: List.generate(10, (index) => DateTime.now().year - 5 + index)
                           .map((year) => DropdownMenuItem(value: year, child: Text(year.toString())))
                           .toList(),
                       onChanged: (year) {
@@ -113,26 +135,31 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
             Expanded(
               child: BlocBuilder<StatisticsBloc, StatisticsState>(
                 builder: (context, state) {
-                  if (state is StatisticsLoading) {
+                  _logger.i('StatisticsBloc state: $state');
+                  if (state is StatisticsLoading || state is PartialLoading) {
                     return const Center(child: CircularProgressIndicator());
                   } else if (state is StatisticsError) {
+                    _logger.e('StatisticsError: ${state.message}');
                     return Center(child: Text('Lỗi: ${state.message}'));
-                  } else if (state is RoomStatusLoaded) {
-                    if (state.roomStatusData.isEmpty) {
+                  } else if (state is RoomStatusSummaryLoaded) {
+                    if (state.summaryData.isEmpty) {
+                      _logger.w('No room status summary data');
                       return const Center(child: Text('Không có dữ liệu'));
                     }
 
-                    final statuses = _getStatuses(state.roomStatusData);
+                    final statuses = _getStatuses(state.summaryData);
                     final colors = _generateColors(statuses.length);
-                    final maxY = _getMaxY(state.roomStatusData, statuses);
-                    final roundedMaxY = _roundMaxYToEven(maxY);
+                    final maxY = _getMaxY(state.summaryData, statuses);
+                    final roundedMaxY = maxY == 0 ? 10.0 : _roundMaxYToEven(maxY);
 
+                    _logger.i('Summary data: ${state.summaryData}');
                     return LayoutBuilder(
                       builder: (context, constraints) {
                         final chartWidth = constraints.maxWidth;
-                        final chartHeight = constraints.maxHeight * 0.8; // Tăng chiều cao biểu đồ để có thêm không gian
+                        final chartHeight = constraints.maxHeight * 0.8 > 0 ? constraints.maxHeight * 0.8 : 200.0;
                         final yInterval = _calculateYInterval(roundedMaxY, chartHeight);
 
+                        _logger.d('Chart dimensions: width=$chartWidth, height=$chartHeight, maxY=$maxY, yInterval=$yInterval');
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -148,9 +175,9 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
                                       getTooltipItem: (group, groupIndex, rod, rodIndex) {
                                         final status = _translateStatus(statuses[rodIndex]);
                                         final month = groupIndex + 1;
-                                        final value = _getStatusCount(state.roomStatusData, month, statuses[rodIndex]);
+                                        final value = _getStatusCount(state.summaryData, month, statuses[rodIndex]);
                                         return BarTooltipItem(
-                                          '$status\n$value phòng',
+                                          '$status\nTháng $month: $value phòng',
                                           const TextStyle(color: Colors.white, fontSize: 12),
                                         );
                                       },
@@ -173,9 +200,7 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
                                         reservedSize: 40,
                                         interval: yInterval,
                                         getTitlesWidget: (value, meta) {
-                                          if (value.toInt() % yInterval.toInt() != 0) {
-                                            return const SizedBox.shrink();
-                                          }
+                                          if (value.toInt() % yInterval.toInt() != 0) return const SizedBox.shrink();
                                           return Text(
                                             value.toInt().toString(),
                                             style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -190,9 +215,9 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
                                   gridData: FlGridData(
                                     show: true,
                                     drawHorizontalLine: true,
-                                    horizontalInterval: yInterval, // Đồng bộ lưới với nhãn trục Y
+                                    horizontalInterval: yInterval,
                                   ),
-                                  barGroups: List.generate(12, (month) => _buildBarGroup(month, state.roomStatusData, statuses, colors)),
+                                  barGroups: List.generate(12, (month) => _buildBarGroup(month, state.summaryData, statuses, colors)),
                                   minY: 0,
                                   maxY: roundedMaxY,
                                 ),
@@ -218,7 +243,16 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
                         );
                       },
                     );
+                  } else if (state is ManualSnapshotTriggered) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(state.message)),
+                      );
+                    });
+                    _fetchData(); // Refresh data after snapshot
+                    return const Center(child: Text('Đang làm mới dữ liệu sau snapshot...'));
                   }
+                  _logger.w('No data to display');
                   return const Center(child: Text('Không có dữ liệu'));
                 },
               ),
@@ -229,10 +263,11 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
     );
   }
 
-  List<String> _getStatuses(List<RoomStatus> data) {
+  List<String> _getStatuses(List<Map<String, dynamic>> data) {
     final statuses = <String>{};
-    for (var area in data) {
-      statuses.addAll(area.statusCounts.keys);
+    for (var monthData in data) {
+      final statusesMap = monthData['statuses'] as Map<String, dynamic>;
+      statuses.addAll(statusesMap.keys);
     }
     return statuses.toList();
   }
@@ -250,66 +285,68 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
     return List.generate(count, (index) => colors[index % colors.length]);
   }
 
-  BarChartGroupData _buildBarGroup(int month, List<RoomStatus> data, List<String> statuses, List<Color> colors) {
+  BarChartGroupData _buildBarGroup(int month, List<Map<String, dynamic>> data, List<String> statuses, List<Color> colors) {
     final monthKey = month + 1;
+    final monthData = data.firstWhere((d) => d['month'] == monthKey, orElse: () => {'month': monthKey, 'statuses': {}});
+    final statusesMap = monthData['statuses'] as Map<String, dynamic>;
     return BarChartGroupData(
       x: month,
       barRods: List.generate(statuses.length, (index) {
         final status = statuses[index];
-        final value = _getStatusCount(data, monthKey, status);
+        final value = (statusesMap[status] as num?)?.toDouble() ?? 0;
+        _logger.d('Building bar for month $monthKey, status $status: value = $value');
         return BarChartRodData(
-          toY: value.toDouble(),
+          toY: value,
           color: colors[index],
-          width: 12,
+          width: 12 / statuses.length,
           borderRadius: BorderRadius.circular(4),
         );
       }),
     );
   }
 
-  double _getMaxY(List<RoomStatus> data, List<String> statuses) {
+  double _getMaxY(List<Map<String, dynamic>> data, List<String> statuses) {
     double maxY = 0;
-    for (int month = 1; month <= 12; month++) {
+    for (var monthData in data) {
+      final statusesMap = monthData['statuses'] as Map<String, dynamic>;
       for (var status in statuses) {
-        final value = _getStatusCount(data, month, status);
-        if (value > maxY) maxY = value.toDouble();
+        final value = (statusesMap[status] as num?)?.toDouble() ?? 0;
+        if (value > maxY) maxY = value;
       }
     }
-    return maxY * 1.1;
+    _logger.d('Max Y value: $maxY');
+    return maxY * 1.1; // Add 10% padding
   }
 
   double _roundMaxYToEven(double maxY) {
-    int rounded = (maxY / 5).ceil() * 5;
-    return rounded.toDouble();
+    return ((maxY / 5).ceil() * 5).toDouble();
   }
 
   double _calculateYInterval(double maxY, double chartHeight) {
-    // Ước tính số pixel trên mỗi đơn vị giá trị
-    const pixelsPerLabel = 40.0; // Khoảng cách tối thiểu giữa các nhãn (pixel)
-    final valuePerPixel = maxY / chartHeight; // Giá trị tương ứng với 1 pixel
-    final minIntervalPixels = pixelsPerLabel / valuePerPixel; // Giá trị tối thiểu giữa các nhãn
-    // Làm tròn minIntervalPixels thành bội số của 5
+    if (maxY == 0 || chartHeight <= 0) return 5.0; // Default interval
+    const pixelsPerLabel = 40.0;
+    final valuePerPixel = maxY / chartHeight;
+    final minIntervalPixels = pixelsPerLabel / valuePerPixel;
     final interval = (minIntervalPixels / 5).ceil() * 5.0;
-    return interval.clamp(5.0, maxY / 2); // Đảm bảo không quá thưa hoặc quá mật
+    return interval.clamp(5.0, maxY / 2);
   }
 
-  int _getStatusCount(List<RoomStatus> data, int month, String status) {
-    int count = 0;
-    for (var area in data) {
-      if (area.areaId == null) continue;
-      if (_selectedAreaId == null || area.areaId == _selectedAreaId) {
-        count += area.statusCounts[status] ?? 0;
-      }
-    }
-    return count;
+  double _getStatusCount(List<Map<String, dynamic>> data, int month, String status) {
+    final monthData = data.firstWhere((d) => d['month'] == month, orElse: () => {'month': month, 'statuses': {}});
+    final statusesMap = monthData['statuses'] as Map<String, dynamic>;
+    return (statusesMap[status] as num?)?.toDouble() ?? 0;
   }
 
   String _translateStatus(String status) {
     switch (status.toUpperCase()) {
       case 'AVAILABLE':
-        return 'Có sẵn';
+        return 'Còn chỗ trống';
       case 'OCCUPIED':
-        return 'Đã sử dụng';
+        return 'Hết chỗ';
+      case 'MAINTENANCE':
+        return 'Bảo trì';
+      case 'DISABLED':
+        return 'Không sử dụng được';
       default:
         return status;
     }

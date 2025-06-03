@@ -306,7 +306,7 @@ class _RoomDetailDialogState extends State<RoomDetailDialog> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      _buildInfoRow(Icons.info, 'Trạng thái: ${widget.room.status}', _getStatusColor(widget.room.status)),
+                                      _buildInfoRow(Icons.info, 'Trạng thái: ${_getStatusDisplayText(widget.room.status)}', _getStatusColor(widget.room.status)),
                                       const SizedBox(height: 10),
                                       _buildInfoRow(Icons.location_on, 'Khu vực: ${widget.room.areaDetails?.name ?? 'Chưa có'}', Colors.black),
                                       const SizedBox(height: 10),
@@ -379,14 +379,37 @@ class _RoomDetailDialogState extends State<RoomDetailDialog> {
     );
   }
 
+  // Hàm hiển thị trạng thái bằng tiếng Việt, đồng bộ với room_list_page.dart
+  String _getStatusDisplayText(String status) {
+    switch (status) {
+      case 'AVAILABLE':
+        return 'Còn trống';
+      case 'OCCUPIED':
+        return 'Hết chỗ';
+      case 'RESERVED':
+        return 'Đã đặt';
+      case 'MAINTENANCE':
+        return 'Bảo trì';
+      case 'DISABLED':
+        return 'Không hoạt động';
+      default:
+        return 'Không xác định';
+    }
+  }
+
+  // Hàm lấy màu trạng thái, đồng bộ với room_list_page.dart
   Color _getStatusColor(String status) {
     switch (status) {
       case 'AVAILABLE':
         return Colors.green;
       case 'OCCUPIED':
-        return Colors.red;
-      case 'MAINTENANCE':
+        return Colors.blue;
+      case 'RESERVED':
         return Colors.yellow;
+      case 'MAINTENANCE':
+        return Colors.red;
+      case 'DISABLED':
+        return Colors.red;
       default:
         return Colors.grey;
     }

@@ -1,13 +1,11 @@
+import 'package:datn_web_admin/feature/user/domain/usecases/user_usecase.dart';
 import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../../feature/user/data/datasources/user_datasource.dart';
 import '../../../../feature/user/data/repositories/user_repository_impl.dart';
 import '../../../../feature/user/domain/repositories/user_repository.dart';
-import '../../../../feature/user/domain/usecases/create_user.dart';
-import '../../../../feature/user/domain/usecases/delete_user.dart';
-import '../../../../feature/user/domain/usecases/get_all_users.dart';
-import '../../../../feature/user/domain/usecases/update_user.dart';
+
 import '../../../../feature/user/presentation/bloc/user_bloc.dart';
 import '../../network/api_client.dart';
 

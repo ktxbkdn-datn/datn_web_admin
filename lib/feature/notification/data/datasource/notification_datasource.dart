@@ -1,4 +1,3 @@
-// notification_datasource.dart
 import 'package:dartz/dartz.dart';
 import 'package:http/http.dart' as http;
 import '../../../../src/core/error/failures.dart';
@@ -11,7 +10,7 @@ abstract class NotificationRemoteDataSource {
     int limit = 10,
   });
 
-  Future<Either<Failure, List<NotificationModel>>> getAllNotifications({
+  Future<Either<Failure, (List<NotificationModel>, int)>> getAllNotifications({
     int page = 1,
     int limit = 10,
     String? targetType,
@@ -87,7 +86,7 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
   }
 
   @override
-  Future<Either<Failure, List<NotificationModel>>> getAllNotifications({
+  Future<Either<Failure, (List<NotificationModel>, int)>> getAllNotifications({
     int page = 1,
     int limit = 10,
     String? targetType,
@@ -102,7 +101,8 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
       final notifications = (response['notifications'] as List)
           .map((json) => NotificationModel.fromJson(json))
           .toList();
-      return Right(notifications);
+      final totalItems = response['total'] as int? ?? 0;
+      return Right((notifications, totalItems));
     } catch (e) {
       return Left(_handleError(e));
     }

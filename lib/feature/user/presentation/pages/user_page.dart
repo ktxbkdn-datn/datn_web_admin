@@ -1,4 +1,3 @@
-// lib/src/features/report/presentations/tabs/user_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/user_bloc.dart';
@@ -23,9 +22,7 @@ class _UserPageState extends State<UserPage> with SingleTickerProviderStateMixin
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    context.read<UserBloc>().add(FetchUsersEvent());
-    // Đặt tab mặc định là "Danh sách Người dùng" (index 1 trong drawer, tab 0 trong TabBarView)
-    _selectedIndex = 1;
+    _selectedIndex = 1; // Default to "Danh sách Người dùng" tab
   }
 
   @override
@@ -37,16 +34,12 @@ class _UserPageState extends State<UserPage> with SingleTickerProviderStateMixin
   void _onDrawerItemTap(int index) {
     setState(() {
       _selectedIndex = index;
-      // Đồng bộ với TabController
       if (index == 1) {
-        // "Danh sách Người dùng" (index 1) ánh xạ với tab 0
-        _tabController.animateTo(0);
+        _tabController.animateTo(0); // "Danh sách Người dùng" tab
       } else if (index == 2) {
-        // "Tạo Người dùng" (index 2) ánh xạ với tab 1
-        _tabController.animateTo(1);
+        _tabController.animateTo(1); // "Tạo Người dùng" tab
       } else if (index == 0) {
-        // "Dashboard" (index 0) không thuộc TabBarView, có thể điều hướng sang route khác
-        Navigator.pushNamed(context, '/dashboard');
+        Navigator.pushNamed(context, '/dashboard'); // Navigate to Dashboard
       }
     });
   }
@@ -56,7 +49,38 @@ class _UserPageState extends State<UserPage> with SingleTickerProviderStateMixin
     return Scaffold(
       body: BlocListener<UserBloc, UserState>(
         listener: (context, state) {
-          // Không hiển thị thông báo ở đây, để EditUserDialog xử lý
+          if (state is UserError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Lỗi: ${state.message}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          } else if (state is UserDeleted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Xóa người dùng thành công!'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          } else if (state is UserCreated) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Tạo người dùng thành công!'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          } else if (state is UserUpdated) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Cập nhật người dùng thành công!'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
         },
         child: Row(
           children: [

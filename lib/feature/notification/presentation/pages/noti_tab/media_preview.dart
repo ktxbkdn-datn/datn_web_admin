@@ -4,7 +4,7 @@ import 'package:chewie/chewie.dart';
 
 import '../../../domain/entities/notification_entity.dart';
 
-class MediaPreview extends StatelessWidget {
+class MediaPreview extends StatefulWidget {
   final List<MediaInfo> mediaItems;
   final String baseUrl;
   final int notificationId;
@@ -22,6 +22,11 @@ class MediaPreview extends StatelessWidget {
     required this.showFullScreenMedia,
   });
 
+  @override
+  _MediaPreviewState createState() => _MediaPreviewState();
+}
+
+class _MediaPreviewState extends State<MediaPreview> {
   bool _isVideo(MediaInfo media) {
     return media.fileType == 'video';
   }
@@ -31,7 +36,7 @@ class MediaPreview extends StatelessWidget {
   }
 
   String _buildMediaUrl(String mediaPath) {
-    return '$baseUrl/notification_media/$mediaPath';
+    return '${widget.baseUrl}/notification_media/$mediaPath';
   }
 
   @override
@@ -39,14 +44,14 @@ class MediaPreview extends StatelessWidget {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: mediaItems.asMap().entries.map((entry) {
+      children: widget.mediaItems.asMap().entries.map((entry) {
         final index = entry.key;
         final media = entry.value;
         final mediaUrl = _buildMediaUrl(media.mediaUrl);
 
         if (_isDocument(media)) {
           return GestureDetector(
-            onTap: () => showFullScreenMedia(context, mediaItems, index, notificationId),
+            onTap: () => widget.showFullScreenMedia(context, widget.mediaItems, index, widget.notificationId),
             child: Container(
               width: 225,
               height: 225,
@@ -72,10 +77,13 @@ class MediaPreview extends StatelessWidget {
           );
         } else if (_isVideo(media)) {
           return GestureDetector(
-            onTap: () => showFullScreenMedia(context, mediaItems, index, notificationId),
+            onTap: () => widget.showFullScreenMedia(context, widget.mediaItems, index, widget.notificationId),
             child: FutureBuilder<ChewieController?>(
-              future: getChewieController(media.mediaUrl, notificationId),
+              future: widget.getChewieController(media.mediaUrl, widget.notificationId),
               builder: (context, snapshot) {
+                if (!mounted) {
+                  return const SizedBox.shrink(); // Prevent updates if widget is disposed
+                }
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const SizedBox(
                     width: 225,
@@ -116,7 +124,7 @@ class MediaPreview extends StatelessWidget {
           );
         }
         return GestureDetector(
-          onTap: () => showFullScreenMedia(context, mediaItems, index, notificationId),
+          onTap: () => widget.showFullScreenMedia(context, widget.mediaItems, index, widget.notificationId),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: CachedNetworkImage(
@@ -124,7 +132,7 @@ class MediaPreview extends StatelessWidget {
               width: 225,
               height: 225,
               fit: BoxFit.cover,
-              httpHeaders: {'Authorization': 'Bearer $authToken'},
+              httpHeaders: {'Authorization': 'Bearer ${widget.authToken}'},
               placeholder: (context, url) => const Center(
                 child: CircularProgressIndicator(),
               ),
@@ -148,5 +156,10 @@ class MediaPreview extends StatelessWidget {
         );
       }).toList(),
     );
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 }

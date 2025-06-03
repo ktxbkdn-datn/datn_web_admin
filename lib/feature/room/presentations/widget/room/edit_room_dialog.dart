@@ -27,8 +27,9 @@ class _EditRoomDialogState extends State<EditRoomDialog> {
   final _capacityController = TextEditingController();
   final _priceController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _statusController = TextEditingController();
+  final _statusController = TextEditingController(); // Kept for compatibility, but not used
   int? _areaId;
+  String? _selectedStatus;
   bool _hasShownSuccessMessage = false;
   bool _hasShownErrorMessage = false;
 
@@ -39,7 +40,7 @@ class _EditRoomDialogState extends State<EditRoomDialog> {
     _capacityController.text = widget.room.capacity.toString();
     _priceController.text = widget.room.price.toString();
     _descriptionController.text = widget.room.description ?? '';
-    _statusController.text = widget.room.status;
+    _selectedStatus = widget.room.status;
     _areaId = widget.room.areaId;
   }
 
@@ -61,7 +62,7 @@ class _EditRoomDialogState extends State<EditRoomDialog> {
       print('Capacity: ${_capacityController.text}');
       print('Price: ${_priceController.text}');
       print('Description: ${_descriptionController.text}');
-      print('Status: ${_statusController.text}');
+      print('Status: $_selectedStatus');
       print('Area ID: $_areaId');
 
       context.read<RoomBloc>().add(UpdateRoomEvent(
@@ -70,7 +71,7 @@ class _EditRoomDialogState extends State<EditRoomDialog> {
         capacity: int.parse(_capacityController.text),
         price: double.parse(_priceController.text),
         description: _descriptionController.text.isEmpty ? null : _descriptionController.text,
-        status: _statusController.text,
+        status: _selectedStatus,
         areaId: _areaId,
         imageIdsToDelete: [],
         newImages: [],
@@ -97,13 +98,13 @@ class _EditRoomDialogState extends State<EditRoomDialog> {
           double dialogWidth = screenWidth < 800
               ? screenWidth * 0.9
               : screenWidth < 1200
-              ? screenWidth * 0.7
-              : 800;
+                  ? screenWidth * 0.7
+                  : 800;
           double dialogHeight = screenHeight < 800
               ? screenHeight * 0.9
               : screenHeight < 900
-              ? screenHeight * 0.8
-              : 600;
+                  ? screenHeight * 0.8
+                  : 600;
 
           return Container(
             width: dialogWidth,
@@ -183,10 +184,10 @@ class _EditRoomDialogState extends State<EditRoomDialog> {
                             _areaId = value;
                           });
                         },
-                        status: _statusController.text,
+                        status: _selectedStatus ?? widget.room.status,
                         onStatusChanged: (value) {
                           setState(() {
-                            _statusController.text = value!;
+                            _selectedStatus = value;
                           });
                         },
                         showStatusField: true,
@@ -358,9 +359,9 @@ class _ImageManagementDialogState extends State<_ImageManagementDialog> {
                   setState(() {
                     _newImages = [];
                     _currentImages.addAll(state.imageUrls.map((url) => {
-                      'imageUrl': url,
-                      'fileType': url.endsWith('.mp4') || url.endsWith('.avi') ? 'video' : 'image',
-                    }).toList());
+                          'imageUrl': url,
+                          'fileType': url.endsWith('.mp4') || url.endsWith('.avi') ? 'video' : 'image',
+                        }).toList());
                   });
                   _updatePendingOperations(-1);
                   Future.delayed(const Duration(seconds: 2), () {
@@ -453,9 +454,9 @@ class _ImageManagementDialogState extends State<_ImageManagementDialog> {
                                 _currentImages = List.from(media);
                               } else if (imageState is RoomImagesUploaded) {
                                 media = imageState.imageUrls.map((url) => {
-                                  'imageUrl': url,
-                                  'fileType': url.endsWith('.mp4') || url.endsWith('.avi') ? 'video' : 'image',
-                                }).toList();
+                                      'imageUrl': url,
+                                      'fileType': url.endsWith('.mp4') || url.endsWith('.avi') ? 'video' : 'image',
+                                    }).toList();
                                 _currentImages.addAll(media);
                               } else if (imageState is RoomImageLoading) {
                                 isLoading = true;
@@ -477,7 +478,8 @@ class _ImageManagementDialogState extends State<_ImageManagementDialog> {
                                 );
                               } else {
                                 final displayMedia = _currentImages
-                                    .where((item) => !_imagesToDelete.any((deleted) => deleted['imageId'] == item['imageId']))
+                                    .where((item) =>
+                                        !_imagesToDelete.any((deleted) => deleted['imageId'] == item['imageId']))
                                     .toList();
 
                                 return Wrap(
@@ -485,7 +487,7 @@ class _ImageManagementDialogState extends State<_ImageManagementDialog> {
                                   runSpacing: 8,
                                   children: List<Widget>.generate(
                                     displayMedia.length,
-                                        (index) {
+                                    (index) {
                                       final item = displayMedia[index];
                                       final String fileType = item['fileType'] as String? ?? 'image';
 
@@ -509,7 +511,8 @@ class _ImageManagementDialogState extends State<_ImageManagementDialog> {
                                               height: 100,
                                               fit: BoxFit.cover,
                                               errorBuilder: (context, error, stackTrace) {
-                                                print('Error loading image: $error, URL: ${_buildImageUrl(item['imageUrl'])}');
+                                                print(
+                                                    'Error loading image: $error, URL: ${_buildImageUrl(item['imageUrl'])}');
                                                 return const Icon(Icons.error);
                                               },
                                             ),
@@ -578,17 +581,17 @@ class _ImageManagementDialogState extends State<_ImageManagementDialog> {
                         ),
                         child: _isProcessing
                             ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
                             : const Text(
-                          'Lưu media',
-                          style: TextStyle(color: Colors.white),
-                        ),
+                                'Lưu media',
+                                style: TextStyle(color: Colors.white),
+                              ),
                       ),
                     ],
                   ),

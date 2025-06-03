@@ -48,6 +48,12 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 1,
+        title: Text(
+                    'Thống kê báo cáo nhận được hằng tháng',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -57,14 +63,7 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Flexible(
-                  child: Text(
-                    'Thống kê báo cáo',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                ),
+
                 Row(
                   children: [
                     BlocBuilder<AreaBloc, AreaState>(

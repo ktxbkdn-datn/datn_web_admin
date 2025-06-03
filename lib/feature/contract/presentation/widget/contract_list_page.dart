@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get/get.dart'; // Add GetX import
 import '../../../../../common/widget/search_bar.dart';
 import '../../../../../common/widget/filter_tab.dart';
 import '../../../../../common/widget/pagination_controls.dart';
@@ -11,10 +12,6 @@ import '../../../contract/presentation/bloc/contract_event.dart';
 import '../../../contract/presentation/bloc/contract_state.dart';
 import '../../../contract/presentation/widget/contract_detail_dialog.dart';
 import '../../../contract/presentation/widget/create_contract_dialog.dart';
-import '../../../room/domain/entities/area_entity.dart';
-import '../../../room/presentations/bloc/area_bloc/area_bloc.dart';
-import '../../../room/presentations/bloc/area_bloc/area_event.dart';
-import '../../../room/presentations/bloc/area_bloc/area_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
@@ -36,12 +33,12 @@ class ContractListPage extends StatefulWidget {
 
 class _ContractListPageState extends State<ContractListPage> with AutomaticKeepAliveClientMixin {
   int _currentPage = 1;
-  static const int _limit = 12;
-  int? _selectedAreaId;
+  static const int _limit = 10;
   String _searchQuery = '';
-  List<Contract> _allContracts = [];
   List<Contract> _contracts = [];
   bool _isInitialLoad = true;
+  int _totalItems = 0;
+  bool _isSearching = false;
   final List<double> _columnWidths = [150.0, 150.0, 150.0, 150.0, 150.0, 100.0];
 
   @override
@@ -51,21 +48,18 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
   void initState() {
     super.initState();
     _loadLocalData();
-    context.read<AreaBloc>().add(FetchAreasEvent(page: 1, limit: 100));
     _fetchContracts();
   }
 
   Future<void> _loadLocalData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     _currentPage = prefs.getInt('contractCurrentPage') ?? 1;
-    _selectedAreaId = prefs.getInt('contractSelectedAreaId');
     _searchQuery = prefs.getString('contractSearchQuery') ?? '';
     String? contractsJson = prefs.getString('contracts');
     if (contractsJson != null) {
       List<dynamic> contractsList = jsonDecode(contractsJson);
       setState(() {
-        _allContracts = contractsList.map((json) => Contract.fromJson(json)).toList();
-        _applyFilters();
+        _contracts = contractsList.map((json) => Contract.fromJson(json)).toList();
       });
     }
   }
@@ -73,33 +67,17 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
   Future<void> _saveLocalData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setInt('contractCurrentPage', _currentPage);
-    if (_selectedAreaId != null) {
-      await prefs.setInt('contractSelectedAreaId', _selectedAreaId!);
-    } else {
-      await prefs.remove('contractSelectedAreaId');
-    }
     await prefs.setString('contractSearchQuery', _searchQuery);
-    await prefs.setString('contracts', jsonEncode(_allContracts.map((contract) => contract.toJson()).toList()));
+    await prefs.setString('contracts', jsonEncode(_contracts.map((contract) => contract.toJson()).toList()));
   }
 
-  void _fetchContracts() {
-    context.read<ContractBloc>().add(const FetchAllContractsEvent());
-  }
-
-  void _applyFilters() {
-    setState(() {
-      _contracts = _allContracts.where((contract) {
-        bool matchesStatus = widget.showAll
-            ? true
-            : widget.showExpired
-            ? _isExpiringSoon(contract.endDate)
-            : contract.status == 'ACTIVE';
-        bool matchesSearch = _searchQuery.isEmpty ||
-            contract.roomName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            contract.userEmail.toLowerCase().contains(_searchQuery.toLowerCase());
-        return matchesStatus && matchesSearch;
-      }).toList();
-    });
+  void _fetchContracts({String? status}) {
+    context.read<ContractBloc>().add(FetchAllContractsEvent(
+      page: _currentPage,
+      limit: _limit,
+      email: _searchQuery.isNotEmpty ? _searchQuery : null,
+      status: status,
+    ));
   }
 
   bool _isExpiringSoon(String endDate) {
@@ -119,7 +97,7 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
     return Stack(
       children: [
         Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [AppColors.glassmorphismStart, AppColors.glassmorphismEnd],
               begin: Alignment.topLeft,
@@ -137,59 +115,54 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
               backgroundColor: Colors.transparent,
               body: MultiBlocListener(
                 listeners: [
-                  BlocListener<AreaBloc, AreaState>(
-                    listener: (context, areaState) {
-                      if (areaState.areas.isNotEmpty) {
-                        bool isValidAreaId = _selectedAreaId == null ||
-                            areaState.areas.any((area) => area.areaId == _selectedAreaId);
-                        if (!isValidAreaId) {
-                          setState(() {
-                            _selectedAreaId = null;
-                          });
-                          _saveLocalData();
-                          _applyFilters();
-                        }
-                      }
-                    },
-                  ),
                   BlocListener<ContractBloc, ContractState>(
                     listener: (context, state) {
                       if (state is ContractError) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Lỗi: ${state.errorMessage}'),
+                        // Use Get.snackbar for error messages, show only the message without "Lỗi: "
+                        if (!_isSearching) {
+                          Get.snackbar(
+                            'Lỗi', // Title
+                            state.errorMessage, // Message
+                            snackPosition: SnackPosition.TOP, // Position at top
                             backgroundColor: Colors.red,
+                            colorText: Colors.white,
+                            margin: const EdgeInsets.all(16),
                             duration: const Duration(seconds: 3),
-                          ),
-                        );
+                          );
+                        }
                       } else if (state is ContractDeleted) {
                         setState(() {
-                          _allContracts.removeWhere((contract) => contract.contractId == state.contractId);
-                          _applyFilters();
+                          _contracts = state.contracts;
                         });
                         _saveLocalData();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(state.successMessage),
-                            backgroundColor: Colors.green,
-                            duration: const Duration(seconds: 2),
-                          ),
+                        Get.snackbar(
+                          'Thành công',
+                          state.successMessage,
+                          snackPosition: SnackPosition.TOP,
+                          backgroundColor: Colors.green,
+                          colorText: Colors.white,
+                          margin: const EdgeInsets.all(16),
+                          duration: const Duration(seconds: 2),
                         );
+                        _fetchContracts(status: widget.showAll ? null : widget.showExpired ? null : 'ACTIVE');
                       } else if (state is ContractListLoaded) {
                         setState(() {
-                          _allContracts = state.contracts;
+                          _contracts = state.contracts;
+                          _totalItems = state.totalItems;
                           _isInitialLoad = false;
-                          _applyFilters();
                         });
                         _saveLocalData();
                       } else if (state is ContractStatusUpdated) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(state.successMessage),
-                            backgroundColor: Colors.green,
-                            duration: const Duration(seconds: 2),
-                          ),
+                        Get.snackbar(
+                          'Thành công',
+                          state.successMessage,
+                          snackPosition: SnackPosition.TOP,
+                          backgroundColor: Colors.green,
+                          colorText: Colors.white,
+                          margin: const EdgeInsets.all(16),
+                          duration: const Duration(seconds: 2),
                         );
+                        _fetchContracts();
                       }
                     },
                   ),
@@ -220,26 +193,38 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
                                 child: Row(
                                   children: [
                                     FilterTab(
-                                      label: 'Tất cả (${_allContracts.length})',
+                                      label: 'Tất cả ($_totalItems)',
                                       isSelected: widget.showAll,
                                       onTap: () {
                                         widget.onTabChanged(showAll: true, showExpired: false);
+                                        setState(() {
+                                          _currentPage = 1;
+                                        });
+                                        _fetchContracts();
                                       },
                                     ),
                                     const SizedBox(width: 10),
                                     FilterTab(
-                                      label: 'Còn hiệu lực (${_allContracts.where((contract) => contract.status == 'ACTIVE').length})',
+                                      label: 'Còn hiệu lực',
                                       isSelected: !widget.showExpired && !widget.showAll,
                                       onTap: () {
                                         widget.onTabChanged(showAll: false, showExpired: false);
+                                        setState(() {
+                                          _currentPage = 1;
+                                        });
+                                        _fetchContracts(status: 'ACTIVE');
                                       },
                                     ),
                                     const SizedBox(width: 10),
                                     FilterTab(
-                                      label: 'Sắp đáo hạn (${_allContracts.where((contract) => _isExpiringSoon(contract.endDate)).length})',
+                                      label: 'Sắp đáo hạn',
                                       isSelected: widget.showExpired,
                                       onTap: () {
                                         widget.onTabChanged(showAll: false, showExpired: true);
+                                        setState(() {
+                                          _currentPage = 1;
+                                        });
+                                        _fetchContracts();
                                       },
                                     ),
                                   ],
@@ -250,82 +235,25 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Expanded(
-                                    child: Row(
-                                      children: [
-                                        BlocBuilder<AreaBloc, AreaState>(
-                                          builder: (context, areaState) {
-                                            List<AreaEntity> uniqueAreas = [];
-                                            Set<int> seenAreaIds = {};
-                                            for (var area in areaState.areas) {
-                                              if (!seenAreaIds.contains(area.areaId)) {
-                                                seenAreaIds.add(area.areaId);
-                                                uniqueAreas.add(area);
-                                              }
-                                            }
-
-                                            if (_selectedAreaId != null &&
-                                                !uniqueAreas.any((area) => area.areaId == _selectedAreaId)) {
-                                              _selectedAreaId = null;
-                                            }
-
-                                            return Expanded(
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                                                decoration: BoxDecoration(
-                                                  border: Border.all(color: Colors.grey),
-                                                  borderRadius: BorderRadius.circular(8.0),
-                                                ),
-                                                child: DropdownButton<int>(
-                                                  hint: const Text('Tất cả khu vực'),
-                                                  value: _selectedAreaId,
-                                                  isExpanded: true,
-                                                  underline: const SizedBox(),
-                                                  items: [
-                                                    const DropdownMenuItem<int>(
-                                                      value: null,
-                                                      child: Text('Tất cả khu vực'),
-                                                    ),
-                                                    ...uniqueAreas.map((area) => DropdownMenuItem<int>(
-                                                      value: area.areaId,
-                                                      child: Text(area.name),
-                                                    )),
-                                                  ],
-                                                  onChanged: (value) {
-                                                    setState(() {
-                                                      _selectedAreaId = value;
-                                                      _currentPage = 1;
-                                                      _saveLocalData();
-                                                      _applyFilters();
-                                                    });
-                                                  },
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          child: SearchBarTab(
-                                            onChanged: (value) {
-                                              setState(() {
-                                                _searchQuery = value;
-                                                _currentPage = 1;
-                                                _saveLocalData();
-                                                _applyFilters();
-                                              });
-                                            },
-                                            hintText: 'tìm kiếm theo tên phòng hoặc email người dùng',
-                                            initialValue: _searchQuery,
-                                          ),
-                                        ),
-                                      ],
+                                    child: SearchBarTab(
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _searchQuery = value;
+                                          _currentPage = 1;
+                                          _isSearching = true;
+                                          _saveLocalData();
+                                        });
+                                        _fetchContracts();
+                                      },
+                                      hintText: 'Tìm kiếm theo email người dùng',
+                                      initialValue: _searchQuery,
                                     ),
                                   ),
                                   const SizedBox(width: 16),
                                   Row(
                                     children: [
                                       ElevatedButton.icon(
-                                        onPressed: () => context.read<ContractBloc>().add(const FetchAllContractsEvent()),
+                                        onPressed: () => _fetchContracts(),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.green,
                                           shape: RoundedRectangleBorder(
@@ -387,118 +315,124 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
                                 errorMessage = state.errorMessage;
                               }
 
-                              int startIndex = (_currentPage - 1) * _limit;
-                              int endIndex = startIndex + _limit;
-                              if (endIndex > _contracts.length) endIndex = _contracts.length;
-                              List<Contract> paginatedContracts =
-                              startIndex < _contracts.length ? _contracts.sublist(startIndex, endIndex) : [];
+                              List<Contract> displayContracts = _contracts;
+                              if (widget.showExpired) {
+                                displayContracts = _contracts.where((contract) => _isExpiringSoon(contract.endDate)).toList();
+                              }
+
+                              List<Contract> filteredContracts = displayContracts.where((contract) {
+                                bool matchesSearch = _searchQuery.isEmpty ||
+                                    (contract.userEmail?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
+                                return matchesSearch;
+                              }).toList();
 
                               return isLoading && _isInitialLoad
                                   ? const Center(child: CircularProgressIndicator())
                                   : errorMessage != null
-                                  ? Center(child: Text('Lỗi: $errorMessage'))
-                                  : paginatedContracts.isEmpty
-                                  ? const Center(child: Text('Không có hợp đồng nào'))
-                                  : Column(
-                                children: [
-                                  GenericDataTable<Contract>(
-                                    headers: const [
-                                      'Tên phòng',
-                                      'Tên người dùng',
-                                      'Ngày bắt đầu',
-                                      'Ngày kết thúc',
-                                      'Trạng thái',
-                                      '',
-                                    ],
-                                    data: paginatedContracts,
-                                    columnWidths: _columnWidths,
-                                    cellBuilder: (contract, index) {
-                                      switch (index) {
-                                        case 0:
-                                          return Text(
-                                            contract.roomName,
-                                            style: const TextStyle(fontWeight: FontWeight.bold),
-                                            textAlign: TextAlign.center,
-                                            overflow: TextOverflow.ellipsis,
-                                          );
-                                        case 1:
-                                          return Text(
-                                            contract.fullname ?? 'Chưa có',
-                                            style: const TextStyle(color: Colors.grey),
-                                            textAlign: TextAlign.center,
-                                            overflow: TextOverflow.ellipsis,
-                                          );
-                                        case 2:
-                                          return Text(
-                                            contract.startDate,
-                                            style: const TextStyle(color: Colors.grey),
-                                            textAlign: TextAlign.center,
-                                            overflow: TextOverflow.ellipsis,
-                                          );
-                                        case 3:
-                                          return Text(
-                                            contract.endDate,
-                                            style: const TextStyle(color: Colors.grey),
-                                            textAlign: TextAlign.center,
-                                            overflow: TextOverflow.ellipsis,
-                                          );
-                                        case 4:
-                                          return Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: _getStatusColor(contract.status),
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                            child: Text(
-                                              _getStatusText(contract.status),
-                                              style: const TextStyle(color: Colors.white),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          );
-                                        case 5:
-                                          return Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              IconButton(
-                                                icon: const Icon(Icons.visibility),
-                                                onPressed: () {
-                                                  showDialog(
-                                                    context: context,
-                                                    barrierDismissible: false,
-                                                    builder: (dialogContext) =>
-                                                        ContractDetailDialog(contract: contract),
-                                                  );
-                                                },
-                                              ),
-                                              IconButton(
-                                                icon: const Icon(Icons.delete),
-                                                onPressed: () {
-                                                  context
-                                                      .read<ContractBloc>()
-                                                      .add(DeleteContractEvent(contract.contractId));
-                                                },
-                                              ),
-                                            ],
-                                          );
-                                        default:
-                                          return const SizedBox();
-                                      }
-                                    },
-                                  ),
-                                  PaginationControls(
-                                    currentPage: _currentPage,
-                                    totalItems: _contracts.length,
-                                    limit: _limit,
-                                    onPageChanged: (page) {
-                                      setState(() {
-                                        _currentPage = page;
-                                        _saveLocalData();
-                                      });
-                                    },
-                                  ),
-                                ],
-                              );
+                                      ? const SizedBox() // Do not show error in the center
+                                      : filteredContracts.isEmpty
+                                          ? const Center(child: Text('Không có hợp đồng nào'))
+                                          : Column(
+                                              children: [
+                                                GenericDataTable<Contract>(
+                                                  headers: const [
+                                                    'Tên phòng',
+                                                    'Tên người dùng',
+                                                    'Ngày bắt đầu',
+                                                    'Ngày kết thúc',
+                                                    'Trạng thái',
+                                                    '',
+                                                  ],
+                                                  data: filteredContracts,
+                                                  columnWidths: _columnWidths,
+                                                  cellBuilder: (contract, index) {
+                                                    switch (index) {
+                                                      case 0:
+                                                        return Text(
+                                                          contract.roomName,
+                                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                                          textAlign: TextAlign.center,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        );
+                                                      case 1:
+                                                        return Text(
+                                                          contract.fullname ?? 'Chưa có',
+                                                          style: const TextStyle(color: Colors.grey),
+                                                          textAlign: TextAlign.center,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        );
+                                                      case 2:
+                                                        return Text(
+                                                          contract.startDate,
+                                                          style: const TextStyle(color: Colors.grey),
+                                                          textAlign: TextAlign.center,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        );
+                                                      case 3:
+                                                        return Text(
+                                                          contract.endDate,
+                                                          style: const TextStyle(color: Colors.grey),
+                                                          textAlign: TextAlign.center,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        );
+                                                      case 4:
+                                                        return Container(
+                                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                          decoration: BoxDecoration(
+                                                            color: _getStatusColor(contract.status),
+                                                            borderRadius: BorderRadius.circular(12),
+                                                          ),
+                                                          child: Text(
+                                                            _getStatusText(contract.status),
+                                                            style: const TextStyle(color: Colors.white),
+                                                            textAlign: TextAlign.center,
+                                                          ),
+                                                        );
+                                                      case 5:
+                                                        return Row(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          mainAxisAlignment: MainAxisAlignment.center,
+                                                          children: [
+                                                            IconButton(
+                                                              icon: const Icon(Icons.visibility),
+                                                              onPressed: () {
+                                                                showDialog(
+                                                                  context: context,
+                                                                  barrierDismissible: false,
+                                                                  builder: (dialogContext) =>
+                                                                      ContractDetailDialog(contract: contract),
+                                                                );
+                                                              },
+                                                            ),
+                                                            IconButton(
+                                                              icon: const Icon(Icons.delete),
+                                                              onPressed: () {
+                                                                context
+                                                                    .read<ContractBloc>()
+                                                                    .add(DeleteContractEvent(contract.contractId));
+                                                              },
+                                                            ),
+                                                          ],
+                                                        );
+                                                      default:
+                                                        return const SizedBox();
+                                                    }
+                                                  },
+                                                ),
+                                                PaginationControls(
+                                                  currentPage: _currentPage,
+                                                  totalItems: _totalItems,
+                                                  limit: _limit,
+                                                  onPageChanged: (page) {
+                                                    setState(() {
+                                                      _currentPage = page;
+                                                      _saveLocalData();
+                                                    });
+                                                    _fetchContracts(status: widget.showAll ? null : widget.showExpired ? null : 'ACTIVE');
+                                                  },
+                                                ),
+                                              ],
+                                            );
                             },
                           ),
                         ),

@@ -1,5 +1,11 @@
-// lib/src/features/user/presentation/bloc/user_event.dart
-abstract class UserEvent {}
+import 'package:equatable/equatable.dart';
+
+abstract class UserEvent extends Equatable {
+  const UserEvent();
+
+  @override
+  List<Object?> get props => [];
+}
 
 class FetchUsersEvent extends UserEvent {
   final int page;
@@ -9,14 +15,17 @@ class FetchUsersEvent extends UserEvent {
   final String? phone;
   final String? className;
 
-  FetchUsersEvent({
-    this.page = 1,
-    this.limit = 10,
+  const FetchUsersEvent({
+    required this.page,
+    required this.limit,
     this.email,
     this.fullname,
     this.phone,
     this.className,
   });
+
+  @override
+  List<Object?> get props => [page, limit, email, fullname, phone, className];
 }
 
 class CreateUserEvent extends UserEvent {
@@ -24,11 +33,14 @@ class CreateUserEvent extends UserEvent {
   final String fullname;
   final String? phone;
 
-  CreateUserEvent({
+  const CreateUserEvent({
     required this.email,
     required this.fullname,
     this.phone,
   });
+
+  @override
+  List<Object?> get props => [email, fullname, phone];
 }
 
 class UpdateUserEvent extends UserEvent {
@@ -40,7 +52,7 @@ class UpdateUserEvent extends UserEvent {
   final DateTime? dateOfBirth;
   final String? className;
 
-  UpdateUserEvent({
+  const UpdateUserEvent({
     required this.userId,
     this.fullname,
     this.email,
@@ -49,10 +61,16 @@ class UpdateUserEvent extends UserEvent {
     this.dateOfBirth,
     this.className,
   });
+
+  @override
+  List<Object?> get props => [userId, fullname, email, phone, cccd, dateOfBirth, className];
 }
 
 class DeleteUserEvent extends UserEvent {
   final int userId;
 
-  DeleteUserEvent(this.userId);
+  const DeleteUserEvent(this.userId);
+
+  @override
+  List<Object?> get props => [userId];
 }

@@ -34,7 +34,7 @@ class FetchAllMonthlyBills extends BillEvent {
   final int page;
   final int limit;
 
-  const FetchAllMonthlyBills({this.page = 1, this.limit = 10});
+  const FetchAllMonthlyBills({required this.page, required this.limit});
 
   @override
   List<Object?> get props => [page, limit];

@@ -1,4 +1,3 @@
-// lib/src/features/report/presentations/bloc_r/report_event.dart
 import 'package:equatable/equatable.dart';
 
 abstract class ReportEvent extends Equatable {
@@ -14,6 +13,8 @@ class GetAllReportsEvent extends ReportEvent {
   final int? userId;
   final int? roomId;
   final String? status;
+  final int? reportTypeId;
+  final String? searchQuery;
 
   const GetAllReportsEvent({
     this.page = 1,
@@ -21,10 +22,12 @@ class GetAllReportsEvent extends ReportEvent {
     this.userId,
     this.roomId,
     this.status,
+    this.reportTypeId,
+    this.searchQuery,
   });
 
   @override
-  List<Object?> get props => [page, limit, userId, roomId, status];
+  List<Object?> get props => [page, limit, userId, roomId, status, reportTypeId, searchQuery];
 }
 
 class GetReportByIdEvent extends ReportEvent {

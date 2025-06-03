@@ -1,4 +1,3 @@
-// lib/src/features/notification/presentations/bloc/notification_state.dart
 import 'package:equatable/equatable.dart';
 import '../../../domain/entities/notification_entity.dart';
 
@@ -15,11 +14,12 @@ class NotificationLoading extends NotificationState {}
 
 class NotificationsLoaded extends NotificationState {
   final List<Notification> notifications;
+  final int totalItems; // Added totalItems
 
-  const NotificationsLoaded({required this.notifications});
+  const NotificationsLoaded({required this.notifications, required this.totalItems});
 
   @override
-  List<Object> get props => [notifications];
+  List<Object> get props => [notifications, totalItems];
 }
 
 class NotificationLoaded extends NotificationState {

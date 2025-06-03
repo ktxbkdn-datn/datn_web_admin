@@ -1,5 +1,4 @@
 import 'package:dartz/dartz.dart';
-
 import '../../../../src/core/error/failures.dart';
 import '../../domain/entities/contract_entity.dart';
 import '../../domain/repository/contract_repository.dart';
@@ -12,7 +11,7 @@ class ContractRepositoryImpl implements ContractRepository {
   ContractRepositoryImpl(this.remoteDataSource);
 
   @override
-  Future<Either<Failure, List<Contract>>> getAllContracts({
+  Future<Either<Failure, (List<Contract>, int)>> getAllContracts({
     int page = 1,
     int limit = 10,
     String? email,
@@ -22,7 +21,7 @@ class ContractRepositoryImpl implements ContractRepository {
     String? contractType,
   }) async {
     try {
-      final result = await remoteDataSource.getAllContracts(
+      final (models, totalItems) = await remoteDataSource.getAllContracts(
         page: page,
         limit: limit,
         email: email,
@@ -31,12 +30,13 @@ class ContractRepositoryImpl implements ContractRepository {
         endDate: endDate,
         contractType: contractType,
       );
-      return Right(result.map((model) => model.toEntity()).toList());
+      return Right((models.map((model) => model.toEntity()).toList(), totalItems));
     } catch (e) {
       return Left(ServerFailure('Lỗi không xác định: $e'));
     }
   }
 
+  // Các phương thức khác giữ nguyên
   @override
   Future<Either<Failure, Contract>> getContractById(int contractId) async {
     try {
@@ -109,22 +109,5 @@ class ContractRepositoryImpl implements ContractRepository {
     } catch (e) {
       return Left(ServerFailure('Lỗi không xác định: $e'));
     }
-  }
-}
-
-extension ContractModelExtension on ContractModel {
-  Contract toEntity() {
-    return Contract(
-      contractId: contractId,
-      roomId: roomId,
-      userId: userId,
-      status: status,
-      createdAt: createdAt,
-      contractType: contractType,
-      startDate: startDate,
-      endDate: endDate,
-      roomName: roomName,
-      userEmail: userEmail,
-    );
   }
 }

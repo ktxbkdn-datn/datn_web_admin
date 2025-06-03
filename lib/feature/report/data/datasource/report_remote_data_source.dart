@@ -1,16 +1,17 @@
-// lib/src/features/report/data/datasources/report_remote_data_source.dart
 import 'dart:io';
 import '../../../../src/core/error/failures.dart';
 import '../../../../src/core/network/api_client.dart';
 import '../models/report_model.dart';
 
 abstract class ReportRemoteDataSource {
-  Future<List<ReportModel>> getAllReports({
+  Future<(List<ReportModel>, int)> getAllReports({
     int page,
     int limit,
     int? userId,
     int? roomId,
     String? status,
+    int? reportTypeId,
+    String? searchQuery,
   });
 
   Future<ReportModel> getReportById(int reportId);
@@ -37,12 +38,14 @@ class ReportRemoteDataSourceImpl implements ReportRemoteDataSource {
   ReportRemoteDataSourceImpl(this.apiService);
 
   @override
-  Future<List<ReportModel>> getAllReports({
+  Future<(List<ReportModel>, int)> getAllReports({
     int page = 1,
     int limit = 10,
     int? userId,
     int? roomId,
     String? status,
+    int? reportTypeId,
+    String? searchQuery,
   }) async {
     try {
       final queryParams = {
@@ -51,15 +54,18 @@ class ReportRemoteDataSourceImpl implements ReportRemoteDataSource {
         if (userId != null) 'user_id': userId.toString(),
         if (roomId != null) 'room_id': roomId.toString(),
         if (status != null) 'status': status,
+        if (reportTypeId != null) 'report_type_id': reportTypeId.toString(),
+        if (searchQuery != null) 'search': searchQuery,
       };
       print('Calling API GET /admin/reports with params: $queryParams');
       final response = await apiService.get('/admin/reports', queryParams: queryParams);
       print('getAllReports raw response: $response');
-      if (response is Map<String, dynamic> && response.containsKey('reports')) {
+      if (response is Map<String, dynamic> && response.containsKey('reports') && response.containsKey('total')) {
         final reports = response['reports'] as List<dynamic>;
+        final totalItems = response['total'] as int? ?? 0;
         final result = reports.map((json) => ReportModel.fromJson(json as Map<String, dynamic>)).toList();
-        print('getAllReports parsed data: ${result.map((report) => report.toJson()).toList()}');
-        return result;
+        print('getAllReports parsed data: ${result.map((report) => report.toJson()).toList()}, total: $totalItems');
+        return (result, totalItems);
       } else {
         throw ServerFailure('Phản hồi API không hợp lệ: $response');
       }
@@ -68,7 +74,7 @@ class ReportRemoteDataSourceImpl implements ReportRemoteDataSource {
       if (e is SocketException) {
         throw ServerFailure('Không thể kết nối đến server khi lấy danh sách báo cáo');
       } else if (e is ServerFailure && e.message.contains('404')) {
-        return []; // Trả về danh sách rỗng nếu không tìm thấy
+        return (<ReportModel>[], 0); // Trả về danh sách rỗng nếu không tìm thấy
       }
       throw ServerFailure('Lỗi khi lấy danh sách báo cáo: $e');
     }

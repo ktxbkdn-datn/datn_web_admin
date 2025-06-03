@@ -1,11 +1,10 @@
 import 'package:dartz/dartz.dart';
 
 import '../../../../src/core/error/failures.dart';
-import '../../data/models/register_model.dart';
 import '../entity/register_entity.dart';
 
 abstract class RegistrationRepository {
-  Future<Either<Failure, List<Registration>>> getAllRegistrations({
+  Future<Either<Failure, (List<Registration>, int)>> getAllRegistrations({
     int page,
     int limit,
     String? status,

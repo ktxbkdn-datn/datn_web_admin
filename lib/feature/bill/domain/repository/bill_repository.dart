@@ -9,8 +9,8 @@ abstract class BillRepository {
     List<int>? roomIds,
   });
   Future<Either<Failure, List<BillDetail>>> getAllBillDetails();
-  Future<Either<Failure, List<MonthlyBill>>> getAllMonthlyBills();
+  Future<Either<Failure, (List<MonthlyBill>, int)>> getAllMonthlyBills({required int page, required int limit});
   Future<Either<Failure, void>> deleteMonthlyBill(int billId);
-  Future<Either<Failure, Map<String, List<int>>>> deletePaidBills(List<int> billIds); // Cập nhật để nhận billIds
+  Future<Either<Failure, Map<String, List<int>>>> deletePaidBills(List<int> billIds);
   Future<Either<Failure, void>> deleteBillDetail(int detailId);
 }

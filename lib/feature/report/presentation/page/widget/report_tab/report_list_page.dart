@@ -1,4 +1,4 @@
-// lib/src/features/report/presentations/page/widget/report_tab/report_list_page.dart
+
 import 'package:datn_web_admin/feature/report/presentation/page/widget/report_tab/report_detail_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -32,12 +32,12 @@ class ReportListPage extends StatefulWidget {
 
 class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveClientMixin {
   int _currentPage = 1;
-  static const int _limit = 12;
+  static const int _limit = 10; // Fixed limit for server-side pagination
   String _filterStatus = 'All';
   int? _filterReportTypeId = 4; // Default to "Báo cáo hư hỏng" (report_type_id = 4)
   String _searchQuery = '';
   List<ReportEntity> _allReports = [];
-  List<ReportEntity> _filteredReports = [];
+  List<ReportEntity> _filteredReports = []; // Stores current page's reports
   bool _isInitialLoad = true;
   List<ReportTypeEntity> _reportTypes = [];
   bool _isReportTypesLoaded = false;
@@ -98,14 +98,14 @@ class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveC
   }
 
   void _fetchReports() {
-    context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
+    context.read<ReportBloc>().add(GetAllReportsEvent(page: _currentPage, limit: _limit));
   }
 
   void _applyFilters() {
     print('Applying filters: status=$_filterStatus, reportTypeId=$_filterReportTypeId, searchQuery=$_searchQuery');
     print('All reports: ${_allReports.length}');
     setState(() {
-      _filteredReports = _allReports.where((report) {
+      final filtered = _allReports.where((report) {
         bool matchesStatus = _filterStatus == 'All' || report.status.toUpperCase() == _filterStatus.toUpperCase();
         bool matchesReportType = _filterStatus == 'PENDING' || _filterReportTypeId == null || report.reportTypeId == _filterReportTypeId;
         bool matchesSearch = _searchQuery.isEmpty ||
@@ -116,6 +116,10 @@ class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveC
         }
         return matchesAll;
       }).toList();
+      _filteredReports = filtered.sublist(
+        (_currentPage - 1) * _limit,
+        (_currentPage * _limit) > filtered.length ? filtered.length : _currentPage * _limit,
+      );
       print('Filtered reports: ${_filteredReports.length}');
     });
   }
@@ -160,6 +164,7 @@ class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveC
                           _applyFilters();
                         });
                         _saveLocalData();
+                        _fetchReports(); // Re-fetch current page
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Xóa báo cáo thành công!'),
@@ -176,6 +181,7 @@ class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveC
                           _applyFilters();
                         });
                         _saveLocalData();
+                        _fetchReports(); // Re-fetch current page
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Cập nhật trạng thái báo cáo thành công!'),
@@ -336,12 +342,12 @@ class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveC
                                             isExpanded: true,
                                             underline: const SizedBox(),
                                             items: [
-                                              const DropdownMenuItem<int?>(
+                                              const DropdownMenuItem<int>(
                                                 value: null,
                                                 child: Text('Tất cả loại báo cáo'),
                                               ),
                                               ..._reportTypes.map((reportType) {
-                                                return DropdownMenuItem<int?>(
+                                                return DropdownMenuItem<int>(
                                                   value: reportType.reportTypeId,
                                                   child: Text(reportType.name),
                                                 );
@@ -411,9 +417,12 @@ class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveC
                             builder: (context, state) {
                               bool isLoading = state is ReportLoading;
                               String? errorMessage;
+                              int totalItems = _allReports.length;
 
                               if (state is ReportError) {
                                 errorMessage = state.message;
+                              } else if (state is ReportsLoaded) {
+                                totalItems = state.totalItems;
                               }
 
                               return isLoading && _isInitialLoad
@@ -430,11 +439,7 @@ class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveC
                                       'Ngày tạo',
                                       '',
                                     ],
-                                    data: _filteredReports.sublist(
-                                        (_currentPage - 1) * _limit,
-                                        (_currentPage * _limit) > _filteredReports.length
-                                            ? _filteredReports.length
-                                            : _currentPage * _limit),
+                                    data: _filteredReports,
                                     columnWidths: _columnWidths,
                                     cellBuilder: (report, index) {
                                       switch (index) {
@@ -496,12 +501,13 @@ class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveC
                                   ),
                                   PaginationControls(
                                     currentPage: _currentPage,
-                                    totalItems: _filteredReports.length,
+                                    totalItems: totalItems,
                                     limit: _limit,
                                     onPageChanged: (page) {
                                       setState(() {
                                         _currentPage = page;
                                         _saveLocalData();
+                                        _fetchReports();
                                       });
                                     },
                                   ),

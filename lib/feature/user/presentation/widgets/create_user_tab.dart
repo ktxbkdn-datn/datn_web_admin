@@ -17,8 +17,6 @@ class _CreateUserTabState extends State<CreateUserTab> {
   final _emailController = TextEditingController();
   final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
-  bool _hasShownSuccessMessage = false;
-  bool _hasShownErrorMessage = false;
 
   @override
   void dispose() {
@@ -38,6 +36,12 @@ class _CreateUserTabState extends State<CreateUserTab> {
     }
   }
 
+  void _clearFields() {
+    _emailController.clear();
+    _fullNameController.clear();
+    _phoneController.clear();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -53,37 +57,20 @@ class _CreateUserTabState extends State<CreateUserTab> {
         ),
         SafeArea(
           child: Center(
-            child: BlocListener<UserBloc, UserState>(
-              listener: (context, state) {
-                if (state.successMessage != null && !_hasShownSuccessMessage) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Tạo người dùng thành công!'),
-                      backgroundColor: Colors.green,
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                  setState(() {
-                    _hasShownSuccessMessage = true;
-                  });
-                  _emailController.clear();
-                  _fullNameController.clear();
-                  _phoneController.clear();
-                } else if (state.error != null && !_hasShownErrorMessage) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Lỗi: ${state.error}'),
-                      backgroundColor: Colors.red,
-                      duration: const Duration(seconds: 3),
-                    ),
-                  );
-                  setState(() {
-                    _hasShownErrorMessage = true;
-                  });
-                }
-              },
+            child: MultiBlocListener(
+              listeners: [
+                BlocListener<UserBloc, UserState>(
+                  listener: (context, state) {
+                    if (state is UserCreated) {
+                      _clearFields(); // Clear các TextField khi tạo thành công
+                    }
+                  },
+                ),
+              ],
               child: BlocBuilder<UserBloc, UserState>(
                 builder: (context, state) {
+                  bool isLoading = state is UserLoading;
+
                   return Dialog(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     backgroundColor: Colors.white,
@@ -257,7 +244,7 @@ class _CreateUserTabState extends State<CreateUserTab> {
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   ElevatedButton(
-                                    onPressed: state.isLoading ? null : () => Navigator.of(context).pop(),
+                                    onPressed: isLoading ? null : () => Navigator.of(context).pop(),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.grey,
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -270,7 +257,7 @@ class _CreateUserTabState extends State<CreateUserTab> {
                                   ),
                                   const SizedBox(width: 16),
                                   ElevatedButton(
-                                    onPressed: state.isLoading ? null : _submit,
+                                    onPressed: isLoading ? null : _submit,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.blue,
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -283,7 +270,7 @@ class _CreateUserTabState extends State<CreateUserTab> {
                                           'Tạo',
                                           style: TextStyle(color: Colors.white),
                                         ),
-                                        if (state.isLoading) ...[
+                                        if (isLoading) ...[
                                           const SizedBox(width: 8),
                                           const SizedBox(
                                             width: 16,

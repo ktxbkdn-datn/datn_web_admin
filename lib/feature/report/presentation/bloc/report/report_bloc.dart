@@ -1,4 +1,3 @@
-// lib/src/features/report/presentations/bloc_r/report_bloc.dart
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:dartz/dartz.dart';
@@ -19,7 +18,8 @@ class ReportBloc extends Bloc<ReportEvent, ReportState> {
   final UpdateReportStatus updateReportStatus;
   final DeleteReport deleteReport;
   final Map<int, ReportEntity> _reportCache = {};
-  final List<ReportEntity> _reportListCache = [];
+  final Map<int, List<ReportEntity>> _pageCache = {}; // Cache for 5 recent pages
+  static const int _maxCachedPages = 5;
 
   ReportBloc({
     required this.getAllReports,
@@ -36,7 +36,24 @@ class ReportBloc extends Bloc<ReportEvent, ReportState> {
     on<ResetReportStateEvent>(_onResetReportState);
   }
 
+  void _managePageCache(int page, List<ReportEntity> reports) {
+    _pageCache[page] = reports;
+    if (_pageCache.length > _maxCachedPages) {
+      final oldestPage = _pageCache.keys.reduce((a, b) => a < b ? a : b);
+      _pageCache.remove(oldestPage);
+    }
+  }
+
+  void _clearPageCache() {
+    _pageCache.clear();
+  }
+
   Future<void> _onGetAllReports(GetAllReportsEvent event, Emitter<ReportState> emit) async {
+    if (_pageCache.containsKey(event.page)) {
+      emit(ReportsLoaded(reports: _pageCache[event.page]!, totalItems: 0)); // TotalItems handled by UI
+      return;
+    }
+
     emit(ReportLoading());
     final result = await getAllReports(
       page: event.page,
@@ -44,20 +61,21 @@ class ReportBloc extends Bloc<ReportEvent, ReportState> {
       userId: event.userId,
       roomId: event.roomId,
       status: event.status,
+      reportTypeId: event.reportTypeId,
+      searchQuery: event.searchQuery,
     );
     result.fold(
-          (failure) {
+      (failure) {
         if (failure.message.contains('Trang không tồn tại')) {
-          _reportListCache.clear();
-          emit(ReportsLoaded(reports: []));
+          _clearPageCache();
+          emit(ReportsLoaded(reports: [], totalItems: 0));
         } else {
           emit(ReportError(message: failure.message));
         }
       },
-          (reportList) {
-        _reportListCache.clear();
-        _reportListCache.addAll(reportList);
-        emit(ReportsLoaded(reports: reportList));
+      (data) {
+        _managePageCache(event.page, data.$1);
+        emit(ReportsLoaded(reports: data.$1, totalItems: data.$2));
       },
     );
   }
@@ -66,10 +84,10 @@ class ReportBloc extends Bloc<ReportEvent, ReportState> {
     emit(ReportLoading());
     final result = await getReportById(event.reportId);
     result.fold(
-          (failure) {
+      (failure) {
         emit(ReportError(message: failure.message));
       },
-          (report) {
+      (report) {
         _reportCache[event.reportId] = report;
         emit(ReportLoaded(report: report));
       },
@@ -86,11 +104,12 @@ class ReportBloc extends Bloc<ReportEvent, ReportState> {
       status: event.status,
     );
     result.fold(
-          (failure) {
+      (failure) {
         emit(ReportError(message: failure.message));
       },
-          (report) {
+      (report) {
         _reportCache[event.reportId] = report;
+        _clearPageCache(); // Clear cache after CRUD
         emit(ReportUpdated(report: report));
         add(GetAllReportsEvent());
       },
@@ -104,13 +123,13 @@ class ReportBloc extends Bloc<ReportEvent, ReportState> {
       status: event.status,
     );
     result.fold(
-          (failure) {
+      (failure) {
         emit(ReportError(message: failure.message));
       },
-          (report) {
+      (report) {
         _reportCache[event.reportId] = report;
+        _clearPageCache(); // Clear cache after CRUD
         emit(ReportStatusUpdated(report: report));
-        add(GetAllReportsEvent());
       },
     );
   }
@@ -119,12 +138,13 @@ class ReportBloc extends Bloc<ReportEvent, ReportState> {
     emit(ReportLoading());
     final result = await deleteReport(event.reportId);
     result.fold(
-          (failure) {
+      (failure) {
         emit(ReportError(message: failure.message));
       },
-          (_) {
+      (_) {
         _reportCache.remove(event.reportId);
-        add(GetAllReportsEvent());
+        _clearPageCache(); // Clear cache after CRUD
+        emit(ReportDeleted(reportId: event.reportId));
       },
     );
   }
@@ -132,6 +152,6 @@ class ReportBloc extends Bloc<ReportEvent, ReportState> {
   Future<void> _onResetReportState(ResetReportStateEvent event, Emitter<ReportState> emit) async {
     emit(ReportInitial());
     _reportCache.clear();
-    _reportListCache.clear();
+    _clearPageCache();
   }
 }

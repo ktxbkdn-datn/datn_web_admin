@@ -1,4 +1,3 @@
-// lib/src/features/report/data/repositories/report_repository_impl.dart
 import 'package:dartz/dartz.dart';
 import '../../../../src/core/error/failures.dart';
 import '../../domain/entities/report_entity.dart';
@@ -11,24 +10,28 @@ class ReportRepositoryImpl implements ReportRepository {
   ReportRepositoryImpl(this.remoteDataSource);
 
   @override
-  Future<Either<Failure, List<ReportEntity>>> getAllReports({
+  Future<Either<Failure, (List<ReportEntity>, int)>> getAllReports({
     int page = 1,
     int limit = 10,
     int? userId,
     int? roomId,
     String? status,
+    int? reportTypeId,
+    String? searchQuery,
   }) async {
     try {
-      print('Fetching all reports with params: page=$page, limit=$limit, userId=$userId, roomId=$roomId, status=$status');
-      final remoteReports = await remoteDataSource.getAllReports(
+      print('Fetching all reports with params: page=$page, limit=$limit, userId=$userId, roomId=$roomId, status=$status, reportTypeId=$reportTypeId, searchQuery=$searchQuery');
+      final result = await remoteDataSource.getAllReports(
         page: page,
         limit: limit,
         userId: userId,
         roomId: roomId,
         status: status,
+        reportTypeId: reportTypeId,
+        searchQuery: searchQuery,
       );
-      print('Received reports from remote data source: ${remoteReports.map((report) => report.toJson()).toList()}');
-      return Right(remoteReports);
+      print('Received reports from remote data source: ${result.$1.map((report) => report.toJson()).toList()}, total: ${result.$2}');
+      return Right(result);
     } catch (e) {
       print('Error fetching all reports: $e');
       return Left(ServerFailure(e.toString()));

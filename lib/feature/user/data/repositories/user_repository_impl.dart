@@ -1,4 +1,3 @@
-// lib/src/features/user/data/repositories/user_repository_impl.dart
 import 'package:dartz/dartz.dart';
 import '../../../../src/core/error/failures.dart';
 import '../datasources/user_datasource.dart';
@@ -11,7 +10,7 @@ class UserRepositoryImpl implements UserRepository {
   UserRepositoryImpl(this.dataSource);
 
   @override
-  Future<Either<Failure, List<UserEntity>>> getAllUsers({
+  Future<Either<Failure, (List<UserEntity>, int)>> getAllUsers({
     int page = 1,
     int limit = 10,
     String? email,
@@ -20,7 +19,7 @@ class UserRepositoryImpl implements UserRepository {
     String? className,
   }) async {
     try {
-      final users = await dataSource.getAllUsers(
+      final (users, total) = await dataSource.getAllUsers(
         page: page,
         limit: limit,
         email: email,
@@ -28,7 +27,7 @@ class UserRepositoryImpl implements UserRepository {
         phone: phone,
         className: className,
       );
-      return Right(users);
+      return Right((users.map((model) => model.toEntity()).toList(), total));
     } catch (e) {
       if (e is ServerFailure) {
         return Left(e);
@@ -44,7 +43,7 @@ class UserRepositoryImpl implements UserRepository {
   Future<Either<Failure, UserEntity>> getUserById(int userId) async {
     try {
       final user = await dataSource.getUserById(userId);
-      return Right(user);
+      return Right(user.toEntity());
     } catch (e) {
       if (e is ServerFailure) {
         return Left(e);
@@ -68,7 +67,7 @@ class UserRepositoryImpl implements UserRepository {
         fullname: fullname,
         phone: phone,
       );
-      return Right(user);
+      return Right(user.toEntity());
     } catch (e) {
       if (e is ServerFailure) {
         return Left(e);
@@ -100,7 +99,7 @@ class UserRepositoryImpl implements UserRepository {
         dateOfBirth: dateOfBirth,
         className: className,
       );
-      return Right(user);
+      return Right(user.toEntity());
     } catch (e) {
       if (e is ServerFailure) {
         return Left(e);
@@ -127,7 +126,4 @@ class UserRepositoryImpl implements UserRepository {
       return Left(ServerFailure('Lỗi không xác định: $e'));
     }
   }
-
-
-
 }

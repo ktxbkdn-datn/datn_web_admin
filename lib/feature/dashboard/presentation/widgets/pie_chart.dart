@@ -61,9 +61,21 @@ class _ReportPieChartState extends State<ReportPieChart> {
                   "Phân bố loại báo cáo - ${DateFormat('MMMM yyyy', 'vi').format(selectedMonth)}",
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                TextButton(
-                  onPressed: () => _showMonthSelectionDialog(context),
-                  child: const Text("Xem thêm"),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      tooltip: 'Làm mới dữ liệu',
+                      color: Colors.green,
+                      onPressed: () {
+                        _fetchReportsForMonth(selectedMonth);
+                      },
+                    ),
+                    TextButton(
+                      onPressed: () => _showMonthSelectionDialog(context),
+                      child: const Text("Xem thêm"),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -145,7 +157,7 @@ class _ReportPieChartState extends State<ReportPieChart> {
             title: '${percentage.toStringAsFixed(1)}%',
             radius: 50,
             titleStyle: const TextStyle(
-              fontSize: 16,
+              fontSize: 12,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),

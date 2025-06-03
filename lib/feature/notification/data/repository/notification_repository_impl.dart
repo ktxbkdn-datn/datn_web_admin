@@ -1,4 +1,3 @@
-// notification_repository_impl.dart
 import 'package:dartz/dartz.dart';
 import 'package:http/http.dart' as http;
 import '../../../../src/core/error/failures.dart';
@@ -34,7 +33,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
   }
 
   @override
-  Future<Either<Failure, List<Notification>>> getAllNotifications({
+  Future<Either<Failure, (List<Notification>, int)>> getAllNotifications({
     int page = 1,
     int limit = 10,
     String? targetType,
@@ -45,7 +44,10 @@ class NotificationRepositoryImpl implements NotificationRepository {
         limit: limit,
         targetType: targetType,
       );
-      return result.map((models) => models.map((model) => model.toEntity()).toList());
+      return result.map((data) => (
+            data.$1.map((model) => model.toEntity()).toList(),
+            data.$2,
+          ));
     } catch (e) {
       if (e is ServerFailure) {
         return Left(ServerFailure(e.message));

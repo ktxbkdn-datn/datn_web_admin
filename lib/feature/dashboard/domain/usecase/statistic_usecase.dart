@@ -16,7 +16,7 @@ class GetMonthlyConsumption {
   GetMonthlyConsumption(this.repository);
 
   Future<Either<Failure, List<Consumption>>> call({
-    required int? year,
+    required int year,
     int? month,
     int? areaId,
   }) async {
@@ -25,6 +25,33 @@ class GetMonthlyConsumption {
       month: month,
       areaId: areaId,
     );
+  }
+}
+
+class SaveConsumption {
+  final StatisticsRepository repository;
+
+  SaveConsumption(this.repository);
+
+  Future<Either<Failure, void>> call({
+    required List<Consumption> stats,
+    required int year,
+    int? areaId,
+  }) async {
+    return await repository.saveConsumption(stats, year, areaId);
+  }
+}
+
+class LoadCachedConsumption {
+  final StatisticsRepository repository;
+
+  LoadCachedConsumption(this.repository);
+
+  Future<Either<Failure, List<Consumption>>> call({
+    required int year,
+    int? areaId,
+  }) async {
+    return await repository.loadCachedConsumption(year, areaId);
   }
 }
 
@@ -38,12 +65,62 @@ class GetRoomStatusStats {
     int? month,
     int? quarter,
     int? areaId,
+    int? roomId,
   }) async {
     return await repository.getRoomStatusStats(
       year: year,
       month: month,
       quarter: quarter,
       areaId: areaId,
+      roomId: roomId,
+    );
+  }
+}
+
+class GetRoomStatusSummary {
+  final StatisticsRepository repository;
+
+  GetRoomStatusSummary(this.repository);
+
+  Future<Either<Failure, List<Map<String, dynamic>>>> call({
+    required int year,
+    int? areaId,
+  }) async {
+    return await repository.getRoomStatusSummary(
+      year: year,
+      areaId: areaId,
+    );
+  }
+}
+
+class GetUserSummary {
+  final StatisticsRepository repository;
+
+  GetUserSummary(this.repository);
+
+  Future<Either<Failure, List<Map<String, dynamic>>>> call({
+    required int year,
+    int? areaId,
+  }) async {
+    return await repository.getUserSummary(
+      year: year,
+      areaId: areaId,
+    );
+  }
+}
+
+class TriggerManualSnapshot {
+  final StatisticsRepository repository;
+
+  TriggerManualSnapshot(this.repository);
+
+  Future<Either<Failure, void>> call({
+    required int year,
+    int? month,
+  }) async {
+    return await repository.triggerManualSnapshot(
+      year: year,
+      month: month,
     );
   }
 }
@@ -112,12 +189,14 @@ class GetUserMonthlyStats {
     int? month,
     int? quarter,
     int? areaId,
+    int? roomId,
   }) async {
     return await repository.getUserMonthlyStats(
       year: year,
       month: month,
       quarter: quarter,
       areaId: areaId,
+      roomId: roomId,
     );
   }
 }

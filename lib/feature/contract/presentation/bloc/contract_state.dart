@@ -23,11 +23,12 @@ class ContractLoading extends ContractState {
 
 class ContractListLoaded extends ContractState {
   final List<Contract> contracts;
+  final int totalItems; // Thêm tổng số hợp đồng
 
-  const ContractListLoaded({required this.contracts});
+  const ContractListLoaded({required this.contracts, required this.totalItems});
 
   @override
-  List<Object?> get props => [contracts];
+  List<Object?> get props => [contracts, totalItems];
 }
 
 class ContractLoaded extends ContractState {
@@ -91,3 +92,4 @@ class ContractError extends ContractState {
   @override
   List<Object?> get props => [failure, errorMessage];
 }
+

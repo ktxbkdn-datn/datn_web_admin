@@ -113,7 +113,7 @@ class ContractFormWidget extends StatelessWidget {
               return DropdownMenuItem<String>(
                 value: room,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                
                   child: Text(
                     room,
                     style: const TextStyle(fontSize: 16),

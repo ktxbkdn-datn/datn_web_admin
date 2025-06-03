@@ -23,7 +23,7 @@ class MediaDropzone extends StatefulWidget {
 class _MediaDropzoneState extends State<MediaDropzone> {
   List<Map<String, dynamic>> _media = [];
   List<String> _altTexts = [];
-  static const int MAX_FILES = 15;
+  static const int MAX_FILES = 20; // Tăng từ 15 lên 20
   static const int MAX_IMAGES = 10;
   static const int MAX_DOCUMENTS = 5;
   static const int MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50MB for images
@@ -59,7 +59,14 @@ class _MediaDropzoneState extends State<MediaDropzone> {
 
   // Chọn file từ thiết bị
   Future<void> _pickFiles() async {
-    if (_isProcessingFiles) return;
+    if (_isProcessingFiles || _media.length >= MAX_FILES) {
+      if (_media.length >= MAX_FILES) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã đạt giới hạn 20 file')),
+        );
+      }
+      return;
+    }
 
     setState(() {
       _isProcessingFiles = true;
@@ -132,7 +139,7 @@ class _MediaDropzoneState extends State<MediaDropzone> {
         setState(() {
           if (_media.length + newFiles.length > MAX_FILES) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Chỉ được tải lên tối đa 15 file mỗi lần')),
+              const SnackBar(content: Text('Chỉ được tải lên tối đa 20 file mỗi lần')),
             );
             newFiles = newFiles.sublist(0, MAX_FILES - _media.length);
           }
@@ -172,7 +179,7 @@ class _MediaDropzoneState extends State<MediaDropzone> {
       children: [
         // Thông báo giới hạn
         Text(
-          'Tải lên tối đa 15 file (jpg, jpeg, png, mp4, avi, pdf, doc, docx). Kích thước tối đa: 50 MB cho ảnh/tài liệu, 100 MB cho video. Tối đa 10 ảnh và 5 tài liệu.',
+          'Tải lên tối đa 20 file (jpg, jpeg, png, mp4, avi, pdf, doc, docx). Kích thước tối đa: 50 MB cho ảnh/tài liệu, 100 MB cho video. Tối đa 10 ảnh và 5 tài liệu.',
           style: const TextStyle(fontSize: 12, color: Colors.grey),
         ),
         const SizedBox(height: 8),
@@ -201,7 +208,7 @@ class _MediaDropzoneState extends State<MediaDropzone> {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          'Tối đa 15 file, ảnh/tài liệu < 50 MB, video < 100 MB',
+                          'Tối đa 20 file, ảnh/tài liệu < 50 MB, video < 100 MB',
                           style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       ],

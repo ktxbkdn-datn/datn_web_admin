@@ -49,10 +49,10 @@ class BillRepositoryImpl implements BillRepository {
   }
 
   @override
-  Future<Either<Failure, List<MonthlyBill>>> getAllMonthlyBills() async {
+  Future<Either<Failure, (List<MonthlyBill>, int)>> getAllMonthlyBills({required int page, required int limit}) async {
     try {
-      final result = await remoteDataSource.getAllMonthlyBills();
-      return result.map((models) => models.map((model) => model.toEntity()).toList());
+      final result = await remoteDataSource.getAllMonthlyBills(page: page, limit: limit);
+      return result.map((data) => (data.$1.map((model) => model.toEntity()).toList(), data.$2));
     } catch (e) {
       if (e is ServerFailure) {
         return Left(ServerFailure(e.message));

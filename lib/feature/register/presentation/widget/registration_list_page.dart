@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 
 import '../../../../common/constants/colors.dart';
 import '../../../../common/widget/custom_data_table.dart';
@@ -27,14 +26,16 @@ class RegistrationListPage extends StatefulWidget {
 
 class _RegistrationListPageState extends State<RegistrationListPage> with AutomaticKeepAliveClientMixin {
   int _currentPage = 1;
-  static const int _limit = 12;
+  static const int _limit = 10;
   String _filterStatus = 'All';
   String _filterArea = 'All';
   String _searchQuery = '';
-  List<Registration> _allRegistrations = [];
   List<Registration> _filteredRegistrations = [];
   List<int> _selectedRegistrationIds = [];
   final List<double> _baseColumnWidths = [50.0, 200.0, 200.0, 200.0, 200.0, 200.0, 200.0, 100.0];
+  int _totalItems = 0;
+  final Map<int, List<Registration>> _pageCache = {};
+  static const int _maxCachedPages = 5;
 
   @override
   bool get wantKeepAlive => true;
@@ -57,27 +58,15 @@ class _RegistrationListPageState extends State<RegistrationListPage> with Automa
   Future<void> _loadLocalData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _currentPage = prefs.getInt('registrationCurrentPage') ?? 1;
-      _filterStatus = prefs.getString('registrationFilterStatus') ?? 'All';
-      _filterArea = prefs.getString('registrationFilterArea') ?? 'All';
-      _searchQuery = prefs.getString('registrationSearchQuery') ?? '';
-      final registrationsJson = prefs.getString('registrations');
-      if (registrationsJson != null) {
-        final registrationsList = jsonDecode(registrationsJson) as List<dynamic>;
-        setState(() {
-          _allRegistrations = registrationsList
-              .cast<Map<String, dynamic>>()
-              .map((json) => Registration.fromJson(json))
-              .where((reg) => reg.registrationId != null && reg.numberOfPeople != null)
-              .toList()
-            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          _applyFilters();
-        });
-      }
+      setState(() {
+        _currentPage = prefs.getInt('registrationCurrentPage') ?? 1;
+        _filterStatus = prefs.getString('registrationFilterStatus') ?? 'All';
+        _filterArea = prefs.getString('registrationFilterArea') ?? 'All';
+        _searchQuery = prefs.getString('registrationSearchQuery') ?? '';
+      });
+      _fetchRegistrations();
     } catch (e) {
       print('Error loading local data: $e');
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('registrations');
       _fetchRegistrations();
     }
   }
@@ -89,19 +78,50 @@ class _RegistrationListPageState extends State<RegistrationListPage> with Automa
       await prefs.setString('registrationFilterStatus', _filterStatus);
       await prefs.setString('registrationFilterArea', _filterArea);
       await prefs.setString('registrationSearchQuery', _searchQuery);
-      await prefs.setString('registrations', jsonEncode(_allRegistrations.map((reg) => reg.toJson()).toList()));
     } catch (e) {
       print('Error saving local data: $e');
     }
   }
 
   void _fetchRegistrations() {
-    context.read<RegistrationBloc>().add(const FetchRegistrations(page: 1, limit: 1000));
+    if (_pageCache.containsKey(_currentPage)) {
+      setState(() {
+        _applyLocalFilters(_pageCache[_currentPage]!);
+      });
+      return;
+    }
+
+    String? apiStatus;
+    if (_filterStatus == 'PENDING' || _filterStatus == 'APPROVED' || _filterStatus == 'REJECTED') {
+      apiStatus = _filterStatus;
+    }
+    context.read<RegistrationBloc>().add(FetchRegistrations(
+      page: _currentPage,
+      limit: _limit,
+      status: apiStatus,
+      nameStudent: _searchQuery.isNotEmpty ? _searchQuery : null,
+    ));
   }
 
-  void _applyFilters() {
+  void _cachePage(int page, List<Registration> registrations) {
     setState(() {
-      _filteredRegistrations = _allRegistrations.where((reg) {
+      _pageCache[page] = registrations;
+      if (_pageCache.length > _maxCachedPages) {
+        final oldestPage = _pageCache.keys.reduce((a, b) => a < b ? a : b);
+        _pageCache.remove(oldestPage);
+      }
+    });
+  }
+
+  void _clearCache() {
+    setState(() {
+      _pageCache.clear();
+    });
+  }
+
+  void _applyLocalFilters(List<Registration> registrations) {
+    setState(() {
+      _filteredRegistrations = registrations.where((reg) {
         final matchesStatus = _filterStatus == 'All' ||
             (_filterStatus == 'PENDING' && reg.status == 'PENDING') ||
             (_filterStatus == 'APPROVED' && reg.status == 'APPROVED') ||
@@ -109,9 +129,7 @@ class _RegistrationListPageState extends State<RegistrationListPage> with Automa
             (_filterStatus == 'UNSET_TIME' && reg.meetingDatetime == null) ||
             (_filterStatus == 'MET' && reg.meetingDatetime != null && reg.meetingDatetime!.isBefore(DateTime.now()));
         final matchesArea = _filterArea == 'All' || reg.areaName == _filterArea;
-        final matchesSearch = _searchQuery.isEmpty ||
-            reg.nameStudent.toLowerCase().contains(_searchQuery.toLowerCase());
-        return matchesStatus && matchesArea && matchesSearch;
+        return matchesStatus && matchesArea;
       }).toList();
       _selectedRegistrationIds.removeWhere((id) => !_filteredRegistrations.any((reg) => reg.registrationId == id));
     });
@@ -156,7 +174,10 @@ class _RegistrationListPageState extends State<RegistrationListPage> with Automa
 
     final uniqueAreaNames = ['All', ...context.watch<AreaBloc>().state.areas.map((area) => area.name).toSet()]..sort();
     if (_filterArea != 'All' && !uniqueAreaNames.contains(_filterArea)) {
-      _filterArea = 'All';
+      setState(() {
+        _filterArea = 'All';
+        _saveLocalData();
+      });
     }
 
     return Scaffold(
@@ -197,86 +218,102 @@ class _RegistrationListPageState extends State<RegistrationListPage> with Automa
                               children: [
                                 SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
-                                  child: Row(
-                                    children: [
-                                      FilterTab(
-                                        label: 'Tất cả (${_allRegistrations.length})',
-                                        isSelected: _filterStatus == 'All',
-                                        onTap: () {
-                                          setState(() {
-                                            _filterStatus = 'All';
-                                            _currentPage = 1;
-                                            _applyFilters();
-                                            _saveLocalData();
-                                          });
-                                        },
-                                      ),
-                                      const SizedBox(width: 10),
-                                      FilterTab(
-                                        label: 'Đang chờ (${_allRegistrations.where((reg) => reg.status == 'PENDING').length})',
-                                        isSelected: _filterStatus == 'PENDING',
-                                        onTap: () {
-                                          setState(() {
-                                            _filterStatus = 'PENDING';
-                                            _currentPage = 1;
-                                            _applyFilters();
-                                            _saveLocalData();
-                                          });
-                                        },
-                                      ),
-                                      const SizedBox(width: 10),
-                                      FilterTab(
-                                        label: 'Đã duyệt (${_allRegistrations.where((reg) => reg.status == 'APPROVED').length})',
-                                        isSelected: _filterStatus == 'APPROVED',
-                                        onTap: () {
-                                          setState(() {
-                                            _filterStatus = 'APPROVED';
-                                            _currentPage = 1;
-                                            _applyFilters();
-                                            _saveLocalData();
-                                          });
-                                        },
-                                      ),
-                                      const SizedBox(width: 10),
-                                      FilterTab(
-                                        label: 'Từ chối (${_allRegistrations.where((reg) => reg.status == 'REJECTED').length})',
-                                        isSelected: _filterStatus == 'REJECTED',
-                                        onTap: () {
-                                          setState(() {
-                                            _filterStatus = 'REJECTED';
-                                            _currentPage = 1;
-                                            _applyFilters();
-                                            _saveLocalData();
-                                          });
-                                        },
-                                      ),
-                                      const SizedBox(width: 10),
-                                      FilterTab(
-                                        label: 'Chưa hẹn gặp (${_allRegistrations.where((reg) => reg.meetingDatetime == null).length})',
-                                        isSelected: _filterStatus == 'UNSET_TIME',
-                                        onTap: () {
-                                          setState(() {
-                                            _filterStatus = 'UNSET_TIME';
-                                            _currentPage = 1;
-                                            _applyFilters();
-                                            _saveLocalData();
-                                          });
-                                        },
-                                      ),
-                                      const SizedBox(width: 10),
-                                      FilterTab(
-                                        label: 'Đã gặp mặt (${_allRegistrations.where((reg) => reg.meetingDatetime != null && reg.meetingDatetime!.isBefore(DateTime.now())).length})',
-                                        isSelected: _filterStatus == 'MET',
-                                        onTap: () {
-                                          setState(() {
-                                            _filterStatus = 'MET';
-                                            _currentPage = 1;
-                                            _applyFilters();
-                                            _saveLocalData();
-                                          });
-                                        },
-                                      ),
-                                    ],
+                                  child: BlocBuilder<RegistrationBloc, RegistrationState>(
+                                    builder: (context, state) {
+                                      int total = _totalItems;
+                                      List<Registration> allRegistrations = [];
+                                      if (state is RegistrationsLoaded) {
+                                        total = state.total;
+                                        allRegistrations = state.registrations;
+                                      }
+                                      return Row(
+                                        children: [
+                                          FilterTab(
+                                            label: 'Tất cả ($total)',
+                                            isSelected: _filterStatus == 'All',
+                                            onTap: () {
+                                              setState(() {
+                                                _filterStatus = 'All';
+                                                _currentPage = 1;
+                                                _clearCache();
+                                                _fetchRegistrations();
+                                                _saveLocalData();
+                                              });
+                                            },
+                                          ),
+                                          const SizedBox(width: 10),
+                                          FilterTab(
+                                            label: 'Đang chờ (${allRegistrations.where((reg) => reg.status == 'PENDING').length})',
+                                            isSelected: _filterStatus == 'PENDING',
+                                            onTap: () {
+                                              setState(() {
+                                                _filterStatus = 'PENDING';
+                                                _currentPage = 1;
+                                                _clearCache();
+                                                _fetchRegistrations();
+                                                _saveLocalData();
+                                              });
+                                            },
+                                          ),
+                                          const SizedBox(width: 10),
+                                          FilterTab(
+                                            label: 'Đã duyệt (${allRegistrations.where((reg) => reg.status == 'APPROVED').length})',
+                                            isSelected: _filterStatus == 'APPROVED',
+                                            onTap: () {
+                                              setState(() {
+                                                _filterStatus = 'APPROVED';
+                                                _currentPage = 1;
+                                                _clearCache();
+                                                _fetchRegistrations();
+                                                _saveLocalData();
+                                              });
+                                            },
+                                          ),
+                                          const SizedBox(width: 10),
+                                          FilterTab(
+                                            label: 'Từ chối (${allRegistrations.where((reg) => reg.status == 'REJECTED').length})',
+                                            isSelected: _filterStatus == 'REJECTED',
+                                            onTap: () {
+                                              setState(() {
+                                                _filterStatus = 'REJECTED';
+                                                _currentPage = 1;
+                                                _clearCache();
+                                                _fetchRegistrations();
+                                                _saveLocalData();
+                                              });
+                                            },
+                                          ),
+                                          const SizedBox(width: 10),
+                                          FilterTab(
+                                            label: 'Chưa hẹn gặp (${allRegistrations.where((reg) => reg.meetingDatetime == null).length})',
+                                            isSelected: _filterStatus == 'UNSET_TIME',
+                                            onTap: () {
+                                              setState(() {
+                                                _filterStatus = 'UNSET_TIME';
+                                                _currentPage = 1;
+                                                _clearCache();
+                                                _fetchRegistrations();
+                                                _saveLocalData();
+                                              });
+                                            },
+                                          ),
+                                          const SizedBox(width: 10),
+                                          FilterTab(
+                                            label: 'Đã gặp mặt (${allRegistrations.where((reg) => reg.meetingDatetime != null && reg.meetingDatetime!.isBefore(DateTime.now())).length})',
+                                            isSelected: _filterStatus == 'MET',
+                                            onTap: () {
+                                              setState(() {
+                                                _filterStatus = 'MET';
+                                                _currentPage = 1;
+                                                _clearCache();
+                                                _fetchRegistrations();
+                                                _saveLocalData();
+                                              });
+                                            },
+                                          ),
+                                        ],
+                                      );
+                                    },
                                   ),
                                 ),
                                 const SizedBox(height: 16),
@@ -302,13 +339,14 @@ class _RegistrationListPageState extends State<RegistrationListPage> with Automa
                                                 underline: const SizedBox(),
                                                 items: uniqueAreaNames.map((areaName) => DropdownMenuItem<String>(
                                                   value: areaName,
-                                                  child: Text(areaName),
+                                                  child: Text(areaName == 'All' ? 'Tất cả' : areaName),
                                                 )).toList(),
                                                 onChanged: (value) {
                                                   setState(() {
                                                     _filterArea = value ?? 'All';
                                                     _currentPage = 1;
-                                                    _applyFilters();
+                                                    _clearCache();
+                                                    _fetchRegistrations();
                                                     _saveLocalData();
                                                   });
                                                 },
@@ -332,7 +370,10 @@ class _RegistrationListPageState extends State<RegistrationListPage> with Automa
                                         ),
                                         const SizedBox(width: 10),
                                         ElevatedButton.icon(
-                                          onPressed: _fetchRegistrations,
+                                          onPressed: () {
+                                            _clearCache();
+                                            _fetchRegistrations();
+                                          },
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: Colors.green,
                                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -353,7 +394,8 @@ class _RegistrationListPageState extends State<RegistrationListPage> with Automa
                               setState(() {
                                 _searchQuery = value;
                                 _currentPage = 1;
-                                _applyFilters();
+                                _clearCache();
+                                _fetchRegistrations();
                                 _saveLocalData();
                               });
                             },
@@ -361,16 +403,15 @@ class _RegistrationListPageState extends State<RegistrationListPage> with Automa
                             initialValue: _searchQuery,
                           ),
                           const SizedBox(height: 16),
-                          // Use LayoutBuilder to provide bounded height for the table
                           SizedBox(
-                            height: constraints.maxHeight - 300, // Adjust based on other widgets' approximate height
+                            height: constraints.maxHeight - 300,
                             child: BlocConsumer<RegistrationBloc, RegistrationState>(
                               listener: (context, state) {
                                 if (state is RegistrationsLoaded) {
                                   setState(() {
-                                    _allRegistrations = state.registrations..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-                                    _applyFilters();
-                                    _saveLocalData();
+                                    _totalItems = state.total;
+                                    _cachePage(_currentPage, state.registrations);
+                                    _applyLocalFilters(state.registrations..sort((a, b) => b.createdAt.compareTo(a.createdAt)));
                                   });
                                 } else if (state is RegistrationError) {
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -378,29 +419,25 @@ class _RegistrationListPageState extends State<RegistrationListPage> with Automa
                                   );
                                 } else if (state is RegistrationsDeleted) {
                                   setState(() {
-                                    _allRegistrations.removeWhere((reg) => state.deletedIds.contains(reg.registrationId));
                                     _selectedRegistrationIds.clear();
-                                    _applyFilters();
-                                    _saveLocalData();
+                                    _clearCache();
+                                    _fetchRegistrations();
                                   });
                                   if (state.message != null) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(content: Text(state.message!), backgroundColor: Colors.green),
                                     );
                                   }
+                                } else if (state is RegistrationUpdated) {
+                                  _clearCache();
+                                  _fetchRegistrations();
                                 }
                               },
                               builder: (context, state) {
                                 final isLoading = state is RegistrationLoading;
-                                final startIndex = (_currentPage - 1) * _limit;
-                                final endIndex = (startIndex + _limit).clamp(0, _filteredRegistrations.length);
-                                final List<Registration> paginatedRegistrations = startIndex < _filteredRegistrations.length
-                                    ? _filteredRegistrations.sublist(startIndex, endIndex)
-                                    : [];
-
-                                if (isLoading && _allRegistrations.isEmpty) {
+                                if (isLoading && _filteredRegistrations.isEmpty) {
                                   return const Center(child: CircularProgressIndicator());
-                                } else if (_filteredRegistrations.isEmpty) {
+                                } else if (_filteredRegistrations.isEmpty && state is! RegistrationLoading) {
                                   return const Center(child: Text('Không có đăng ký nào'));
                                 }
 
@@ -420,7 +457,7 @@ class _RegistrationListPageState extends State<RegistrationListPage> with Automa
                                             'Trạng thái',
                                             '',
                                           ],
-                                          data: paginatedRegistrations,
+                                          data: _filteredRegistrations,
                                           columnWidths: _getColumnWidths(MediaQuery.of(context).size.width),
                                           cellBuilder: (registration, index) {
                                             switch (index) {
@@ -501,11 +538,12 @@ class _RegistrationListPageState extends State<RegistrationListPage> with Automa
                                     const SizedBox(height: 16),
                                     PaginationControls(
                                       currentPage: _currentPage,
-                                      totalItems: _filteredRegistrations.length,
+                                      totalItems: _totalItems,
                                       limit: _limit,
                                       onPageChanged: (page) {
                                         setState(() {
                                           _currentPage = page;
+                                          _fetchRegistrations();
                                           _saveLocalData();
                                         });
                                       },

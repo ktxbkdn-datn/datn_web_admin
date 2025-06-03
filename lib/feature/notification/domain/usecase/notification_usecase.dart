@@ -1,4 +1,3 @@
-// notification_usecase.dart
 import 'package:dartz/dartz.dart';
 import '../../../../src/core/error/failures.dart';
 import '../../domain/entities/notification_entity.dart';
@@ -40,7 +39,7 @@ class GetAllNotifications {
 
   GetAllNotifications(this.repository);
 
-  Future<Either<Failure, List<Notification>>> call({
+  Future<Either<Failure, (List<Notification>, int)>> call({
     int page = 1,
     int limit = 10,
     String? targetType,

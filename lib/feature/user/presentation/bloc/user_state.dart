@@ -1,30 +1,59 @@
-// lib/src/features/user/presentation/bloc/user_state.dart
+import 'package:equatable/equatable.dart';
 import '../../domain/entities/user_entity.dart';
 
-class UserState {
+abstract class UserState extends Equatable {
+  const UserState();
+
+  @override
+  List<Object?> get props => [];
+}
+
+class UserInitial extends UserState {}
+
+class UserLoading extends UserState {}
+
+class UserLoaded extends UserState {
   final List<UserEntity> users;
-  final bool isLoading;
-  final String? error;
-  final String? successMessage;
+  final int totalItems;
 
-  const UserState({
-    this.users = const [],
-    this.isLoading = false,
-    this.error,
-    this.successMessage,
-  });
+  const UserLoaded({required this.users, required this.totalItems});
 
-  UserState copyWith({
-    List<UserEntity>? users,
-    bool? isLoading,
-    String? error,
-    String? successMessage,
-  }) {
-    return UserState(
-      users: users ?? this.users,
-      isLoading: isLoading ?? this.isLoading,
-      error: error,
-      successMessage: successMessage,
-    );
-  }
+  @override
+  List<Object?> get props => [users, totalItems];
+}
+
+class UserCreated extends UserState {
+  final UserEntity user;
+
+  const UserCreated({required this.user});
+
+  @override
+  List<Object?> get props => [user];
+}
+
+class UserUpdated extends UserState {
+  final UserEntity user;
+
+  const UserUpdated({required this.user});
+
+  @override
+  List<Object?> get props => [user];
+}
+
+class UserDeleted extends UserState {
+  final int userId;
+
+  const UserDeleted({required this.userId});
+
+  @override
+  List<Object?> get props => [userId];
+}
+
+class UserError extends UserState {
+  final String message;
+
+  const UserError({required this.message});
+
+  @override
+  List<Object?> get props => [message];
 }

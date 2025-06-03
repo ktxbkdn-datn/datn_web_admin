@@ -277,8 +277,17 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
         return matchesStatus && matchesArea && matchesService && matchesMonthYear && matchesBillStatus && matchesSearch;
       }).map((model) => model.toEntity()).toList();
 
-      // Sort bills by createdAt in descending order (newest first)
-      _bills.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      // Sort bills: PENDING first when _filterStatus is 'All', then by createdAt descending
+      _bills.sort((a, b) {
+        if (_filterStatus == 'All') {
+          if (a.paymentStatus == 'PENDING' && b.paymentStatus != 'PENDING') {
+            return -1;
+          } else if (a.paymentStatus != 'PENDING' && b.paymentStatus == 'PENDING') {
+            return 1;
+          }
+        }
+        return b.createdAt.compareTo(a.createdAt);
+      });
     });
   }
 
@@ -386,7 +395,6 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
       backgroundColor: AppColors.cardBackground,
       body: Stack(
         children: [
-          // Glassmorphism Background
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -448,6 +456,15 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                     });
                     _saveLocalData();
                   } else if (state is MonthlyBillDeleted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(state.message),
+                        backgroundColor: AppColors.buttonSuccess,
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                    _fetchBills();
+                  } else if (state is MonthlyBillsCreated) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(state.message),
@@ -520,7 +537,6 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Filter Box
                             Container(
                               padding: const EdgeInsets.all(16.0),
                               margin: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -538,11 +554,9 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Row 1: Khu vực, Trạng thái, Dịch vụ
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      // Filter: Khu vực
                                       Expanded(
                                         child: Row(
                                           children: [
@@ -582,7 +596,6 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                                         ),
                                       ),
                                       const SizedBox(width: 16),
-                                      // Filter: Trạng thái
                                       Expanded(
                                         child: Row(
                                           children: [
@@ -628,7 +641,6 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                                         ),
                                       ),
                                       const SizedBox(width: 16),
-                                      // Filter: Dịch vụ
                                       Expanded(
                                         child: Row(
                                           children: [
@@ -670,11 +682,9 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                                     ],
                                   ),
                                   const SizedBox(height: 16),
-                                  // Row 2: Tháng hóa đơn, Trạng thái hóa đơn
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      // Filter: Tháng hóa đơn
                                       Expanded(
                                         child: Row(
                                           children: [
@@ -724,7 +734,6 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                                         ),
                                       ),
                                       const SizedBox(width: 16),
-                                      // Filter: Trạng thái hóa đơn
                                       Expanded(
                                         child: Row(
                                           children: [
@@ -770,7 +779,6 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                                         ),
                                       ),
                                       const SizedBox(width: 16),
-                                      // Placeholder to maintain spacing
                                       const Expanded(child: SizedBox()),
                                     ],
                                   ),
@@ -778,7 +786,6 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                               ),
                             ),
                             const SizedBox(height: 16),
-                            // Search Bar and Refresh Button
                             Row(
                               mainAxisAlignment: MainAxisAlignment.start,
                               children: [
@@ -831,132 +838,136 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                                   ? _bills.sublist(startIndex, endIndex)
                                   : [];
 
-                              return isLoading && _isInitialLoad
-                                  ? const Center(child: CircularProgressIndicator())
-                                  : paginatedBills.isEmpty
-                                  ? const Center(child: Text('Không có hóa đơn nào'))
-                                  : Column(
+                              return Column(
                                 children: [
-                                  GenericDataTable<MonthlyBill>(
-                                    headers: const [
-                                      'Phòng',
-                                      'Dịch vụ',
-                                      'Tổng tiền',
-                                      'Trạng thái',
-                                      'Ngày tạo',
-                                      '', // Xem
-                                      ''  // Xóa
-                                    ],
-                                    data: paginatedBills,
-                                    columnWidths: _columnWidths,
-                                    cellBuilder: (bill, index) {
-                                      if (index >= 7) {
-                                        return const SizedBox();
-                                      }
+                                  if (isLoading && _isInitialLoad)
+                                    const Center(child: CircularProgressIndicator())
+                                  else if (paginatedBills.isEmpty && !isLoading)
+                                    const Center(child: Text('Không có hóa đơn nào'))
+                                  else
+                                    GenericDataTable<MonthlyBill>(
+                                      headers: const [
+                                        'Phòng',
+                                        'Dịch vụ',
+                                        'Tổng tiền',
+                                        'Trạng thái',
+                                        'Ngày tạo',
+                                        '',
+                                        ''
+                                      ],
+                                      data: paginatedBills,
+                                      columnWidths: _columnWidths,
+                                      cellBuilder: (bill, index) {
+                                        if (index >= 7) {
+                                          return const SizedBox();
+                                        }
 
-                                      BillDetail? billDetail;
-                                      if (bill.detailId != null) {
-                                        billDetail = _allBillDetails.firstWhere(
-                                              (detail) => detail.detailId == bill.detailId,
-                                          orElse: () => BillDetail(
-                                            detailId: -1,
-                                            roomId: bill.roomId,
-                                            billMonth: bill.billMonth,
-                                            price: 0.0,
-                                            submittedBy: null,
-                                            submittedAt: null,
-                                            submitterDetails: null,
-                                            rateDetails: null,
-                                            rateId: -1,
-                                            monthlyBillId: -1,
-                                            previousReading: 0.0,
-                                            currentReading: 0.0,
-                                          ),
-                                        );
-                                      }
-
-                                      int? serviceId = billDetail?.rateDetails?.serviceId;
-                                      String serviceName = 'N/A';
-                                      if (serviceId != null) {
-                                        var service = _services.firstWhere(
-                                              (s) => s.serviceId == serviceId,
-                                          orElse: () => ServiceModel(
-                                            serviceId: -1,
-                                            name: 'Không xác định',
-                                            unit: '',
-                                          ),
-                                        );
-                                        serviceName = service.name;
-                                      }
-
-                                      switch (index) {
-                                        case 0:
-                                          return Text(
-                                            bill.roomDetails?.name ?? 'N/A',
-                                            overflow: TextOverflow.ellipsis,
-                                            textAlign: TextAlign.center,
-                                          );
-                                        case 1:
-                                          return Text(
-                                            serviceName,
-                                            overflow: TextOverflow.ellipsis,
-                                            textAlign: TextAlign.center,
-                                          );
-                                        case 2:
-                                          return Text(
-                                            '${bill.totalAmount.toStringAsFixed(2)} VNĐ',
-                                            overflow: TextOverflow.ellipsis,
-                                            textAlign: TextAlign.center,
-                                          );
-                                        case 3:
-                                          return Text(
-                                            bill.paymentStatus == 'PENDING' ? 'Chưa thanh toán' : 'Đã thanh toán',
-                                            overflow: TextOverflow.ellipsis,
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              color: bill.paymentStatus == 'PAID'
-                                                  ? AppColors.buttonSuccess
-                                                  : AppColors.textPrimary,
+                                        BillDetail? billDetail;
+                                        if (bill.detailId != null) {
+                                          billDetail = _allBillDetails.firstWhere(
+                                                (detail) => detail.detailId == bill.detailId,
+                                            orElse: () => BillDetail(
+                                              detailId: -1,
+                                              roomId: bill.roomId,
+                                              billMonth: bill.billMonth,
+                                              price: 0.0,
+                                              submittedBy: null,
+                                              submittedAt: null,
+                                              submitterDetails: null,
+                                              rateDetails: null,
+                                              rateId: -1,
+                                              monthlyBillId: -1,
+                                              previousReading: 0.0,
+                                              currentReading: 0.0,
                                             ),
                                           );
-                                        case 4:
-                                          return Text(
-                                            DateFormat('dd/MM/yyyy').format(bill.createdAt),
-                                            overflow: TextOverflow.ellipsis,
-                                            textAlign: TextAlign.center,
+                                        }
+
+                                        int? serviceId = billDetail?.rateDetails?.serviceId;
+                                        String serviceName = 'N/A';
+                                        if (serviceId != null) {
+                                          var service = _services.firstWhere(
+                                                (s) => s.serviceId == serviceId,
+                                            orElse: () => ServiceModel(
+                                              serviceId: -1,
+                                              name: 'Không xác định',
+                                              unit: '',
+                                            ),
                                           );
-                                        case 5:
-                                          return IconButton(
-                                            icon: const Icon(Icons.visibility),
-                                            onPressed: () {
-                                              showDialog(
-                                                context: context,
-                                                builder: (dialogContext) => BillDetailDialog(bill: bill),
-                                              );
-                                            },
-                                          );
-                                        case 6:
-                                          return IconButton(
-                                            icon: const Icon(Icons.delete, color: AppColors.buttonError),
-                                            onPressed: () {
-                                              _deleteMonthlyBill(bill.billId);
-                                            },
-                                          );
-                                        default:
-                                          return const SizedBox();
-                                      }
-                                    },
-                                  ),
-                                  PaginationControls(
-                                    currentPage: _currentPage,
-                                    totalItems: _bills.length,
-                                    limit: _limit,
-                                    onPageChanged: (page) {
-                                      setState(() {
-                                        _currentPage = page;
-                                        _saveLocalData();
-                                      });
-                                    },
+                                          serviceName = service.name;
+                                        }
+
+                                        switch (index) {
+                                          case 0:
+                                            return Text(
+                                              bill.roomDetails?.name ?? 'N/A',
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.center,
+                                            );
+                                          case 1:
+                                            return Text(
+                                              serviceName,
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.center,
+                                            );
+                                          case 2:
+                                            return Text(
+                                              '${bill.totalAmount.toStringAsFixed(2)} VNĐ',
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.center,
+                                            );
+                                          case 3:
+                                            return Text(
+                                              bill.paymentStatus == 'PENDING' ? 'Chưa thanh toán' : 'Đã thanh toán',
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                color: bill.paymentStatus == 'PAID'
+                                                    ? AppColors.buttonSuccess
+                                                    : AppColors.textPrimary,
+                                              ),
+                                            );
+                                          case 4:
+                                            return Text(
+                                              DateFormat('dd/MM/yyyy').format(bill.createdAt),
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.center,
+                                            );
+                                          case 5:
+                                            return IconButton(
+                                              icon: const Icon(Icons.visibility),
+                                              onPressed: () {
+                                                showDialog(
+                                                  context: context,
+                                                  builder: (dialogContext) => BillDetailDialog(bill: bill),
+                                                );
+                                              },
+                                            );
+                                          case 6:
+                                            return IconButton(
+                                              icon: const Icon(Icons.delete, color: AppColors.buttonError),
+                                              onPressed: () {
+                                                _deleteMonthlyBill(bill.billId);
+                                              },
+                                            );
+                                          default:
+                                            return const SizedBox();
+                                        }
+                                      },
+                                    ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                    child: PaginationControls(
+                                      currentPage: _currentPage,
+                                      totalItems: _bills.length,
+                                      limit: _limit,
+                                      onPageChanged: (page) {
+                                        setState(() {
+                                          _currentPage = page;
+                                          _saveLocalData();
+                                        });
+                                      },
+                                    ),
                                   ),
                                 ],
                               );

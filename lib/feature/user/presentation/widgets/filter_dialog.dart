@@ -1,21 +1,39 @@
-// lib/src/features/user/presentation/widgets/filter_dialog.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../bloc/user_bloc.dart';
-import '../bloc/user_event.dart';
 
 class FilterDialog extends StatefulWidget {
-  const FilterDialog({Key? key}) : super(key: key);
+  final Function(String?, String?, String?, String?) onApply;
+  final String? initialEmail;
+  final String? initialFullname;
+  final String? initialPhone;
+  final String? initialClassName;
+
+  const FilterDialog({
+    Key? key,
+    required this.onApply,
+    this.initialEmail,
+    this.initialFullname,
+    this.initialPhone,
+    this.initialClassName,
+  }) : super(key: key);
 
   @override
-  State<FilterDialog> createState() => _FilterDialogState();
+  _FilterDialogState createState() => _FilterDialogState();
 }
 
 class _FilterDialogState extends State<FilterDialog> {
-  final _emailController = TextEditingController();
-  final _fullnameController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _classNameController = TextEditingController();
+  late TextEditingController _emailController;
+  late TextEditingController _fullnameController;
+  late TextEditingController _phoneController;
+  late TextEditingController _classNameController;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController(text: widget.initialEmail);
+    _fullnameController = TextEditingController(text: widget.initialFullname);
+    _phoneController = TextEditingController(text: widget.initialPhone);
+    _classNameController = TextEditingController(text: widget.initialClassName);
+  }
 
   @override
   void dispose() {
@@ -146,7 +164,7 @@ class _FilterDialogState extends State<FilterDialog> {
             _fullnameController.clear();
             _phoneController.clear();
             _classNameController.clear();
-            context.read<UserBloc>().add(FetchUsersEvent());
+            widget.onApply(null, null, null, null);
             Navigator.pop(context);
           },
           child: const Text(
@@ -163,12 +181,12 @@ class _FilterDialogState extends State<FilterDialog> {
         ),
         ElevatedButton(
           onPressed: () {
-            context.read<UserBloc>().add(FetchUsersEvent(
-              email: _emailController.text.isNotEmpty ? _emailController.text : null,
-              fullname: _fullnameController.text.isNotEmpty ? _fullnameController.text : null,
-              phone: _phoneController.text.isNotEmpty ? _phoneController.text : null,
-              className: _classNameController.text.isNotEmpty ? _classNameController.text : null,
-            ));
+            widget.onApply(
+              _emailController.text,
+              _fullnameController.text,
+              _phoneController.text,
+              _classNameController.text,
+            );
             Navigator.pop(context);
           },
           style: ElevatedButton.styleFrom(

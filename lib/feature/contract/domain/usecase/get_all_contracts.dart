@@ -1,17 +1,14 @@
 import 'package:dartz/dartz.dart';
-
-import '../../../admin/presentation/bloc/admin_state.dart';
 import '../entities/contract_entity.dart';
 import '../repository/contract_repository.dart';
 import '../../../../src/core/error/failures.dart';
-
 
 class GetAllContracts {
   final ContractRepository repository;
 
   GetAllContracts(this.repository);
 
-  Future<Either<Failure, List<Contract>>> call({
+  Future<Either<Failure, (List<Contract>, int)>> call({
     int page = 1,
     int limit = 10,
     String? email,

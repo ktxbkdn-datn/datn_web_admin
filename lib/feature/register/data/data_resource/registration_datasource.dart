@@ -5,7 +5,7 @@ import '../../../../src/core/network/api_client.dart';
 import '../models/register_model.dart';
 
 abstract class RegistrationRemoteDataSource {
-  Future<Either<Failure, List<RegistrationModel>>> getAllRegistrations({
+  Future<Either<Failure, (List<RegistrationModel>, int)>> getAllRegistrations({
     int page,
     int limit,
     String? status,
@@ -38,7 +38,7 @@ class RegistrationRemoteDataSourceImpl implements RegistrationRemoteDataSource {
   RegistrationRemoteDataSourceImpl(this.apiService);
 
   @override
-  Future<Either<Failure, List<RegistrationModel>>> getAllRegistrations({
+  Future<Either<Failure, (List<RegistrationModel>, int)>> getAllRegistrations({
     int page = 1,
     int limit = 10,
     String? status,
@@ -60,7 +60,8 @@ class RegistrationRemoteDataSourceImpl implements RegistrationRemoteDataSource {
       final registrations = (response['registrations'] as List)
           .map((json) => RegistrationModel.fromJson(json))
           .toList();
-      return Right(registrations);
+      final total = response['total'] as int? ?? 0;
+      return Right((registrations, total));
     } catch (e) {
       return Left(_handleError(e));
     }
@@ -127,11 +128,11 @@ class RegistrationRemoteDataSourceImpl implements RegistrationRemoteDataSource {
       // Xử lý deleted_ids an toàn
       List<int> deletedIds = [];
       if (response['deleted_ids'] != null) {
-        final ids = List.from(response['deleted_ids']); // Chuyển JSArray sang List
+        final ids = List.from(response['deleted_ids']);
         deletedIds = ids
-            .map((id) => int.tryParse(id.toString())) // Parse an toàn, trả về null nếu lỗi
-            .where((id) => id != null) // Lọc bỏ các giá trị null
-            .cast<int>() // Chuyển thành List<int>
+            .map((id) => int.tryParse(id.toString()))
+            .where((id) => id != null)
+            .cast<int>()
             .toList();
       }
 

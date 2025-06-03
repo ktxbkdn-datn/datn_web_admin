@@ -11,10 +11,10 @@ abstract class BillRemoteDataSource {
     List<int>? roomIds,
   });
   Future<Either<Failure, List<BillDetailModel>>> getAllBillDetails();
-  Future<Either<Failure, List<MonthlyBillModel>>> getAllMonthlyBills();
+  Future<Either<Failure, (List<MonthlyBillModel>, int)>> getAllMonthlyBills({required int page, required int limit});
   Future<Either<Failure, Map<String, List<int>>>> deletePaidBills(List<int> billIds);
   Future<Either<Failure, void>> deleteBillDetail(int detailId);
-  Future<Either<Failure, void>> deleteMonthlyBill(int billId); // Thêm phương thức xóa MonthlyBill
+  Future<Either<Failure, void>> deleteMonthlyBill(int billId);
 }
 
 class BillRemoteDataSourceImpl implements BillRemoteDataSource {
@@ -61,13 +61,15 @@ class BillRemoteDataSourceImpl implements BillRemoteDataSource {
   }
 
   @override
-  Future<Either<Failure, List<MonthlyBillModel>>> getAllMonthlyBills() async {
+  Future<Either<Failure, (List<MonthlyBillModel>, int)>> getAllMonthlyBills({required int page, required int limit}) async {
     try {
-      final response = await apiService.get('/admin/monthly-bills');
+      final response = await apiService.get('/admin/monthly-bills?page=$page&limit=$limit');
       final monthlyBills = (response as List)
           .map((json) => MonthlyBillModel.fromJson(json))
           .toList();
-      return Right(monthlyBills);
+      // Estimate total: if response length equals limit, assume more pages exist
+      final total = monthlyBills.length == limit ? (page * limit + 1) : (page - 1) * limit + monthlyBills.length;
+      return Right((monthlyBills, total));
     } catch (e) {
       return Left(_handleError(e));
     }
@@ -116,7 +118,7 @@ class BillRemoteDataSourceImpl implements BillRemoteDataSource {
     } else if (error is NetworkFailure) {
       return NetworkFailure(error.message);
     } else {
-      return ServerFailure('Không thể kết nối tới server');
+      return ServerFailure(error.toString());
     }
   }
 }
