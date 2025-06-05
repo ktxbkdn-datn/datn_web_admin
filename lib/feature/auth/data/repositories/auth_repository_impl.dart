@@ -25,7 +25,7 @@ class AuthRepositoryImpl implements AuthRepository {
       return Right(AuthEntity(
         id: int.parse(userId),
         accessToken: authModel.accessToken,
-        refreshToken: authModel.refreshToken,
+        refreshToken: authModel.refreshToken ?? '',
         type: type,
       ));
     } on ServerFailure catch (e) {

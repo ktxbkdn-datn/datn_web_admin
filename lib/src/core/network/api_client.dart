@@ -72,7 +72,7 @@ class ApiService {
           await refreshAccessToken();
         } catch (e) {
           print('Failed to refresh token: $e');
-          await clearToken();
+          // Do not clear tokens here; let _onCheckAuthStatus handle the state
         }
       }
     }
@@ -101,68 +101,79 @@ class ApiService {
 
   Future<void> setToken(String? token, {String? refreshToken, bool rememberMe = false}) async {
     _token = token;
-    _refreshToken = refreshToken ?? _refreshToken;
+    _refreshToken = refreshToken;
     final prefs = await SharedPreferences.getInstance();
     const bool kIsWeb = bool.fromEnvironment('dart.library.js_util');
 
     if (token != null) {
       await prefs.setString('auth_token', token);
-      print('Saved token to shared preferences: $token');
+      print('Saved access_token to SharedPreferences: $token');
     } else {
       await prefs.remove('auth_token');
-      print('Removed token from shared preferences');
+      print('Removed access_token from SharedPreferences');
     }
 
     if (refreshToken != null) {
       await prefs.setString('refresh_token', refreshToken);
-      print('Saved refresh token to shared preferences: $refreshToken');
-    } else if (token == null) {
+      print('Saved refresh_token to SharedPreferences: $refreshToken');
+    } else {
       await prefs.remove('refresh_token');
-      print('Removed refresh token from shared preferences');
+      print('Removed refresh_token from SharedPreferences');
     }
 
     if (!kIsWeb) {
       if (token != null) {
         await _secureStorage.write(key: 'auth_token', value: token);
-        print('Saved token to secure storage: $token');
+        print('Saved access_token to FlutterSecureStorage: $token');
+        // Verify storage
+        final storedToken = await _secureStorage.read(key: 'auth_token');
+        print('Verified access_token in FlutterSecureStorage: $storedToken');
       } else {
         await _secureStorage.delete(key: 'auth_token');
-        print('Removed token from secure storage');
+        print('Removed access_token from FlutterSecureStorage');
       }
 
       if (refreshToken != null) {
         await _secureStorage.write(key: 'refresh_token', value: refreshToken);
-        print('Saved refresh token to secure storage: $refreshToken');
-      } else if (token == null) {
+        print('Saved refresh_token to FlutterSecureStorage: $refreshToken');
+        // Verify storage
+        final storedRefreshToken = await _secureStorage.read(key: 'refresh_token');
+        print('Verified refresh_token in FlutterSecureStorage: $storedRefreshToken');
+      } else {
         await _secureStorage.delete(key: 'refresh_token');
-        print('Removed refresh token from secure storage');
+        print('Removed refresh_token from FlutterSecureStorage');
       }
     }
 
     await prefs.setBool('remember_me', rememberMe);
-    print('Saved rememberMe to shared preferences: $rememberMe');
+    print('Saved rememberMe to SharedPreferences: $rememberMe');
+    // Verify storage
+    final storedRememberMe = prefs.getBool('remember_me');
+    print('Verified rememberMe in SharedPreferences: $storedRememberMe');
   }
 
-  Future<void> clearToken() async {
+  Future<void> clearToken({bool force = false}) async {
     final prefs = await SharedPreferences.getInstance();
     final rememberMe = prefs.getBool('remember_me') ?? false;
 
-    if (!rememberMe) {
+    if (force) { // Chỉ xóa token khi được yêu cầu rõ ràng (ví dụ, đăng xuất)
       _token = null;
       _refreshToken = null;
       await prefs.remove('auth_token');
       await prefs.remove('refresh_token');
-      await prefs.remove('saved_username');
-      await prefs.remove('saved_password');
-      await prefs.setBool('remember_me', false);
+      if (!rememberMe) { // Chỉ xóa saved_username và saved_password nếu !rememberMe
+        await prefs.remove('saved_username');
+        await prefs.remove('saved_password');
+        print('Cleared saved_username and saved_password (rememberMe: $rememberMe)');
+      }
+      print('Cleared all tokens (force: $force, rememberMe: $rememberMe)');
       const bool kIsWeb = bool.fromEnvironment('dart.library.js_util');
       if (!kIsWeb) {
         await _secureStorage.delete(key: 'auth_token');
         await _secureStorage.delete(key: 'refresh_token');
       }
-      print('Cleared all tokens and user data');
     } else {
-      print('Keeping tokens due to "Remember Me"');
+      print('Keeping tokens (force: $force, rememberMe: $rememberMe)');
     }
   }
 

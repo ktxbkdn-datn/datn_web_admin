@@ -1,5 +1,5 @@
 import 'package:datn_web_admin/src/core/network/api_client.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Thêm import
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../src/core/error/failures.dart';
 import '../models/auth_model.dart';
 
@@ -15,23 +15,31 @@ class AuthDataSource {
         {
           'username': username,
           'password': password,
-          'remember_me': rememberMe, // Gửi remember_me đến server
+          'remember_me': rememberMe,
         },
       );
-      if (!response.containsKey('access_token')) {
-        throw ServerFailure('Phản hồi đăng nhập không chứa access_token');
+      print('API response: $response');
+      if (!response.containsKey('access_token') || !response.containsKey('refresh_token')) {
+        throw ServerFailure('Phản hồi đăng nhập thiếu access_token hoặc refresh_token');
       }
       final authModel = AuthModel.fromJson(response);
-      await apiService.setToken(authModel.accessToken, refreshToken: authModel.refreshToken, rememberMe: rememberMe);
+      
+      await apiService.setToken(
+        authModel.accessToken,
+        refreshToken: authModel.refreshToken,
+        rememberMe: rememberMe,
+      );
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('remember_me', rememberMe);
       if (rememberMe) {
         await prefs.setString('saved_username', username);
         await prefs.setString('saved_password', password);
+        print('Saved username and password for rememberMe: true');
       } else {
         await prefs.remove('saved_username');
         await prefs.remove('saved_password');
+        print('Removed username and password for rememberMe: false');
       }
 
       return authModel;

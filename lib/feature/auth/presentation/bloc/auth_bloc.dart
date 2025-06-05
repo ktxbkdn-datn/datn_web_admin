@@ -42,7 +42,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onCheckAuthStatus(CheckAuthStatusEvent event, Emitter<AuthState> emit) async {
     emit(state.copyWith(isLoading: true, error: null, successMessage: null));
 
-    // Khởi tạo ApiService để khôi phục token
     try {
       await apiService.initialize();
     } catch (e) {
@@ -60,27 +59,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final prefs = await SharedPreferences.getInstance();
     final rememberMe = prefs.getBool('remember_me') ?? false;
 
-    if (token != null && refreshToken != null && rememberMe) {
-      // Token tồn tại và "Remember Me" được chọn
+    print('Auth status after reload: token=$token, refreshToken=$refreshToken, rememberMe=$rememberMe');
+
+    if (token != null) {
       try {
         final decodedToken = JwtDecoder.decode(token);
         final userId = decodedToken['sub'] as String?;
         final type = decodedToken['type'] as String? ?? 'UNKNOWN';
         if (userId != null && !JwtDecoder.isExpired(token)) {
-          // Token còn hợp lệ
           emit(state.copyWith(
             isLoading: false,
             auth: AuthEntity(
               id: int.parse(userId),
               accessToken: token,
-              refreshToken: refreshToken,
+              refreshToken: refreshToken ?? '',
               type: type,
             ),
             successMessage: 'Khôi phục phiên đăng nhập thành công',
           ));
           return;
-        } else {
-          // Token hết hạn, thử làm mới
+        } else if (refreshToken != null) {
           try {
             await apiService.refreshAccessToken();
             final newToken = apiService.token;
@@ -105,7 +103,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             }
           } catch (e) {
             print('Error refreshing token during auth check: $e');
-            await apiService.clearToken();
             emit(state.copyWith(
               isLoading: false,
               auth: null,
@@ -116,7 +113,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         }
       } catch (e) {
         print('Error checking auth status: $e');
-        await apiService.clearToken();
         emit(state.copyWith(
           isLoading: false,
           auth: null,
@@ -126,8 +122,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     }
 
-    // Không có token, token không hợp lệ, hoặc "Remember Me" không được chọn
-    await apiService.clearToken();
     emit(state.copyWith(
       isLoading: false,
       auth: null,
@@ -147,7 +141,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           ));
         },
         (authEntity) {
-          print('Login successful: ${authEntity.accessToken}, Refresh: ${authEntity.refreshToken}, ID: ${authEntity.id}');
+          print('Login successful: accessToken=${authEntity.accessToken}, refreshToken=${authEntity.refreshToken ?? "none"}, ID=${authEntity.id}, rememberMe=${event.rememberMe}');
           emit(state.copyWith(
             isLoading: false,
             auth: authEntity,
@@ -177,10 +171,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           isLoading: false,
           error: failure.message,
         )),
-        (_) => emit(const AuthState(
-          successMessage: "Đăng xuất thành công",
-          auth: null,
-        )),
+        (_) {
+          apiService.clearToken(force: true); // Xóa token khi đăng xuất
+          emit(const AuthState(
+            successMessage: "Đăng xuất thành công",
+            auth: null,
+          ));
+        },
       );
     } catch (e) {
       emit(state.copyWith(
@@ -260,7 +257,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         successMessage: 'Làm mới token thành công',
       ));
     } catch (e) {
-      await apiService.clearToken();
+      print('Error during token refresh: $e');
       emit(state.copyWith(
         isLoading: false,
         auth: null,
