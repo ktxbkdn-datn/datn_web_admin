@@ -1,4 +1,3 @@
-// lib/src/features/auth/presentation/pages/login_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
@@ -104,13 +103,12 @@ class LoginPage extends StatelessWidget {
                           height: 300,
                           child: AuthForm(
                             isAdmin: true,
-                            onSubmit: (username, password) {
+                            onSubmit: (username, password, rememberMe) { // Cập nhật để nhận rememberMe
                               context.read<AuthBloc>().add(
                                 AdminLoginSubmitted(
                                   username: username,
                                   password: password,
-                                  // username: "admin0001",
-                                  // password: "NewPass12345!",
+                                  rememberMe: rememberMe, 
                                   context: context,
                                 ),
                               );
@@ -123,17 +121,7 @@ class LoginPage extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Row(
-                      //   children: [
-                      //     Checkbox(
-                      //       value: false,
-                      //       onChanged: (value) {
-                      //         // Placeholder for Remember me functionality
-                      //       },
-                      //     ),
-                      //     const Text('Remember me', style: TextStyle(color: Colors.grey)),
-                      //   ],
-                      // ),
+                      // Checkbox "Remember Me" đã được tích hợp trong AuthForm, không cần thêm ở đây nữa
                       TextButton(
                         onPressed: () => Navigator.pushNamed(context, '/forgot-password'),
                         child: const Text(

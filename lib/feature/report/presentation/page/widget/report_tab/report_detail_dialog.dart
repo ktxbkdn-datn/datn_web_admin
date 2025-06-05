@@ -163,47 +163,92 @@ class _ReportDetailDialogState extends State<ReportDetailDialog> {
                           String? errorMessage;
 
                           print('Trạng thái ReportImageBloc: $imageState');
-                          if (imageState is ReportImageLoading) {
+                          if (imageState is ReportImageInitial) {
+                            isLoading = true;
+                          } else if (imageState is ReportImageLoading) {
                             isLoading = true;
                             print('Đang tải media...');
                           } else if (imageState is ReportImagesLoaded) {
                             mediaUrls = imageState.imageUrls;
                             print('Media đã tải: $mediaUrls');
                           } else if (imageState is ReportImageError) {
-                            errorMessage = 'Không tải được media, vui lòng thử lại.';
-                            print('Lỗi khi tải media: ${imageState.message}');
+                            errorMessage = 'Không tải được media do lỗi hệ thống, vui lòng thử lại sau.';
+                            print('Lỗi nghiêm trọng khi tải media: ${imageState.message}');
                           }
 
                           return Column(
                             children: [
                               if (isLoading)
-                                const SizedBox(
-                                  height: 400,
-                                  child: Center(child: CircularProgressIndicator()),
+                                SizedBox(
+                                  height: MediaQuery.of(context).size.height * 0.4,
+                                  child: const Center(child: CircularProgressIndicator()),
                                 )
                               else if (errorMessage != null) ...[
                                 Container(
-                                  height: 300,
+                                  height: MediaQuery.of(context).size.height * 0.4,
                                   width: double.infinity,
-                                  color: Colors.grey[200],
-                                  child: Center(
-                                    child: Text(
-                                      errorMessage,
-                                      style: const TextStyle(fontSize: 18, color: Colors.grey),
-                                    ),
+                                  color: Colors.grey[100],
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.error_outline,
+                                        size: 50,
+                                        color: Colors.red[400],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        errorMessage,
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.grey[700],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          print('Thử lại tải media cho report ID: ${widget.report.reportId}');
+                                          context.read<ReportImageBloc>().add(GetReportImagesEvent(widget.report.reportId));
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.blue,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Thử lại',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 const SizedBox(height: 20),
                               ] else if (mediaUrls.isEmpty) ...[
                                 Container(
-                                  height: 300,
+                                  height: MediaQuery.of(context).size.height * 0.4,
                                   width: double.infinity,
-                                  color: Colors.grey[200],
-                                  child: const Center(
-                                    child: Text(
-                                      'Chưa có media',
-                                      style: TextStyle(fontSize: 18, color: Colors.grey),
-                                    ),
+                                  color: Colors.grey[100],
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.image_not_supported,
+                                        size: 50,
+                                        color: Colors.grey[600],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        'Báo cáo này chưa có hình ảnh hoặc video',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.grey[700],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 const SizedBox(height: 20),

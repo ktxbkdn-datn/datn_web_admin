@@ -1,4 +1,4 @@
-// lib/src/features/dashboard/presentation/widgets/dashboard_page.dart
+import 'dart:async';
 import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_bloc.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_event.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_card/report_stat.dart';
@@ -50,6 +50,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   int _currentReportTypePage = 0;
   List<int> _reportTypeIds = [4];
   bool _isLoading = false;
+  Timer? _refreshTimer;
 
   final List<MenuItem> menuItems = const [
     MenuItem(title: 'Người dùng', icon: Iconsax.people, route: '/users'),
@@ -67,14 +68,15 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     super.initState();
     _loadLocalAdmin();
     _fetchAdmin();
-    context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
-    context.read<RegistrationBloc>().add(const FetchRegistrations(page: 1, limit: 1000));
+    _fetchInitialData();
+    _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+      _fetchInitialData();
+    });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Đăng ký RouteObserver
     final ModalRoute? route = ModalRoute.of(context);
     if (route is PageRoute) {
       routeObserver.subscribe(this, route);
@@ -83,20 +85,32 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     routeObserver.unsubscribe(this);
     super.dispose();
   }
 
-  // Gọi khi quay lại trang DashboardPage
   @override
   void didPopNext() {
-    // Khi quay lại trang này, làm mới dữ liệu
-    context.read<StatisticsBloc>().add(FetchMonthlyConsumption(
-      year: DateTime.now().year, // Sử dụng năm hiện tại
-      areaId: null, // Mặc định là null (tất cả khu vực)
-    ));
-    context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
-    context.read<RegistrationBloc>().add(const FetchRegistrations(page: 1, limit: 1000));
+    final authState = context.read<AuthBloc>().state;
+    if (authState.auth != null) {
+      context.read<StatisticsBloc>().add(FetchMonthlyConsumption(
+        year: DateTime.now().year,
+        areaId: null,
+      ));
+    } else {
+      print('DashboardPage: No auth token, skipping refresh on pop');
+    }
+  }
+
+  Future<void> _fetchInitialData() async {
+    final authState = context.read<AuthBloc>().state;
+    if (authState.auth != null) {
+      context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
+      context.read<RegistrationBloc>().add(const FetchRegistrations(page: 1, limit: 1000));
+    } else {
+      print('DashboardPage: No auth token, skipping initial data fetch');
+    }
   }
 
   Future<void> _loadLocalAdmin() async {
@@ -135,81 +149,85 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   }
 
   Widget buildRegistrationContent(RegistrationState state, BuildContext context) {
-    switch (state.runtimeType) {
-      case RegistrationLoading:
-        return const CircularProgressIndicator();
+    // Khởi tạo các biến mặc định
+    int pendingCount = 0;
+    List<Registration> displayRegistrations = [];
 
-      case RegistrationsLoaded:
-        final loadedState = state as RegistrationsLoaded;
-        final allRegistrations = loadedState.registrations;
-        final pendingCount = allRegistrations.where((reg) => reg.status == 'PENDING').length;
+    // Xử lý trạng thái
+    if (state is RegistrationsLoaded) {
+      final loadedState = state as RegistrationsLoaded;
+      final allRegistrations = loadedState.registrations;
+      pendingCount = allRegistrations.where((reg) => reg.status == 'PENDING').length;
 
-        final pendingRegistrations = allRegistrations
-            .where((reg) => reg.status == 'PENDING')
-            .toList()
-          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      final pendingRegistrations = allRegistrations
+          .where((reg) => reg.status == 'PENDING')
+          .toList()
+        ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-        final processedRegistrations = allRegistrations
-            .where((reg) => reg.status != 'PENDING')
-            .toList()
-          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      final processedRegistrations = allRegistrations
+          .where((reg) => reg.status != 'PENDING')
+          .toList()
+        ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-        final displayRegistrations = [...pendingRegistrations];
-        if (displayRegistrations.length < 3) {
-          displayRegistrations.addAll(processedRegistrations.take(3 - displayRegistrations.length));
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                Text(
-                  'Đăng ký (${pendingCount} chưa xử lý)',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const Spacer(),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(
-                      context,
-                      '/registrations',
-                      arguments: {'statusFilter': 'PENDING'},
-                    );
-                  },
-                  child: const Text('Xem tất cả', style: TextStyle(color: Colors.blue)),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: () {
-                    context.read<RegistrationBloc>().add(const FetchRegistrations(page: 1, limit: 1000));
-                  },
-                  icon: const Icon(Icons.refresh, color: Colors.green),
-                  tooltip: 'Làm mới',
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            displayRegistrations.isEmpty
-                ? const Text('Không có đăng ký nào')
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: displayRegistrations.map((reg) {
-                      return RegistrationCard(registration: reg);
-                    }).toList(),
-                  ),
-          ],
-        );
-
-      case RegistrationError:
-        final errorState = state as RegistrationError;
-        return Text('Lỗi: ${errorState.message}');
-
-      default:
-        return const Text('Không có dữ liệu');
+      displayRegistrations = [...pendingRegistrations];
+      if (displayRegistrations.length < 3) {
+        displayRegistrations.addAll(processedRegistrations.take(3 - displayRegistrations.length));
+      }
     }
+
+    // Trả về giao diện với các thành phần cố định
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Text(
+              'Đăng ký (${pendingCount} chưa xử lý)',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const Spacer(),
+            TextButton(
+              onPressed: () {
+                Navigator.pushNamed(
+                  context,
+                  '/registrations',
+                  arguments: {'statusFilter': 'PENDING'},
+                );
+              },
+              child: const Text('Xem tất cả', style: TextStyle(color: Colors.blue)),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: () {
+                final authState = context.read<AuthBloc>().state;
+                if (authState.auth != null) {
+                  context.read<RegistrationBloc>().add(const FetchRegistrations(page: 1, limit: 1000));
+                }
+              },
+              icon: const Icon(Icons.refresh, color: Colors.green),
+              tooltip: 'Làm mới',
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        // Xử lý hiển thị danh sách hoặc thông báo
+        if (state is RegistrationLoading)
+          const CircularProgressIndicator()
+        else if (state is RegistrationError)
+          Text('Lỗi: ${(state as RegistrationError).message}')
+        else if (displayRegistrations.isEmpty)
+          const Text('Không có đăng ký nào')
+        else
+          Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: displayRegistrations.map((reg) {
+              return RegistrationCard(registration: reg);
+            }).toList(),
+          ),
+      ],
+    );
   }
 
   Widget buildReportContent(ReportState state, BuildContext context) {
@@ -325,7 +343,6 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         );
 
       case ReportInitial:
-        context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
         return const CircularProgressIndicator();
 
       case ReportLoading:
@@ -652,7 +669,10 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                                                       const SizedBox(width: 8),
                                                       IconButton(
                                                         onPressed: () {
-                                                          context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
+                                                          final authState = context.read<AuthBloc>().state;
+                                                          if (authState.auth != null) {
+                                                            context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
+                                                          }
                                                         },
                                                         icon: const Icon(Icons.refresh, color: Colors.green),
                                                         tooltip: 'Làm mới',
@@ -702,7 +722,10 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                                                     const SizedBox(width: 8),
                                                     IconButton(
                                                       onPressed: () {
-                                                        context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
+                                                        final authState = context.read<AuthBloc>().state;
+                                                        if (authState.auth != null) {
+                                                          context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
+                                                        }
                                                       },
                                                       icon: const Icon(Icons.refresh, color: Colors.green),
                                                       tooltip: 'Làm mới',
@@ -736,6 +759,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                             BlocListener<AuthBloc, AuthState>(
                               listener: (context, state) {
                                 if (state.auth == null && state.successMessage != null) {
+                                  _refreshTimer?.cancel();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(state.successMessage!),
@@ -746,14 +770,26 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                                   Navigator.pushReplacementNamed(context, '/login');
                                 }
                                 if (state.error != null) {
+                                  _refreshTimer?.cancel();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(state.error!),
                                       backgroundColor: Colors.red,
                                     ),
                                   );
-                                  if (state.error!.contains('Authorization') || state.error!.contains('Token')) {
+                                  if (state.error!.contains('Authorization') || state.error!.contains('Token') || state.error!.contains('Phiên đăng nhập đã hết hạn')) {
                                     Navigator.pushReplacementNamed(context, '/login');
+                                  }
+                                }
+                              },
+                              child: Container(),
+                            ),
+                            BlocListener<RegistrationBloc, RegistrationState>(
+                              listener: (context, state) {
+                                if (state is RegistrationError) {
+                                  print('RegistrationBloc error: ${state.message}');
+                                  if (state.message.contains('Phiên đăng nhập đã hết hạn')) {
+                                    // Đã có AuthBloc xử lý lỗi này, không cần làm gì thêm
                                   }
                                 }
                               },
@@ -906,5 +942,4 @@ class MenuItem {
   });
 }
 
-// Định nghĩa RouteObserver ở cấp độ toàn cục
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();

@@ -8,6 +8,8 @@ import '../../../../user/presentation/bloc/user_bloc.dart';
 import '../../../../user/presentation/bloc/user_state.dart';
 import '../../../../user/presentation/bloc/user_event.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_card.dart';
+import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_bloc.dart';
+import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_state.dart';
 
 class UserStatCard extends StatefulWidget {
   const UserStatCard({Key? key}) : super(key: key);
@@ -27,9 +29,14 @@ class _UserStatCardState extends State<UserStatCard> {
   @override
   void initState() {
     super.initState();
-    _loadStatsFromCache().then((_) {
+    _loadStatsFromCache().then((_) async {
       if (!_isCacheValid) {
-        _fetchAllUsers();
+        final authState = context.read<AuthBloc>().state;
+        if (authState.auth != null) {
+          await _fetchAllUsers();
+        } else {
+          print('UserStatCard: No auth token, skipping fetch');
+        }
       }
     });
   }
@@ -61,7 +68,6 @@ class _UserStatCardState extends State<UserStatCard> {
         context.read<UserBloc>().add(FetchUsersEvent(page: page, limit: limit));
         await Future.delayed(const Duration(milliseconds: 100)); // Wait for state update
 
-        // Access the state manually since we're not in a BlocBuilder context
         final state = context.read<UserBloc>().state;
         if (state is UserLoaded) {
           fetchedUsers.addAll(state.users);
@@ -85,6 +91,9 @@ class _UserStatCardState extends State<UserStatCard> {
       await _saveStats(totalItems, _totalThisMonth, _lastMonthTotal);
     } catch (e) {
       print('Error fetching users: $e');
+      setState(() {
+        _isCacheValid = false;
+      });
     } finally {
       setState(() {
         _isFetching = false;
@@ -101,7 +110,6 @@ class _UserStatCardState extends State<UserStatCard> {
   }
 
   void _calculateStats() {
-    // Xác định tháng hiện tại (tháng 6, 2025) và tháng trước (tháng 5, 2025)
     final now = DateTime(2025, 6, 2); // Current date as per system time
     final currentMonthStart = DateTime(now.year, now.month, 1); // Đầu tháng 6
     final currentMonthEnd =
@@ -109,13 +117,11 @@ class _UserStatCardState extends State<UserStatCard> {
     final lastMonthStart = DateTime(now.year, now.month - 1, 1); // Đầu tháng 5
     final lastMonthEnd = currentMonthStart.subtract(const Duration(days: 1)); // Cuối tháng 5
 
-    // Tính tổng số người dùng tháng trước (tháng 5)
     _lastMonthTotal = _allUsers.where((user) {
       return user.createdAt.isAfter(lastMonthStart) &&
           user.createdAt.isBefore(lastMonthEnd.add(const Duration(days: 1)));
     }).length;
 
-    // Tính tổng số người dùng tháng này (tháng 6)
     _totalThisMonth = _allUsers.where((user) {
       return user.createdAt.isAfter(currentMonthStart) &&
           user.createdAt.isBefore(currentMonthEnd.add(const Duration(days: 1)));
@@ -134,13 +140,14 @@ class _UserStatCardState extends State<UserStatCard> {
       child: BlocListener<UserBloc, UserState>(
         listener: (context, state) {
           if (state is UserCreated || state is UserUpdated || state is UserDeleted) {
-            // Re-fetch users when the user list changes
-            _fetchAllUsers();
+            final authState = context.read<AuthBloc>().state;
+            if (authState.auth != null) {
+              _fetchAllUsers();
+            }
           }
         },
         child: BlocBuilder<UserBloc, UserState>(
           builder: (context, state) {
-            // Hiển thị loading nếu đang tải và chưa có dữ liệu
             if (_isFetching && !_isCacheValid) {
               return const SizedBox(
                 width: 200,
@@ -151,17 +158,15 @@ class _UserStatCardState extends State<UserStatCard> {
               );
             }
 
-            // Tính phần trăm thay đổi
             double percentageChange = _lastMonthTotal > 0
                 ? ((_totalThisMonth - _lastMonthTotal) / _lastMonthTotal * 100)
                 : _totalThisMonth > 0
-                    ? 100.0 // Nếu tháng trước không có người dùng nhưng tháng này có, thì tăng 100%
-                    : 0.0; // Nếu cả hai tháng đều không có người dùng, thì 0%
+                    ? 100.0
+                    : 0.0;
             String percentageChangeText = percentageChange.isFinite
                 ? '${percentageChange.toStringAsFixed(1)}%'
                 : '0%';
 
-            // Xác định màu thay đổi
             Color changeColor = percentageChange < 0 ? Colors.red : Colors.green;
 
             return StatCard(

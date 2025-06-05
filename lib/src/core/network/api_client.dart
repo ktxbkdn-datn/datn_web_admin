@@ -14,7 +14,6 @@ class ApiService {
   String? _refreshToken;
   bool _isInitialized = false;
   final _secureStorage = const FlutterSecureStorage();
-  // Public endpoints that don't require authentication
   static const _publicEndpoints = [
     '/auth/admin/login',
     '/auth/user/login',
@@ -30,8 +29,13 @@ class ApiService {
 
   Future<void> initialize() async {
     if (!_isInitialized) {
-      await _initializeTokens();
-      _isInitialized = true;
+      try {
+        await _initializeTokens();
+        _isInitialized = true;
+      } catch (e) {
+        print('Error initializing ApiService: $e');
+        _isInitialized = false;
+      }
     }
   }
 
@@ -59,9 +63,43 @@ class ApiService {
         }
       }
     }
+
+    if (_token != null && _refreshToken != null) {
+      final isValid = await _isTokenValid(_token!);
+      if (!isValid) {
+        print('Access token is invalid or expired, attempting to refresh');
+        try {
+          await refreshAccessToken();
+        } catch (e) {
+          print('Failed to refresh token: $e');
+          await clearToken();
+        }
+      }
+    }
   }
 
-  Future<void> setToken(String? token, {String? refreshToken}) async {
+  Future<bool> _isTokenValid(String token) async {
+    try {
+      final decodedToken = JwtDecoder.decode(token);
+      final exp = decodedToken['exp'] as int?;
+      final iat = decodedToken['iat'] as int?;
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
+
+      if (exp == null || iat == null) {
+        print('Token missing exp or iat claim');
+        return false;
+      }
+
+      final isValid = now >= iat && now < exp;
+      print('Token validity check: now=$now, iat=$iat, exp=$exp, isValid=$isValid');
+      return isValid;
+    } catch (e) {
+      print('Error validating token: $e');
+      return false;
+    }
+  }
+
+  Future<void> setToken(String? token, {String? refreshToken, bool rememberMe = false}) async {
     _token = token;
     _refreshToken = refreshToken ?? _refreshToken;
     final prefs = await SharedPreferences.getInstance();
@@ -100,10 +138,32 @@ class ApiService {
         print('Removed refresh token from secure storage');
       }
     }
+
+    await prefs.setBool('remember_me', rememberMe);
+    print('Saved rememberMe to shared preferences: $rememberMe');
   }
 
   Future<void> clearToken() async {
-    await setToken(null);
+    final prefs = await SharedPreferences.getInstance();
+    final rememberMe = prefs.getBool('remember_me') ?? false;
+
+    if (!rememberMe) {
+      _token = null;
+      _refreshToken = null;
+      await prefs.remove('auth_token');
+      await prefs.remove('refresh_token');
+      await prefs.remove('saved_username');
+      await prefs.remove('saved_password');
+      await prefs.setBool('remember_me', false);
+      const bool kIsWeb = bool.fromEnvironment('dart.library.js_util');
+      if (!kIsWeb) {
+        await _secureStorage.delete(key: 'auth_token');
+        await _secureStorage.delete(key: 'refresh_token');
+      }
+      print('Cleared all tokens and user data');
+    } else {
+      print('Keeping tokens due to "Remember Me"');
+    }
   }
 
   Future<String?> getUserIdFromToken() async {
@@ -122,11 +182,10 @@ class ApiService {
     }
   }
 
-  Future<bool> refreshAccessToken() async {
+  Future<void> refreshAccessToken() async {
     print('Attempting to refresh access token');
     if (_refreshToken == null) {
-      print('No refresh token available');
-      return false;
+      throw AuthFailure('No refresh token available');
     }
 
     final uri = Uri.parse('$baseUrl/auth/refresh');
@@ -160,22 +219,23 @@ class ApiService {
               }
             }
           }
-          newRefreshToken ??= _refreshToken; // Keep existing if not rotated
+          newRefreshToken ??= _refreshToken;
 
           await setToken(newAccessToken, refreshToken: newRefreshToken);
           print('Access token refreshed successfully');
-          return true;
+          return;
         } else {
-          print('No access token in refresh response');
-          return false;
+          throw ServerFailure('No access token in refresh response');
         }
       } else {
-        print('Failed to refresh token: ${response.statusCode}');
-        return false;
+        throw AuthFailure('Failed to refresh token: ${response.statusCode}');
       }
     } catch (e) {
       print('Error refreshing token: $e');
-      return false;
+      if (e is SocketException) {
+        throw NetworkFailure('Network error while refreshing token: $e');
+      }
+      throw AuthFailure('Error refreshing token: $e');
     }
   }
 
@@ -196,10 +256,10 @@ class ApiService {
     try {
       final bodyString = response.body;
       if (bodyString.isEmpty) {
-        return null; // Trả về null nếu body rỗng
+        return null;
       }
-      final responseBody = jsonDecode(bodyString); // Không ép kiểu
-      return responseBody; // Có thể là Map, List, hoặc kiểu khác
+      final responseBody = jsonDecode(bodyString);
+      return responseBody;
     } catch (e) {
       print('Error parsing response body: $e');
       throw Exception('Lỗi parse JSON: $e');
@@ -207,19 +267,27 @@ class ApiService {
   }
 
   Future<T> _performRequestWithRefresh<T>(
-      Future<http.Response> Function() requestFunction,
-      String endpoint,
-      Future<T> Function(http.Response) parseResponse,
-      bool Function(http.Response) isSuccess,
-      ) async {
+    Future<http.Response> Function() requestFunction,
+    String endpoint,
+    Future<T> Function(http.Response) parseResponse,
+    bool Function(http.Response) isSuccess,
+  ) async {
     const int maxRetries = 2;
     int retryCount = 0;
     bool isPublic = _publicEndpoints.any((publicEndpoint) =>
-    endpoint == publicEndpoint ||
+        endpoint == publicEndpoint ||
         endpoint.startsWith(publicEndpoint.endsWith('/') ? publicEndpoint : '$publicEndpoint/'));
 
     while (retryCount < maxRetries) {
       try {
+        if (!isPublic && _token != null) {
+          final isValid = await _isTokenValid(_token!);
+          if (!isValid) {
+            print('Token is invalid before request, attempting to refresh');
+            await refreshAccessToken();
+          }
+        }
+
         final response = await requestFunction();
         print('Response status for $endpoint: ${response.statusCode} - ${response.body}');
 
@@ -229,16 +297,10 @@ class ApiService {
 
         if (response.statusCode == 401 && !isPublic) {
           print('Received 401 Unauthorized for $endpoint, attempting to refresh token');
-          final refreshed = await refreshAccessToken();
-          if (refreshed) {
-            retryCount++;
-            print('Retrying request with new access token ($retryCount/$maxRetries) for $endpoint');
-            continue;
-          } else {
-            print('Failed to refresh token for $endpoint, logging out');
-            await clearToken();
-            throw AuthFailure('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-          }
+          await refreshAccessToken();
+          retryCount++;
+          print('Retrying request with new access token ($retryCount/$maxRetries) for $endpoint');
+          continue;
         }
 
         if (response.statusCode == 429) {
@@ -251,6 +313,9 @@ class ApiService {
       } on SocketException catch (e) {
         print('SocketException for $endpoint: $e');
         throw NetworkFailure('Lỗi kết nối: Không thể kết nối đến server');
+      } on AuthFailure catch (e) {
+        print('AuthFailure for $endpoint: $e');
+        throw e;
       } catch (e) {
         print('Unexpected error for $endpoint: $e');
         throw ServerFailure('Lỗi không xác định: $e');
@@ -261,13 +326,13 @@ class ApiService {
   }
 
   Future<dynamic> get(
-      String endpoint, {
-        Map<String, String>? headers,
-        Map<String, String>? queryParams,
-      }) async {
+    String endpoint, {
+    Map<String, String>? headers,
+    Map<String, String>? queryParams,
+  }) async {
     print('Starting GET request to $endpoint');
-    return _performRequestWithRefresh(
-          () async {
+    return await _performRequestWithRefresh(
+      () async {
         _checkToken();
         final requestHeaders = {
           'Authorization': 'Bearer $_token',
@@ -284,19 +349,19 @@ class ApiService {
         );
       },
       endpoint,
-          (response) async => await _parseResponseBody(response),
-          (response) => response.statusCode >= 200 && response.statusCode < 300,
+      (response) async => await _parseResponseBody(response),
+      (response) => response.statusCode >= 200 && response.statusCode < 300,
     );
   }
 
   Future<Map<String, dynamic>> post(
-      String endpoint,
-      Map<String, dynamic> body, {
-        Map<String, String>? headers,
-      }) async {
+    String endpoint,
+    Map<String, dynamic> body, {
+    Map<String, String>? headers,
+  }) async {
     print('Starting POST request to $endpoint');
-    return _performRequestWithRefresh(
-          () async {
+    return await _performRequestWithRefresh(
+      () async {
         final requestHeaders = {
           if (_token != null) 'Authorization': 'Bearer $_token',
           'Content-Type': 'application/json',
@@ -314,18 +379,18 @@ class ApiService {
         );
       },
       endpoint,
-          (response) async => await _parseResponseBody(response),
-          (response) => response.statusCode >= 200 && response.statusCode < 300,
+      (response) async => await _parseResponseBody(response),
+      (response) => response.statusCode >= 200 && response.statusCode < 300,
     );
   }
 
   Future<dynamic> postMultipart(
-      String endpoint, {
-        Map<String, String>? fields,
-        required List<http.MultipartFile> files,
-      }) async {
-    return _performRequestWithRefresh(
-          () async {
+    String endpoint, {
+    Map<String, String>? fields,
+    required List<http.MultipartFile> files,
+  }) async {
+    return await _performRequestWithRefresh(
+      () async {
         final request = http.MultipartRequest('POST', Uri.parse('$baseUrl$endpoint'));
         if (fields != null) {
           request.fields.addAll(fields);
@@ -338,19 +403,19 @@ class ApiService {
         return await http.Response.fromStream(streamedResponse);
       },
       endpoint,
-          (response) async => await _parseResponseBody(response),
-          (response) => response.statusCode == 200 || response.statusCode == 201,
+      (response) async => await _parseResponseBody(response),
+      (response) => response.statusCode == 200 || response.statusCode == 201,
     );
   }
 
   Future<Map<String, dynamic>> put(
-      String endpoint,
-      Map<String, dynamic> body, {
-        Map<String, String>? headers,
-      }) async {
+    String endpoint,
+    Map<String, dynamic> body, {
+    Map<String, String>? headers,
+  }) async {
     print('Starting PUT request to $endpoint');
-    return _performRequestWithRefresh(
-          () async {
+    return await _performRequestWithRefresh(
+      () async {
         _checkToken();
         final requestHeaders = {
           'Authorization': 'Bearer $_token',
@@ -369,19 +434,19 @@ class ApiService {
         );
       },
       endpoint,
-          (response) async => await _parseResponseBody(response),
-          (response) => response.statusCode >= 200 && response.statusCode < 300,
+      (response) async => await _parseResponseBody(response),
+      (response) => response.statusCode >= 200 && response.statusCode < 300,
     );
   }
 
   Future<dynamic> putMultipart(
-      String endpoint, {
-        Map<String, String>? fields,
-        List<http.MultipartFile>? files,
-        Map<String, String>? headers,
-      }) async {
-    return _performRequestWithRefresh(
-          () async {
+    String endpoint, {
+    Map<String, String>? fields,
+    List<http.MultipartFile>? files,
+    Map<String, String>? headers,
+  }) async {
+    return await _performRequestWithRefresh(
+      () async {
         final uri = Uri.parse('$baseUrl$endpoint');
         print('PUT Multipart Request URL: $uri');
 
@@ -425,7 +490,7 @@ class ApiService {
         return await http.Response.fromStream(streamedResponse);
       },
       endpoint,
-          (response) async {
+      (response) async {
         try {
           final decodedResponse = await _parseResponseBody(response);
           print('PUT Multipart Decoded Response: $decodedResponse');
@@ -435,18 +500,18 @@ class ApiService {
           throw Exception('Failed to decode JSON response: ${response.body}');
         }
       },
-          (response) => response.statusCode == 200 || response.statusCode == 201,
+      (response) => response.statusCode == 200 || response.statusCode == 201,
     );
   }
 
   Future<Map<String, dynamic>> delete(
-      String endpoint, {
-        Map<String, String>? headers,
-        dynamic data,
-      }) async {
+    String endpoint, {
+    Map<String, String>? headers,
+    dynamic data,
+  }) async {
     print('Starting DELETE request to $endpoint in ApiService $this');
-    return _performRequestWithRefresh(
-          () async {
+    return await _performRequestWithRefresh(
+      () async {
         if (!_isInitialized) {
           await initialize();
         }
@@ -468,13 +533,13 @@ class ApiService {
         );
       },
       endpoint,
-          (response) async {
+      (response) async {
         if (response.statusCode == 204) {
           return {};
         }
         return await _parseResponseBody(response);
       },
-          (response) => response.statusCode >= 200 && response.statusCode < 300,
+      (response) => response.statusCode >= 200 && response.statusCode < 300,
     );
   }
 }

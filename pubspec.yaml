@@ -30,38 +30,42 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_bloc:
-  get_it:
-  get:
-  dartz:
-  equatable:
-  flutter_secure_storage:
-  fl_chart:
-  shared_preferences:
-  jwt_decoder:
-  flutter_dropzone:
-  image_picker:
-  uri:
-  url_launcher:
-  http: ^1.3.0
-  cached_network_image:
-  smooth_page_indicator:
+  flutter_web_plugins:
+    sdk: flutter
+  flutter_bloc: ^9.1.1
+  get_it: ^8.0.3
+  get: ^4.7.2
+  dartz: ^0.10.1
+  equatable: ^2.0.7
+  flutter_secure_storage: ^9.2.4
+  fl_chart: ^1.0.0
+  shared_preferences: ^2.5.3
+  jwt_decoder: ^2.0.1
+  flutter_dropzone: ^4.2.1
+  image_picker: ^1.1.2
+  uri: ^1.0.0
+  url_launcher: ^6.3.1
+  http: ^1.4.0
+  cached_network_image: ^3.4.1
+  smooth_page_indicator: ^1.2.1
   logger: ^2.5.0
-  intl:
-  video_player:
-  chewie:
-  webview_flutter:
-  html_editor_enhanced:
-  path_provider:
+  intl: ^0.20.2
+  video_player: ^2.10.0
+  chewie: ^1.11.3
+  webview_flutter: ^4.13.0
+  html_editor_enhanced: ^2.5.1
+  path_provider: ^2.1.5
   cupertino_icons: ^1.0.8
-  iconsax:
-  file_picker:
-  open_file_plus:
-  flutter_pdfview:
-  permission_handler:
+  iconsax: ^0.0.8
+  file_picker: ^5.5.0
+  open_file_plus: ^3.4.1+1
+  flutter_pdfview: ^1.4.0+1
+  permission_handler: ^12.0.0+1
   pdf: ^3.11.3
   universal_html: ^2.2.4
   google_fonts: ^6.2.1
+  ntp: ^2.0.0
+  flutter_lints: ^6.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -71,7 +75,6 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

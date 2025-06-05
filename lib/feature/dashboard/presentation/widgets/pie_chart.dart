@@ -1,10 +1,8 @@
-// lib/src/features/report/presentation/widgets/report_pie_chart.dart
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:intl/date_symbol_data_local.dart'; // Để hỗ trợ định dạng ngôn ngữ
-
+import 'package:intl/date_symbol_data_local.dart';
 import '../../../report/domain/entities/report_entity.dart';
 import '../../../report/domain/entities/report_type_entity.dart';
 import '../../../report/presentation/bloc/report/report_bloc.dart';
@@ -13,6 +11,8 @@ import '../../../report/presentation/bloc/report/report_state.dart';
 import '../../../report/presentation/bloc/rp_type/rp_type_bloc.dart';
 import '../../../report/presentation/bloc/rp_type/rp_type_event.dart';
 import '../../../report/presentation/bloc/rp_type/rp_type_state.dart';
+import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_bloc.dart';
+import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_state.dart';
 
 class ReportPieChart extends StatefulWidget {
   const ReportPieChart({super.key});
@@ -27,21 +27,29 @@ class _ReportPieChartState extends State<ReportPieChart> {
   @override
   void initState() {
     super.initState();
-    // Khởi tạo locale để hỗ trợ tiếng Việt
     initializeDateFormatting('vi', null).then((_) {
       setState(() {});
     });
-    // Fetch report types and reports for the current month
-    context.read<ReportTypeBloc>().add(const GetAllReportTypesEvent());
-    _fetchReportsForMonth(selectedMonth);
+    final authState = context.read<AuthBloc>().state;
+    if (authState.auth != null) {
+      context.read<ReportTypeBloc>().add(const GetAllReportTypesEvent());
+    } else {
+      print('ReportPieChart: No auth token, skipping fetch');
+    }
   }
 
   void _fetchReportsForMonth(DateTime month) {
-    // Assuming status null fetches all statuses; adjust if needed
-    context.read<ReportBloc>().add(const GetAllReportsEvent(
-      page: 1,
-      limit: 1000, // Large limit to get all reports; consider pagination if needed
-    ));
+    final authState = context.read<AuthBloc>().state;
+    if (authState.auth != null) {
+      // Chỉ gọi API nếu trạng thái hiện tại là ReportInitial hoặc ReportError
+      final reportState = context.read<ReportBloc>().state;
+      if (reportState is ReportInitial || reportState is ReportError) {
+        context.read<ReportBloc>().add(const GetAllReportsEvent(
+          page: 1,
+          limit: 1000,
+        ));
+      }
+    }
   }
 
   @override
@@ -68,7 +76,13 @@ class _ReportPieChartState extends State<ReportPieChart> {
                       tooltip: 'Làm mới dữ liệu',
                       color: Colors.green,
                       onPressed: () {
-                        _fetchReportsForMonth(selectedMonth);
+                        final authState = context.read<AuthBloc>().state;
+                        if (authState.auth != null) {
+                          context.read<ReportBloc>().add(const GetAllReportsEvent(
+                            page: 1,
+                            limit: 1000,
+                          ));
+                        }
                       },
                     ),
                     TextButton(
@@ -115,7 +129,6 @@ class _ReportPieChartState extends State<ReportPieChart> {
     List<ReportTypeEntity> reportTypes,
     DateTime month,
   ) {
-    // Filter reports for the selected month
     final monthReports = reports.where((report) {
       if (report.createdAt == null) return false;
       try {
@@ -126,13 +139,11 @@ class _ReportPieChartState extends State<ReportPieChart> {
       }
     }).toList();
 
-    // Count reports by report type
     final reportCounts = <int, int>{};
     for (var report in monthReports) {
       reportCounts[report.reportTypeId] = (reportCounts[report.reportTypeId] ?? 0) + 1;
     }
 
-    // Generate pie chart sections
     final colors = [
       Colors.green,
       Colors.blue,
@@ -163,14 +174,13 @@ class _ReportPieChartState extends State<ReportPieChart> {
             ),
             badgeWidget: Text(
               reportType.name,
-              style: const TextStyle(fontSize: 0), // Hidden for tooltip use
+              style: const TextStyle(fontSize: 0),
             ),
           ),
         );
       }
     }
 
-    // Handle no data case
     final isEmpty = sections.isEmpty;
     if (isEmpty) {
       sections.add(
@@ -186,7 +196,7 @@ class _ReportPieChartState extends State<ReportPieChart> {
           ),
           badgeWidget: const Text(
             'Không có dữ liệu',
-            style: TextStyle(fontSize: 0), // Hidden for tooltip use
+            style: TextStyle(fontSize: 0),
           ),
         ),
       );
@@ -210,7 +220,7 @@ class _ReportPieChartState extends State<ReportPieChart> {
                         pieTouchResponse.touchedSection == null) {
                       return;
                     }
-                    setState(() {}); // Refresh to update tooltip
+                    setState(() {});
                   },
                 ),
               ),
@@ -271,7 +281,6 @@ class _ReportPieChartState extends State<ReportPieChart> {
                 height: 450,
                 child: Column(
                   children: [
-                    // Dropdown để chọn năm
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -299,7 +308,6 @@ class _ReportPieChartState extends State<ReportPieChart> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    // Grid để chọn tháng
                     Expanded(
                       child: GridView.builder(
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -345,7 +353,7 @@ class _ReportPieChartState extends State<ReportPieChart> {
   }
 
   void _showAllMonthsCharts(BuildContext context, int year) {
-    Navigator.pop(context); // Close the dialog
+    Navigator.pop(context);
     showDialog(
       context: context,
       builder: (context) {

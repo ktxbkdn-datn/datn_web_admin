@@ -1,6 +1,5 @@
-// lib/src/features/dashboard/presentation/widgets/registration_card.dart
 import 'package:flutter/material.dart';
-import '../../../../../common/constants/colors.dart'; // Import AppColors
+import '../../../../../common/constants/colors.dart';
 import 'package:intl/intl.dart';
 import '../../../register/presentation/widget/registration_detail_dialog.dart';
 import '../../../register/domain/entity/register_entity.dart';
@@ -41,7 +40,11 @@ class RegistrationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final formattedDate = DateFormat('dd/MM/yyyy HH:mm').format(registration.createdAt);
+    // Kiểm tra nếu createdAt null để tránh lỗi
+    final formattedDate = registration.createdAt != null
+        ? DateFormat('dd/MM/yyyy HH:mm').format(registration.createdAt)
+        : 'Không xác định';
+
     return GestureDetector(
       onTap: () {
         showDialog(
@@ -51,7 +54,6 @@ class RegistrationCard extends StatelessWidget {
       },
       child: Stack(
         children: [
-          // Glassmorphism Background
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(

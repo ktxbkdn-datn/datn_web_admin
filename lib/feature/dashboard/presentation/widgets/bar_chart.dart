@@ -9,6 +9,8 @@ import '../../../room/presentations/bloc/area_bloc/area_bloc.dart';
 import '../../../room/presentations/bloc/area_bloc/area_event.dart';
 import '../../../room/presentations/bloc/area_bloc/area_state.dart';
 import '../../domain/entities/consumption.dart';
+import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_bloc.dart';
+import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_state.dart';
 
 class DashboardBarChart extends StatefulWidget {
   const DashboardBarChart({Key? key}) : super(key: key);
@@ -26,14 +28,12 @@ class _DashboardBarChartState extends State<DashboardBarChart> {
   @override
   void initState() {
     super.initState();
-    // Load cached data and fetch fresh data
-    context.read<StatisticsBloc>().add(LoadCachedConsumption(
-      year: _selectedYear,
-      areaId: _selectedAreaId,
-    ));
-    _fetchData();
-    // Fetch areas
-    context.read<AreaBloc>().add(FetchAreasEvent(page: 1, limit: 100));
+    final authState = context.read<AuthBloc>().state;
+    if (authState.auth != null) {
+      context.read<AreaBloc>().add(FetchAreasEvent(page: 1, limit: 10));
+    } else {
+      print('DashboardBarChart: No auth token, skipping fetch');
+    }
   }
 
   @override
@@ -44,298 +44,325 @@ class _DashboardBarChartState extends State<DashboardBarChart> {
   }
 
   void _fetchData() {
-    print('DashboardBarChart: Fetching consumption data for year $_selectedYear, areaId $_selectedAreaId'); // Debug log
-    context.read<StatisticsBloc>().add(FetchMonthlyConsumption(
-      year: _selectedYear,
-      month: null,
-      areaId: _selectedAreaId,
-    ));
+    final authState = context.read<AuthBloc>().state;
+    if (authState.auth != null) {
+      print('DashboardBarChart: Fetching consumption data for year $_selectedYear, areaId $_selectedAreaId');
+      context.read<StatisticsBloc>().add(FetchMonthlyConsumption(
+        year: _selectedYear,
+        month: null,
+        areaId: _selectedAreaId,
+      ));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    print('DashboardBarChart: Building widget'); // Debug log
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Flexible(
-                  child: Text(
-                    'Thống kê năng lượng',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+    print('DashboardBarChart: Building widget');
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<AreaBloc, AreaState>(
+          listener: (context, state) {
+            if (!state.isLoading && state.error == null && state.areas.isNotEmpty) {
+              setState(() {
+                _selectedAreaId = state.areas.length >= 1
+                    ? state.areas[1].areaId
+                    : state.areas[0].areaId;
+              });
+              context.read<StatisticsBloc>().add(LoadCachedConsumption(
+                year: _selectedYear,
+                areaId: _selectedAreaId,
+              ));
+            }
+          },
+        ),
+        BlocListener<StatisticsBloc, StatisticsState>(
+          listener: (context, state) {
+            if (state is ConsumptionLoaded && state.consumptionData.isEmpty) {
+              _fetchData();
+            } else if (state is StatisticsInitial) {
+              _fetchData();
+            }
+          },
+        ),
+      ],
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 10,
+              offset: Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Flexible(
+                    child: Text(
+                      'Thống kê năng lượng',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
                   ),
-                ),
-                Row(
-                  children: [
-                    // Dropdown khu vực
-                    BlocBuilder<AreaBloc, AreaState>(
-                      builder: (context, areaState) {
-                        if (areaState.isLoading) {
-                          return const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                  Row(
+                    children: [
+                      BlocBuilder<AreaBloc, AreaState>(
+                        builder: (context, areaState) {
+                          if (areaState.isLoading) {
+                            return const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            );
+                          } else if (areaState.error != null) {
+                            return const Text('Lỗi tải khu vực');
+                          }
+                          List<DropdownMenuItem<int?>> items = [
+                            const DropdownMenuItem(value: null, child: Text('Tất cả')),
+                            ...areaState.areas.map((area) => DropdownMenuItem(
+                                  value: area.areaId,
+                                  child: Text(area.name),
+                                )),
+                          ];
+                          return DropdownButton<int?>(
+                            value: _selectedAreaId,
+                            items: items,
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedAreaId = value;
+                              });
+                              context.read<StatisticsBloc>().add(LoadCachedConsumption(
+                                year: _selectedYear,
+                                areaId: value,
+                              ));
+                              _fetchData();
+                            },
                           );
-                        } else if (areaState.error != null) {
-                          return const Text('Lỗi tải khu vực');
-                        }
-                        List<DropdownMenuItem<int?>> items = [
-                          const DropdownMenuItem(value: null, child: Text('Tất cả')),
-                          ...areaState.areas.map((area) => DropdownMenuItem(
-                                value: area.areaId,
-                                child: Text(area.name),
-                              )),
-                        ];
-                        return DropdownButton<int?>(
-                          value: _selectedAreaId,
-                          items: items,
-                          onChanged: (value) {
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      DropdownButton<int>(
+                        value: _selectedYear,
+                        items: List.generate(6, (index) => 2020 + index)
+                            .map((year) => DropdownMenuItem(
+                                  value: year,
+                                  child: Text(year.toString()),
+                                ))
+                            .toList(),
+                        onChanged: (year) {
+                          if (year != null) {
                             setState(() {
-                              _selectedAreaId = value;
+                              _selectedYear = year;
                             });
                             context.read<StatisticsBloc>().add(LoadCachedConsumption(
-                              year: _selectedYear,
-                              areaId: value,
+                              year: year,
+                              areaId: _selectedAreaId,
                             ));
                             _fetchData();
-                          },
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    // Dropdown năm
-                    DropdownButton<int>(
-                      value: _selectedYear,
-                      items: List.generate(6, (index) => 2020 + index)
-                          .map((year) => DropdownMenuItem(
-                                value: year,
-                                child: Text(year.toString()),
-                              ))
-                          .toList(),
-                      onChanged: (year) {
-                        if (year != null) {
-                          setState(() {
-                            _selectedYear = year;
-                          });
-                          context.read<StatisticsBloc>().add(LoadCachedConsumption(
-                            year: year,
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.refresh, color: Colors.green),
+                        tooltip: 'Làm mới dữ liệu',
+                        onPressed: () {
+                          context.read<StatisticsBloc>().add(FetchMonthlyConsumption(
+                            year: _selectedYear,
+                            month: null,
                             areaId: _selectedAreaId,
                           ));
-                          _fetchData();
-                        }
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    // Nút refresh
-                    IconButton(
-                      icon: const Icon(Icons.refresh, color: Colors.green),
-                      tooltip: 'Làm mới dữ liệu',
-                      onPressed: _fetchData,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // Hiển thị khu vực đang xem
-            BlocBuilder<StatisticsBloc, StatisticsState>(
-              builder: (context, state) {
-                if (state is ConsumptionLoaded && state.consumptionData.isNotEmpty) {
-                  Consumption consumption = _getConsumption(state.consumptionData);
-                  return Text(
-                    'Khu vực: ${consumption.areaName}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.black54,
-                    ),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-            const SizedBox(height: 16),
-            BlocBuilder<StatisticsBloc, StatisticsState>(
-              builder: (context, state) {
-                if (state is StatisticsLoading) {
-                  print('DashboardBarChart: Displaying loading indicator'); // Debug log
-                  return const Center(child: CircularProgressIndicator());
-                } else if (state is StatisticsError) {
-                  print('DashboardBarChart: Error: ${state.message}'); // Debug log
-                  return Center(child: Text('Lỗi: ${state.message}'));
-                } else if (state is ConsumptionLoaded) {
-                  if (state.consumptionData.isEmpty) {
-                    print('DashboardBarChart: No data available'); // Debug log
-                    return const Center(child: Text('Không có dữ liệu'));
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              BlocBuilder<StatisticsBloc, StatisticsState>(
+                builder: (context, state) {
+                  if (state is ConsumptionLoaded && state.consumptionData.isNotEmpty) {
+                    Consumption consumption = _getConsumption(state.consumptionData);
+                    return Text(
+                      'Khu vực: ${consumption.areaName}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black54,
+                      ),
+                    );
                   }
+                  return const SizedBox.shrink();
+                },
+              ),
+              const SizedBox(height: 16),
+              BlocBuilder<StatisticsBloc, StatisticsState>(
+                builder: (context, state) {
+                  if (state is ConsumptionLoaded && state.consumptionData.isNotEmpty) {
+                    Consumption consumption = _getConsumption(state.consumptionData);
+                    final services = _getServices(consumption);
+                    if (services.isEmpty) {
+                      print('DashboardBarChart: No services to display');
+                      return const Center(child: Text('Không có dịch vụ nào để hiển thị'));
+                    }
 
-                  Consumption consumption = _getConsumption(state.consumptionData);
-                  final services = _getServices(consumption);
-                  if (services.isEmpty) {
-                    print('DashboardBarChart: No services to display'); // Debug log
-                    return const Center(child: Text('Không có dịch vụ nào để hiển thị'));
-                  }
+                    final colors = _generateColors(services.length);
+                    final maxY = _getMaxY(consumption, services);
 
-                  final colors = _generateColors(services.length);
-                  final maxY = _getMaxY(consumption, services);
+                    print('DashboardBarChart: Rendering chart with ${services.length} services');
+                    return AnimatedOpacity(
+                      opacity: 1.0,
+                      duration: const Duration(milliseconds: 300),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final chartWidth = constraints.maxWidth > 640 ? 640.0 : constraints.maxWidth;
+                          final chartHeight = (maxY * 10).clamp(200.0, 400.0);
 
-                  print('DashboardBarChart: Rendering chart with ${services.length} services'); // Debug log
-                  return AnimatedOpacity(
-                    opacity: 1.0,
-                    duration: const Duration(milliseconds: 300),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final chartWidth = constraints.maxWidth > 640 ? 640.0 : constraints.maxWidth;
-                        final chartHeight = (maxY * 10).clamp(200.0, 400.0);
-
-                        return SizedBox(
-                          height: 200,
-                          child: Scrollbar(
-                            controller: _verticalScrollController,
-                            thumbVisibility: true,
-                            child: SingleChildScrollView(
+                          return SizedBox(
+                            height: 200,
+                            child: Scrollbar(
                               controller: _verticalScrollController,
-                              scrollDirection: Axis.vertical,
-                              child: Scrollbar(
-                                controller: _horizontalScrollController,
-                                thumbVisibility: true,
-                                child: SingleChildScrollView(
+                              thumbVisibility: true,
+                              child: SingleChildScrollView(
+                                controller: _verticalScrollController,
+                                scrollDirection: Axis.vertical,
+                                child: Scrollbar(
                                   controller: _horizontalScrollController,
-                                  scrollDirection: Axis.horizontal,
-                                  child: SizedBox(
-                                    width: chartWidth,
-                                    height: chartHeight,
-                                    child: BarChart(
-                                      BarChartData(
-                                        alignment: BarChartAlignment.spaceAround,
-                                        barTouchData: BarTouchData(
-                                          enabled: true,
-                                          handleBuiltInTouches: true,
-                                          touchTooltipData: BarTouchTooltipData(
-                                            tooltipPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                            tooltipMargin: 20,
-                                            getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                                              final service = services[rodIndex];
-                                              final month = groupIndex + 1;
-                                              final value = consumption.months[month]?[service] ?? 0.0;
-                                              final unit = consumption.serviceUnits[service] ?? '';
-                                              return BarTooltipItem(
-                                                'Tháng $month\n$service: $value $unit',
-                                                const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.normal,
-                                                ),
-                                                textAlign: TextAlign.center,
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                        titlesData: FlTitlesData(
-                                          show: true,
-                                          bottomTitles: AxisTitles(
-                                            sideTitles: SideTitles(
-                                              showTitles: true,
-                                              getTitlesWidget: (value, meta) {
-                                                final month = value.toInt() + 1;
-                                                return Text(
-                                                  'T$month',
-                                                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                  thumbVisibility: true,
+                                  child: SingleChildScrollView(
+                                    controller: _horizontalScrollController,
+                                    scrollDirection: Axis.horizontal,
+                                    child: SizedBox(
+                                      width: chartWidth,
+                                      height: chartHeight,
+                                      child: BarChart(
+                                        BarChartData(
+                                          alignment: BarChartAlignment.spaceAround,
+                                          barTouchData: BarTouchData(
+                                            enabled: true,
+                                            handleBuiltInTouches: true,
+                                            touchTooltipData: BarTouchTooltipData(
+                                              tooltipPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              tooltipMargin: 20,
+                                              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                                                final service = services[rodIndex];
+                                                final month = groupIndex + 1;
+                                                final value = consumption.months[month]?[service] ?? 0.0;
+                                                final unit = consumption.serviceUnits[service] ?? '';
+                                                return BarTooltipItem(
+                                                  'Tháng $month\n$service: $value $unit',
+                                                  const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.normal,
+                                                  ),
+                                                  textAlign: TextAlign.center,
                                                 );
                                               },
                                             ),
                                           ),
-                                          leftTitles: AxisTitles(
-                                            sideTitles: SideTitles(
-                                              showTitles: true,
-                                              reservedSize: 30,
-                                              getTitlesWidget: (value, meta) {
-                                                return Text(
-                                                  value.toInt().toString(),
-                                                  style: const TextStyle(fontSize: 10, color: Colors.grey),
-                                                );
-                                              },
+                                          titlesData: FlTitlesData(
+                                            show: true,
+                                            bottomTitles: AxisTitles(
+                                              sideTitles: SideTitles(
+                                                showTitles: true,
+                                                getTitlesWidget: (value, meta) {
+                                                  final month = value.toInt() + 1;
+                                                  return Text(
+                                                    'T$month',
+                                                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                                  );
+                                                },
+                                              ),
                                             ),
+                                            leftTitles: AxisTitles(
+                                              sideTitles: SideTitles(
+                                                showTitles: true,
+                                                reservedSize: 30,
+                                                getTitlesWidget: (value, meta) {
+                                                  return Text(
+                                                    value.toInt().toString(),
+                                                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                           ),
-                                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                          borderData: FlBorderData(show: false),
+                                          gridData: const FlGridData(show: true),
+                                          barGroups: List.generate(12, (month) => _buildBarGroup(month, consumption, services, colors)),
+                                          minY: 0,
+                                          maxY: maxY * 1.2,
                                         ),
-                                        borderData: FlBorderData(show: false),
-                                        gridData: const FlGridData(show: true),
-                                        barGroups: List.generate(12, (month) => _buildBarGroup(month, consumption, services, colors)),
-                                        minY: 0,
-                                        maxY: maxY * 1.2,
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
+                          );
+                        },
+                      ),
+                    );
+                  } else if (state is StatisticsError) {
+                    print('DashboardBarChart: Error: ${state.message}');
+                    return Center(child: Text('Lỗi: ${state.message}'));
+                  } else {
+                    print('DashboardBarChart: Displaying loading indicator');
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              BlocBuilder<StatisticsBloc, StatisticsState>(
+                builder: (context, state) {
+                  if (state is ConsumptionLoaded && state.consumptionData.isNotEmpty) {
+                    Consumption consumption = _getConsumption(state.consumptionData);
+                    final services = _getServices(consumption);
+                    final colors = _generateColors(services.length);
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: List.generate(services.length, (index) {
+                        final service = services[index];
+                        final unit = consumption.serviceUnits[service] ?? '';
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 10,
+                              height: 10,
+                              color: colors[index],
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$service ($unit)',
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                          ],
                         );
-                      },
-                    ),
-                  );
-                }
-                return const Center(child: Text('Không có dữ liệu'));
-              },
-            ),
-            const SizedBox(height: 8),
-            BlocBuilder<StatisticsBloc, StatisticsState>(
-              builder: (context, state) {
-                if (state is ConsumptionLoaded && state.consumptionData.isNotEmpty) {
-                  Consumption consumption = _getConsumption(state.consumptionData);
-                  final services = _getServices(consumption);
-                  final colors = _generateColors(services.length);
-                  return Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: List.generate(services.length, (index) {
-                      final service = services[index];
-                      final unit = consumption.serviceUnits[service] ?? '';
-                      return Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 10,
-                            height: 10,
-                            color: colors[index],
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$service ($unit)',
-                            style: const TextStyle(fontSize: 10),
-                          ),
-                        ],
-                      );
-                    }),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-          ],
+                      }),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -355,7 +382,7 @@ class _DashboardBarChartState extends State<DashboardBarChart> {
     }
   }
 
-  List<String> _getServices(Consumption consumption) {
+  List<String> _getServices( consumption) {
     final services = <String>{};
     consumption.months.forEach((month, serviceMap) {
       services.addAll(serviceMap.keys);

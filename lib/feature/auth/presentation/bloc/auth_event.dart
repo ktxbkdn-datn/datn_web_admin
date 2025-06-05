@@ -17,11 +17,13 @@ class PasswordChanged extends AuthEvent {
 class AdminLoginSubmitted extends AuthEvent {
   final String username;
   final String password;
+  final bool rememberMe; // Thêm thuộc tính rememberMe
   final BuildContext? context;
 
   AdminLoginSubmitted({
     required this.username,
     required this.password,
+    required this.rememberMe,
     this.context,
   });
 }
@@ -65,3 +67,5 @@ class ResetPasswordSubmitted extends AuthEvent {
 }
 
 class RefreshTokenRequested extends AuthEvent {}
+
+class CheckAuthStatusEvent extends AuthEvent {} // Thêm sự kiện để kiểm tra trạng thái đăng nhập

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:datn_web_admin/feature/admin/presentation/bloc/admin_bloc.dart';
 import 'package:datn_web_admin/feature/admin/presentation/bloc/admin_event.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../src/core/error/failures.dart';
 import '../../../../src/core/network/api_client.dart';
 import '../../domain/entities/auth_entity.dart';
@@ -32,21 +33,120 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<ForgotPasswordSubmitted>(_onForgotPasswordSubmitted);
     on<ResetPasswordSubmitted>(_onResetPasswordSubmitted);
     on<RefreshTokenRequested>(_onRefreshTokenRequested);
+    on<CheckAuthStatusEvent>(_onCheckAuthStatus);
+
+    // Kiểm tra trạng thái đăng nhập ngay khi AuthBloc được khởi tạo
+    add(CheckAuthStatusEvent());
+  }
+
+  Future<void> _onCheckAuthStatus(CheckAuthStatusEvent event, Emitter<AuthState> emit) async {
+    emit(state.copyWith(isLoading: true, error: null, successMessage: null));
+
+    // Khởi tạo ApiService để khôi phục token
+    try {
+      await apiService.initialize();
+    } catch (e) {
+      print('Error initializing ApiService: $e');
+      emit(state.copyWith(
+        isLoading: false,
+        auth: null,
+        error: 'Lỗi khởi tạo dịch vụ: $e',
+      ));
+      return;
+    }
+
+    final token = apiService.token;
+    final refreshToken = apiService.refreshToken;
+    final prefs = await SharedPreferences.getInstance();
+    final rememberMe = prefs.getBool('remember_me') ?? false;
+
+    if (token != null && refreshToken != null && rememberMe) {
+      // Token tồn tại và "Remember Me" được chọn
+      try {
+        final decodedToken = JwtDecoder.decode(token);
+        final userId = decodedToken['sub'] as String?;
+        final type = decodedToken['type'] as String? ?? 'UNKNOWN';
+        if (userId != null && !JwtDecoder.isExpired(token)) {
+          // Token còn hợp lệ
+          emit(state.copyWith(
+            isLoading: false,
+            auth: AuthEntity(
+              id: int.parse(userId),
+              accessToken: token,
+              refreshToken: refreshToken,
+              type: type,
+            ),
+            successMessage: 'Khôi phục phiên đăng nhập thành công',
+          ));
+          return;
+        } else {
+          // Token hết hạn, thử làm mới
+          try {
+            await apiService.refreshAccessToken();
+            final newToken = apiService.token;
+            final newRefreshToken = apiService.refreshToken;
+            final newDecodedToken = JwtDecoder.decode(newToken!);
+            final newUserId = newDecodedToken['sub'] as String?;
+            final newType = newDecodedToken['type'] as String? ?? 'UNKNOWN';
+            if (newUserId != null) {
+              emit(state.copyWith(
+                isLoading: false,
+                auth: AuthEntity(
+                  id: int.parse(newUserId),
+                  accessToken: newToken,
+                  refreshToken: newRefreshToken!,
+                  type: newType,
+                ),
+                successMessage: 'Làm mới token thành công',
+              ));
+              return;
+            } else {
+              throw AuthFailure('Không thể trích xuất ID từ token mới');
+            }
+          } catch (e) {
+            print('Error refreshing token during auth check: $e');
+            await apiService.clearToken();
+            emit(state.copyWith(
+              isLoading: false,
+              auth: null,
+              error: 'Không thể làm mới token: $e',
+            ));
+            return;
+          }
+        }
+      } catch (e) {
+        print('Error checking auth status: $e');
+        await apiService.clearToken();
+        emit(state.copyWith(
+          isLoading: false,
+          auth: null,
+          error: 'Lỗi kiểm tra trạng thái đăng nhập: $e',
+        ));
+        return;
+      }
+    }
+
+    // Không có token, token không hợp lệ, hoặc "Remember Me" không được chọn
+    await apiService.clearToken();
+    emit(state.copyWith(
+      isLoading: false,
+      auth: null,
+    ));
   }
 
   Future<void> _onAdminLoginSubmitted(AdminLoginSubmitted event, Emitter<AuthState> emit) async {
     emit(state.copyWith(isLoading: true, error: null, successMessage: null));
     try {
-      final result = await login.adminLogin(event.username, event.password);
+      final result = await login.adminLogin(event.username, event.password, rememberMe: event.rememberMe);
       result.fold(
-            (failure) {
+        (failure) {
           print('Login failed: ${failure.message}');
           emit(state.copyWith(
             isLoading: false,
             error: failure.message,
           ));
         },
-            (authEntity) {
+        (authEntity) {
           print('Login successful: ${authEntity.accessToken}, Refresh: ${authEntity.refreshToken}, ID: ${authEntity.id}');
           emit(state.copyWith(
             isLoading: false,
@@ -73,11 +173,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final token = state.auth?.accessToken ?? apiService.token ?? '';
       final result = await logout(token);
       result.fold(
-            (failure) => emit(state.copyWith(
+        (failure) => emit(state.copyWith(
           isLoading: false,
           error: failure.message,
         )),
-            (_) => emit(const AuthState(
+        (_) => emit(const AuthState(
           successMessage: "Đăng xuất thành công",
           auth: null,
         )),
@@ -94,11 +194,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(state.copyWith(isLoading: true, error: null, successMessage: null));
     final result = await forgotPassword(event.email);
     result.fold(
-          (failure) => emit(state.copyWith(
+      (failure) => emit(state.copyWith(
         isLoading: false,
         error: failure.message,
       )),
-          (_) => emit(state.copyWith(
+      (_) => emit(state.copyWith(
         isLoading: false,
         successMessage: 'Mã xác nhận đã được gửi qua email.',
       )),
@@ -126,11 +226,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       event.code,
     );
     result.fold(
-          (failure) => emit(state.copyWith(
+      (failure) => emit(state.copyWith(
         isLoading: false,
         error: failure.message,
       )),
-          (_) => emit(state.copyWith(
+      (_) => emit(state.copyWith(
         isLoading: false,
         successMessage: 'Đặt lại mật khẩu thành công.',
       )),
@@ -140,37 +240,30 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onRefreshTokenRequested(RefreshTokenRequested event, Emitter<AuthState> emit) async {
     emit(state.copyWith(isLoading: true, error: null, successMessage: null));
     try {
-      final refreshed = await apiService.refreshAccessToken();
-      if (refreshed) {
-        final newToken = apiService.token;
-        final newRefreshToken = apiService.refreshToken;
-        final decodedToken = JwtDecoder.decode(newToken!);
-        final userId = decodedToken['sub'] as String?;
-        final type = decodedToken['type'] as String? ?? 'UNKNOWN';
-        if (userId == null) {
-          throw ServerFailure('Không thể trích xuất ID từ token');
-        }
-        emit(state.copyWith(
-          isLoading: false,
-          auth: AuthEntity(
-            id: int.parse(userId),
-            accessToken: newToken,
-            refreshToken: newRefreshToken!,
-            type: type,
-          ),
-          successMessage: 'Làm mới token thành công',
-        ));
-      } else {
-        await apiService.clearToken();
-        emit(state.copyWith(
-          isLoading: false,
-          auth: null,
-          error: 'Không thể làm mới token. Vui lòng đăng nhập lại.',
-        ));
+      await apiService.refreshAccessToken();
+      final newToken = apiService.token;
+      final newRefreshToken = apiService.refreshToken;
+      final decodedToken = JwtDecoder.decode(newToken!);
+      final userId = decodedToken['sub'] as String?;
+      final type = decodedToken['type'] as String? ?? 'UNKNOWN';
+      if (userId == null) {
+        throw ServerFailure('Không thể trích xuất ID từ token');
       }
-    } catch (e) {
       emit(state.copyWith(
         isLoading: false,
+        auth: AuthEntity(
+          id: int.parse(userId),
+          accessToken: newToken,
+          refreshToken: newRefreshToken!,
+          type: type,
+        ),
+        successMessage: 'Làm mới token thành công',
+      ));
+    } catch (e) {
+      await apiService.clearToken();
+      emit(state.copyWith(
+        isLoading: false,
+        auth: null,
         error: 'Lỗi làm mới token: $e',
       ));
     }

@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Thêm import
 import '../../../../src/core/error/failures.dart';
 import '../datasources/auth_datasource.dart';
 import '../../domain/entities/auth_entity.dart';
@@ -11,10 +12,10 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl(this.dataSource);
 
   @override
-  Future<Either<Failure, AuthEntity>> adminLogin(String username, String password) async {
+  Future<Either<Failure, AuthEntity>> adminLogin(String username, String password, {bool rememberMe = false}) async {
     try {
-      final authModel = await dataSource.adminLogin(username, password);
-      await dataSource.apiService.setToken(authModel.accessToken, refreshToken: authModel.refreshToken);
+      final authModel = await dataSource.adminLogin(username, password, rememberMe);
+      await dataSource.apiService.setToken(authModel.accessToken, refreshToken: authModel.refreshToken, rememberMe: rememberMe);
       final decodedToken = JwtDecoder.decode(authModel.accessToken);
       final userId = decodedToken['sub'] as String?;
       final type = decodedToken['type'] as String? ?? 'UNKNOWN';
@@ -66,8 +67,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, void>> resetPassword(
-      String email, String newPassword, String code) async {
+  Future<Either<Failure, void>> resetPassword(String email, String newPassword, String code) async {
     try {
       await dataSource.resetPassword(email, newPassword, code);
       return const Right(null);

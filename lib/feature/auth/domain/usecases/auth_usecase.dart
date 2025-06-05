@@ -1,4 +1,3 @@
-// lib/src/features/auth/domain/usecases/auth_usecase.dart
 import 'package:dartz/dartz.dart';
 import '../../../../src/core/error/failures.dart';
 import '../entities/auth_entity.dart';
@@ -13,15 +12,17 @@ class ForgotPassword {
     return await repository.forgotPassword(email);
   }
 }
+
 class Login {
   final AuthRepository repository;
-  Login(this.repository);
-  Future<Either<Failure, AuthEntity>> adminLogin(
-      String username, String password) async {
-    return await repository.adminLogin(username, password);
-  }
 
+  Login(this.repository);
+
+  Future<Either<Failure, AuthEntity>> adminLogin(String username, String password, {bool rememberMe = false}) async {
+    return await repository.adminLogin(username, password, rememberMe: rememberMe);
+  }
 }
+
 class Logout {
   final AuthRepository repository;
 
@@ -31,13 +32,13 @@ class Logout {
     return await repository.logout(token);
   }
 }
+
 class ResetPassword {
   final AuthRepository repository;
 
   ResetPassword(this.repository);
 
-  Future<Either<Failure, void>> call(
-      String email, String newPassword, String code) async {
+  Future<Either<Failure, void>> call(String email, String newPassword, String code) async {
     return await repository.resetPassword(email, newPassword, code);
   }
 }
