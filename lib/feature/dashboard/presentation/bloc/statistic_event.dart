@@ -138,7 +138,7 @@ class FetchUserStats extends StatisticsEvent {
   List<Object?> get props => [areaId];
 }
 
-class FetchUserMonthlyStats extends StatisticsEvent { // Renamed from FetchUserMonthStats
+class FetchUserMonthlyStats extends StatisticsEvent {
   final int? year;
   final int? month;
   final int? quarter;
@@ -183,13 +183,26 @@ class FetchReportStats extends StatisticsEvent {
   List<Object?> get props => [year, month, areaId];
 }
 
+class FetchRoomFillRateStats extends StatisticsEvent {
+  final int? areaId;
+  final int? roomId;
+
+  const FetchRoomFillRateStats({
+    this.areaId,
+    this.roomId,
+  });
+
+  @override
+  List<Object?> get props => [areaId, roomId];
+}
+
 class LoadCachedRoomStatsEvent extends StatisticsEvent {
   const LoadCachedRoomStatsEvent();
   @override
   List<Object?> get props => [];
 }
 
-class LoadCachedUserMonthlyStatsEvent extends StatisticsEvent { // Renamed from LoadCachedUserMonthStatsEvent
+class LoadCachedUserMonthlyStatsEvent extends StatisticsEvent {
   const LoadCachedUserMonthlyStatsEvent();
   @override
   List<Object?> get props => [];
@@ -205,4 +218,15 @@ class LoadCachedUserStatsEvent extends StatisticsEvent {
   const LoadCachedUserStatsEvent();
   @override
   List<Object?> get props => [];
+}
+
+class LoadCachedRoomFillRateStats extends StatisticsEvent {
+  final int? areaId;
+
+  const LoadCachedRoomFillRateStats({
+    this.areaId,
+  });
+
+  @override
+  List<Object?> get props => [areaId];
 }

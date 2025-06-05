@@ -1,3 +1,4 @@
+import 'package:datn_web_admin/feature/dashboard/data/model/room_fill_rate_model.dart';
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/consumption.dart';
 import '../../domain/entities/room_status.dart';
@@ -131,7 +132,7 @@ class UserStatsLoaded extends StatisticsState {
   List<Object?> get props => [userStatsData];
 }
 
-class UserMonthlyStatsLoaded extends StatisticsState { // Renamed from UserMonthStatsLoaded
+class UserMonthlyStatsLoaded extends StatisticsState {
   final List<UserMonthlyStats> userMonthlyStatsData;
 
   const UserMonthlyStatsLoaded({
@@ -164,4 +165,15 @@ class ReportStatsLoaded extends StatisticsState {
 
   @override
   List<Object?> get props => [reportStatsData, trends];
+}
+
+class RoomFillRateLoaded extends StatisticsState {
+  final List<RoomFillRate> roomFillRateData;
+
+  const RoomFillRateLoaded({
+    required this.roomFillRateData,
+  });
+
+  @override
+  List<Object?> get props => [roomFillRateData];
 }

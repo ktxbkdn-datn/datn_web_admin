@@ -84,7 +84,15 @@ void registerStatisticsDependencies() {
   getIt.registerSingleton<LoadCachedConsumption>(
     LoadCachedConsumption(getIt<StatisticsRepository>()),
   );
-
+  getIt.registerSingleton<GetRoomFillRateStats>(
+    GetRoomFillRateStats(getIt<StatisticsRepository>()),
+  );
+  getIt.registerSingleton<SaveRoomFillRate>(
+    SaveRoomFillRate(getIt<StatisticsRepository>()),
+  );
+  getIt.registerSingleton<LoadCachedRoomFillRate>(
+    LoadCachedRoomFillRate(getIt<StatisticsRepository>()),
+  );
   // Đăng ký Bloc
   getIt.registerFactory<StatisticsBloc>(
     () => StatisticsBloc(
@@ -104,7 +112,11 @@ void registerStatisticsDependencies() {
       getUserSummary: GetUserSummary(getIt<StatisticsRepository>()),
       triggerManualSnapshot: TriggerManualSnapshot(getIt<StatisticsRepository>()),
       saveConsumption: getIt<SaveConsumption>(),
-      loadCachedConsumption: getIt<LoadCachedConsumption>(),
+      loadCachedConsumption: getIt<LoadCachedConsumption>(), 
+      getRoomFillRateStats: getIt<GetRoomFillRateStats>(), 
+      saveRoomFillRate: getIt<SaveRoomFillRate>(),
+      loadCachedRoomFillRate: getIt<LoadCachedRoomFillRate>(),
+      
     ),
   );
 }

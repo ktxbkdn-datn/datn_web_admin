@@ -1,44 +1,45 @@
 import 'dart:async';
-import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_bloc.dart';
-import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_event.dart';
-import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_card/report_stat.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_state.dart';
-import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_bloc.dart';
-import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_event.dart';
+import 'package:iconsax/iconsax.dart';
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+// Replace these with actual imports for your project
+import 'package:datn_web_admin/feature/admin/domain/entities/admin_entity.dart';
 import 'package:datn_web_admin/feature/admin/presentation/bloc/admin_bloc.dart';
 import 'package:datn_web_admin/feature/admin/presentation/bloc/admin_event.dart';
 import 'package:datn_web_admin/feature/admin/presentation/bloc/admin_state.dart';
-import 'package:datn_web_admin/feature/admin/domain/entities/admin_entity.dart';
+import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_bloc.dart';
+import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_event.dart';
+import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_state.dart';
+import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_bloc.dart';
+import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_event.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/widgets/dashboard_drawer.dart';
+import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_card/report_stat.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_card/room_stat.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_card/user_stat.dart';
-import 'package:iconsax/iconsax.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-import '../../../register/domain/entity/register_entity.dart';
-import '../widgets/bar_chart.dart';
+import 'package:datn_web_admin/feature/register/domain/entity/register_entity.dart';
+import 'package:datn_web_admin/feature/register/presentation/bloc/registration_bloc.dart';
+import 'package:datn_web_admin/feature/register/presentation/bloc/registration_event.dart';
+import 'package:datn_web_admin/feature/register/presentation/bloc/registration_state.dart';
+import 'package:datn_web_admin/feature/report/domain/entities/report_entity.dart';
+import 'package:datn_web_admin/feature/report/presentation/bloc/report/report_bloc.dart';
+import 'package:datn_web_admin/feature/report/presentation/bloc/report/report_event.dart';
+import 'package:datn_web_admin/feature/report/presentation/bloc/report/report_state.dart';
+import 'package:datn_web_admin/feature/report/presentation/bloc/rp_type/rp_type_bloc.dart';
+import 'package:datn_web_admin/feature/report/presentation/bloc/rp_type/rp_type_event.dart';
+import 'package:datn_web_admin/feature/report/presentation/bloc/rp_type/rp_type_state.dart';
+import 'package:datn_web_admin/feature/report/presentation/page/widget/report_tab/report_detail_dialog.dart';
+import 'package:datn_web_admin/common/constants/colors.dart'; // Ensure this exists
+import '../widgets/bar_chart.dart'; // Ensure DashboardBarChart is defined
 import '../widgets/maintenance_request_card.dart';
-import '../widgets/pie_chart.dart';
-import '../widgets/stat_card.dart';
+import '../widgets/pie_chart.dart'; // Ensure ReportPieChart is defined
 import '../widgets/registration_card.dart';
-import '../../../../common/constants/colors.dart';
-import '../../../report/presentation/bloc/report/report_bloc.dart';
-import '../../../report/presentation/bloc/report/report_event.dart';
-import '../../../report/presentation/bloc/report/report_state.dart';
-import '../../../report/domain/entities/report_entity.dart';
-import '../../../report/presentation/bloc/rp_type/rp_type_bloc.dart';
-import '../../../report/presentation/bloc/rp_type/rp_type_event.dart';
-import '../../../report/presentation/bloc/rp_type/rp_type_state.dart';
-import '../../../report/presentation/page/widget/report_tab/report_detail_dialog.dart';
-import 'package:intl/intl.dart';
-import '../../../register/presentation/bloc/registration_bloc.dart';
-import '../../../register/presentation/bloc/registration_event.dart';
-import '../../../register/presentation/bloc/registration_state.dart';
 
 class DashboardPage extends StatefulWidget {
-  const DashboardPage({Key? key}) : super(key: key);
+  const DashboardPage({super.key});
 
   @override
   _DashboardPageState createState() => _DashboardPageState();
@@ -77,7 +78,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final ModalRoute? route = ModalRoute.of(context);
+    final route = ModalRoute.of(context);
     if (route is PageRoute) {
       routeObserver.subscribe(this, route);
     }
@@ -98,8 +99,6 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         year: DateTime.now().year,
         areaId: null,
       ));
-    } else {
-      print('DashboardPage: No auth token, skipping refresh on pop');
     }
   }
 
@@ -108,14 +107,12 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     if (authState.auth != null) {
       context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
       context.read<RegistrationBloc>().add(const FetchRegistrations(page: 1, limit: 1000));
-    } else {
-      print('DashboardPage: No auth token, skipping initial data fetch');
     }
   }
 
   Future<void> _loadLocalAdmin() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? adminJson = prefs.getString('currentAdmin');
+    final prefs = await SharedPreferences.getInstance();
+    final adminJson = prefs.getString('currentAdmin');
     if (adminJson != null) {
       setState(() {
         _currentAdmin = AdminEntity.fromJson(jsonDecode(adminJson));
@@ -125,7 +122,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
 
   Future<void> _saveLocalAdmin() async {
     if (_currentAdmin != null) {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
+      final prefs = await SharedPreferences.getInstance();
       await prefs.setString('currentAdmin', jsonEncode(_currentAdmin!.toJson()));
     }
   }
@@ -148,14 +145,48 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     });
   }
 
+  void _showChartDialog(BuildContext context, Widget chartWidget, String title) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.9,
+            height: MediaQuery.of(context).size.height * 0.8,
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Expanded(child: chartWidget),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget buildRegistrationContent(RegistrationState state, BuildContext context) {
-    // Khởi tạo các biến mặc định
     int pendingCount = 0;
     List<Registration> displayRegistrations = [];
 
-    // Xử lý trạng thái
     if (state is RegistrationsLoaded) {
-      final loadedState = state as RegistrationsLoaded;
+      final loadedState = state;
       final allRegistrations = loadedState.registrations;
       pendingCount = allRegistrations.where((reg) => reg.status == 'PENDING').length;
 
@@ -175,7 +206,6 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       }
     }
 
-    // Trả về giao diện với các thành phần cố định
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -183,7 +213,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Text(
-              'Đăng ký (${pendingCount} chưa xử lý)',
+              'Đăng ký ($pendingCount chưa xử lý)',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const Spacer(),
@@ -211,150 +241,137 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           ],
         ),
         const SizedBox(height: 10),
-        // Xử lý hiển thị danh sách hoặc thông báo
         if (state is RegistrationLoading)
-          const CircularProgressIndicator()
+          const Center(child: CircularProgressIndicator())
         else if (state is RegistrationError)
-          Text('Lỗi: ${(state as RegistrationError).message}')
+          Text('Lỗi: ${state.message}')
         else if (displayRegistrations.isEmpty)
           const Text('Không có đăng ký nào')
         else
           Column(
-            mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: displayRegistrations.map((reg) {
-              return RegistrationCard(registration: reg);
-            }).toList(),
+            children: displayRegistrations.map((reg) => RegistrationCard(registration: reg)).toList(),
           ),
       ],
     );
   }
 
   Widget buildReportContent(ReportState state, BuildContext context) {
-    switch (state.runtimeType) {
-      case ReportsLoaded:
-        if (_isLoading) {
-          return const CircularProgressIndicator();
-        }
-        final loadedState = state as ReportsLoaded;
-        final allReports = loadedState.reports;
-        final reportTypeIds = allReports.map((report) => report.reportTypeId).toSet().toList();
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-        if (reportTypeIds.isEmpty) {
-          return const Text('Không có loại báo cáo nào');
-        }
+    if (state is ReportsLoaded) {
+      final allReports = state.reports;
+      final reportTypeIds = allReports.map((report) => report.reportTypeId).toSet().toList();
 
-        reportTypeIds.sort((a, b) {
-          if (a == 4) return -1;
-          if (b == 4) return 1;
-          return a.compareTo(b);
+      if (reportTypeIds.isEmpty) {
+        return const Text('Không có loại báo cáo nào');
+      }
+
+      reportTypeIds.sort((a, b) {
+        if (a == 4) return -1;
+        if (b == 4) return 1;
+        return a.compareTo(b);
+      });
+
+      _reportTypeIds = reportTypeIds;
+      final currentReportTypeId = reportTypeIds[_currentReportTypePage % reportTypeIds.length];
+      final filteredReports = allReports.where((report) => report.reportTypeId == currentReportTypeId).toList();
+
+      if (filteredReports.isEmpty) {
+        return const Text('Không có báo cáo nào với loại này');
+      }
+
+      final pendingReports = filteredReports
+          .where((report) => report.status == "PENDING")
+          .toList()
+        ..sort((a, b) {
+          final aDate = a.createdAt != null ? DateTime.parse(a.createdAt!) : DateTime(0);
+          final bDate = b.createdAt != null ? DateTime.parse(b.createdAt!) : DateTime(0);
+          return aDate.compareTo(bDate);
         });
 
-        _reportTypeIds = reportTypeIds;
+      final processedReports = filteredReports
+          .where((report) => report.status != "PENDING")
+          .toList()
+        ..sort((a, b) {
+          final aDate = a.createdAt != null ? DateTime.parse(a.createdAt!) : DateTime(0);
+          final bDate = b.createdAt != null ? DateTime.parse(b.createdAt!) : DateTime(0);
+          return bDate.compareTo(aDate);
+        });
 
-        int currentReportTypeId = reportTypeIds[_currentReportTypePage % reportTypeIds.length];
-        final filteredReports = allReports.where((report) => report.reportTypeId == currentReportTypeId).toList();
+      final displayReports = [...pendingReports];
+      if (displayReports.length < 3) {
+        displayReports.addAll(processedReports.take(3 - displayReports.length));
+      }
 
-        if (filteredReports.isEmpty) {
-          return const Text('Không có báo cáo nào với loại này');
-        }
-
-        final pendingReports = filteredReports
-            .where((report) => report.status == "PENDING")
-            .toList()
-          ..sort((a, b) {
-            final aDate = a.createdAt != null ? DateTime.parse(a.createdAt!) : DateTime(0);
-            final bDate = b.createdAt != null ? DateTime.parse(b.createdAt!) : DateTime(0);
-            return aDate.compareTo(bDate);
-          });
-
-        final processedReports = filteredReports
-            .where((report) => report.status != "PENDING")
-            .toList()
-          ..sort((a, b) {
-            final aDate = a.createdAt != null ? DateTime.parse(a.createdAt!) : DateTime(0);
-            final bDate = b.createdAt != null ? DateTime.parse(b.createdAt!) : DateTime(0);
-            return bDate.compareTo(aDate);
-          });
-
-        final displayReports = [...pendingReports];
-        if (displayReports.length < 3) {
-          displayReports.addAll(processedReports.take(3 - displayReports.length));
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (displayReports.isEmpty)
-              const Text('Không có báo cáo nào với loại này')
-            else
-              ...displayReports.map((report) {
-                final createdAt = report.createdAt != null
-                    ? DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(report.createdAt!))
-                    : 'Không xác định';
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: GestureDetector(
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => ReportDetailDialog(report: report),
-                      );
-                    },
-                    child: _buildMaintenanceCard(
-                      type: report.reportTypeName ?? 'Không xác định',
-                      id: report.reportId.toString(),
-                      createdAt: createdAt,
-                      assignedTo: report.userFullname ?? 'Chưa phân công',
-                      status: report.status,
-                    ),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (displayReports.isEmpty)
+            const Text('Không có báo cáo nào với loại này')
+          else
+            ...displayReports.map((report) {
+              final createdAt = report.createdAt != null
+                  ? DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(report.createdAt!))
+                  : 'Không xác định';
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => ReportDetailDialog(report: report),
+                    );
+                  },
+                  child: _buildMaintenanceCard(
+                    type: report.reportTypeName ?? 'Không xác định',
+                    id: report.reportId.toString(),
+                    createdAt: createdAt,
+                    assignedTo: report.userFullname ?? 'Chưa phân công',
+                    status: report.status,
                   ),
-                );
-              }).toList(),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  onPressed: _currentReportTypePage > 0
-                      ? () async {
-                          await _changePage(_currentReportTypePage - 1);
-                        }
-                      : null,
-                  icon: const Icon(Icons.arrow_back_ios, size: 16),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  'Loại báo cáo ${(_currentReportTypePage % reportTypeIds.length) + 1} / ${reportTypeIds.length}',
-                  style: const TextStyle(fontSize: 14),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: _currentReportTypePage < reportTypeIds.length - 1
-                      ? () async {
-                          await _changePage(_currentReportTypePage + 1);
-                        }
-                      : null,
-                  icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                ),
-              ],
-            ),
-          ],
-        );
-
-      case ReportInitial:
-        return const CircularProgressIndicator();
-
-      case ReportLoading:
-        return const CircularProgressIndicator();
-
-      case ReportError:
-        final errorState = state as ReportError;
-        return Text('Lỗi: ${errorState.message}');
-
-      default:
-        return const Text('Không có dữ liệu');
+              );
+            }).toList(),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                onPressed: _currentReportTypePage > 0
+                    ? () => _changePage(_currentReportTypePage - 1)
+                    : null,
+                icon: const Icon(Icons.arrow_back_ios, size: 16),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Loại báo cáo ${(_currentReportTypePage % reportTypeIds.length) + 1} / ${reportTypeIds.length}',
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: _currentReportTypePage < reportTypeIds.length - 1
+                    ? () => _changePage(_currentReportTypePage + 1)
+                    : null,
+                icon: const Icon(Icons.arrow_forward_ios, size: 16),
+              ),
+            ],
+          ),
+        ],
+      );
     }
+
+    if (state is ReportLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (state is ReportError) {
+      return Text('Lỗi: ${state.message}');
+    }
+
+    return const Text('Không có dữ liệu');
   }
 
   Widget buildReportHeader(ReportState state) {
@@ -373,8 +390,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         });
 
         _reportTypeIds = reportTypeIds;
-
-        int currentReportTypeId = reportTypeIds[_currentReportTypePage % reportTypeIds.length];
+        final currentReportTypeId = reportTypeIds[_currentReportTypePage % reportTypeIds.length];
         final filteredReports = allReports.where((report) => report.reportTypeId == currentReportTypeId).toList();
 
         if (filteredReports.isNotEmpty) {
@@ -399,7 +415,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       body: Stack(
         children: [
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [AppColors.glassmorphismStart, AppColors.glassmorphismEnd],
                 begin: Alignment.topLeft,
@@ -409,10 +425,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           ),
           SafeArea(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                minWidth: 960,
-                minHeight: 600,
-              ),
+              constraints: const BoxConstraints(minWidth: 960, minHeight: 600),
               child: Row(
                 children: [
                   DashboardDrawer(
@@ -540,27 +553,19 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                             const SizedBox(height: 16),
                             Container(
                               padding: const EdgeInsets.all(16.0),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
+                              decoration: BoxDecoration(                       
                                 borderRadius: BorderRadius.circular(12),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black12,
-                                    blurRadius: 10,
-                                    offset: Offset(0, 5),
-                                  ),
-                                ],
                               ),
                               child: SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,
-                                child: Row(
+                                child: const Row(
                                   mainAxisAlignment: MainAxisAlignment.start,
                                   children: [
-                                    const RoomStatCard(),
-                                    const SizedBox(width: 16),
-                                    const UserStatCard(),
-                                    const SizedBox(width: 16),
-                                    const ReportStatCard(),
+                                    RoomStatCard(),
+                                    SizedBox(width: 16),
+                                    UserStatCard(),
+                                    SizedBox(width: 16),
+                                    ReportStatCard(),
                                   ],
                                 ),
                               ),
@@ -568,46 +573,82 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                             const SizedBox(height: 16),
                             Container(
                               padding: const EdgeInsets.all(16.0),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
+                              decoration: BoxDecoration(                  
                                 borderRadius: BorderRadius.circular(12),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black12,
-                                    blurRadius: 10,
-                                    offset: Offset(0, 5),
-                                  ),
-                                ],
                               ),
                               child: LayoutBuilder(
                                 builder: (context, constraints) {
+                                  const chartHeight = 300.0;
+                                  final chartWidth = constraints.maxWidth > 600
+                                      ? (constraints.maxWidth - 32) / 2
+                                      : constraints.maxWidth;
                                   return constraints.maxWidth > 600
                                       ? Row(
                                           children: [
-                                            const Expanded(child: DashboardBarChart()),
+                                            Expanded(
+                                              child: GestureDetector(
+                                                onTap: () => _showChartDialog(
+                                                  context,
+                                                  DashboardBarChart(
+                                                    chartWidth: MediaQuery.of(context).size.width * 0.8,
+                                                    chartHeight: 500,
+                                                  ),
+                                                  'Biểu đồ cột chi tiết',
+                                                ),
+                                                child: DashboardBarChart(
+                                                  chartWidth: chartWidth,
+                                                  chartHeight: chartHeight,
+                                                ),
+                                              ),
+                                            ),
                                             const SizedBox(width: 16),
                                             Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.end,
-                                                children: [
-                                                  const ReportPieChart(),
-                                                  const SizedBox(height: 16),
-                                                ],
+                                              child: GestureDetector(
+                                                onTap: () => _showChartDialog(
+                                                  context,
+                                                  ReportPieChart(
+                                                    chartWidth: MediaQuery.of(context).size.width * 0.8,
+                                                    chartHeight: 500,
+                                                  ),
+                                                  'Biểu đồ tròn chi tiết',
+                                                ),
+                                                child: ReportPieChart(
+                                                  chartWidth: chartWidth,
+                                                  chartHeight: chartHeight,
+                                                ),
                                               ),
                                             ),
                                           ],
                                         )
                                       : Column(
                                           children: [
-                                            const DashboardBarChart(),
+                                            GestureDetector(
+                                              onTap: () => _showChartDialog(
+                                                context,
+                                                DashboardBarChart(
+                                                  chartWidth: MediaQuery.of(context).size.width * 0.8,
+                                                  chartHeight: 500,
+                                                ),
+                                                'Biểu đồ cột chi tiết',
+                                              ),
+                                              child: DashboardBarChart(
+                                                chartWidth: chartWidth,
+                                                chartHeight: chartHeight,
+                                              ),
+                                            ),
                                             const SizedBox(height: 16),
-                                            const ReportPieChart(),
-                                            const SizedBox(height: 16),
-                                            Align(
-                                              alignment: Alignment.centerRight,
-                                              child: TextButton(
-                                                onPressed: () {},
-                                                child: const Text('Xem chi tiết', style: TextStyle(color: Colors.blue)),
+                                            GestureDetector(
+                                              onTap: () => _showChartDialog(
+                                                context,
+                                                ReportPieChart(
+                                                  chartWidth: MediaQuery.of(context).size.width * 0.8,
+                                                  chartHeight: 500,
+                                                ),
+                                                'Biểu đồ tròn chi tiết',
+                                              ),
+                                              child: ReportPieChart(
+                                                chartWidth: chartWidth,
+                                                chartHeight: chartHeight,
                                               ),
                                             ),
                                           ],
@@ -754,7 +795,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                                   );
                                 }
                               },
-                              child: Container(),
+                              child: const SizedBox.shrink(),
                             ),
                             BlocListener<AuthBloc, AuthState>(
                               listener: (context, state) {
@@ -777,23 +818,24 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                                       backgroundColor: Colors.red,
                                     ),
                                   );
-                                  if (state.error!.contains('Authorization') || state.error!.contains('Token') || state.error!.contains('Phiên đăng nhập đã hết hạn')) {
+                                  if (state.error!.contains('Authorization') ||
+                                      state.error!.contains('Token') ||
+                                      state.error!.contains('Phiên đăng nhập đã hết hạn')) {
                                     Navigator.pushReplacementNamed(context, '/login');
                                   }
                                 }
                               },
-                              child: Container(),
+                              child: const SizedBox.shrink(),
                             ),
                             BlocListener<RegistrationBloc, RegistrationState>(
                               listener: (context, state) {
                                 if (state is RegistrationError) {
-                                  print('RegistrationBloc error: ${state.message}');
                                   if (state.message.contains('Phiên đăng nhập đã hết hạn')) {
-                                    // Đã có AuthBloc xử lý lỗi này, không cần làm gì thêm
+                                    Navigator.pushReplacementNamed(context, '/login');
                                   }
                                 }
                               },
-                              child: Container(),
+                              child: const SizedBox.shrink(),
                             ),
                           ],
                         ),
@@ -845,87 +887,71 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
         statusColor = Colors.grey;
     }
 
-    return Stack(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppColors.glassmorphismStart, AppColors.glassmorphismEnd],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: Colors.blueGrey,
+              child: Icon(statusIcon, color: statusColor),
             ),
-          ),
-        ),
-        Container(
-          margin: const EdgeInsets.symmetric(vertical: 8.0),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black12,
-                blurRadius: 10,
-                offset: Offset(0, 5),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$type [$id]',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    createdAt,
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                CircleAvatar(
-                  radius: 24,
+                Text(
+                  assignedTo,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const CircleAvatar(
+                  radius: 16,
                   backgroundColor: Colors.blueGrey,
-                  child: Icon(
-                    statusIcon,
-                    color: statusColor,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$type [$id]',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        createdAt,
-                        style: const TextStyle(fontSize: 14, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      assignedTo,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const CircleAvatar(
-                      radius: 16,
-                      backgroundColor: Colors.blueGrey,
-                      child: Icon(Icons.person, color: Colors.white, size: 20),
-                    ),
-                  ],
+                  child: Icon(Icons.person, color: Colors.white, size: 20),
                 ),
               ],
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

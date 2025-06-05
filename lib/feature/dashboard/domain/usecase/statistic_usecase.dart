@@ -1,4 +1,5 @@
 import 'package:dartz/dartz.dart';
+import 'package:datn_web_admin/feature/dashboard/data/model/room_fill_rate_model.dart';
 import 'package:datn_web_admin/src/core/error/failures.dart';
 import '../entities/consumption.dart';
 import '../entities/room_status.dart';
@@ -8,6 +9,7 @@ import '../entities/user_stats.dart';
 import '../entities/user_monthly_stats.dart';
 import '../entities/occupancy_rate.dart';
 import '../entities/report_stats.dart';
+
 import '../repository/statistics_repository.dart';
 
 class GetMonthlyConsumption {
@@ -221,7 +223,7 @@ class GetReportStats {
   GetReportStats(this.repository);
 
   Future<Either<Failure, ReportStatsResponse>> call({
-    int? year,
+    int? year = null,
     int? month,
     int? areaId,
   }) async {
@@ -230,6 +232,35 @@ class GetReportStats {
       month: month,
       areaId: areaId,
     );
+  }
+}
+
+class GetRoomFillRateStats {
+  final StatisticsRepository repository;
+
+  GetRoomFillRateStats(this.repository);
+
+  Future<Either<Failure, List<RoomFillRate>>> call({
+    int? areaId,
+    int? roomId,
+  }) async {
+    return await repository.getRoomFillRateStats(
+      areaId: areaId,
+      roomId: roomId,
+    );
+  }
+}
+
+class SaveRoomFillRate {
+  final StatisticsRepository repository;
+
+  SaveRoomFillRate(this.repository);
+
+  Future<Either<Failure, void>> call({
+    required List<RoomFillRate> stats,
+    int? areaId,
+  }) async {
+    return await repository.saveRoomFillRateStats(stats, areaId);
   }
 }
 
@@ -270,5 +301,17 @@ class LoadCachedUserStats {
 
   Future<Either<Failure, List<UserStats>>> call() async {
     return await repository.loadCachedUserStats();
+  }
+}
+
+class LoadCachedRoomFillRate {
+  final StatisticsRepository repository;
+
+  LoadCachedRoomFillRate(this.repository);
+
+  Future<Either<Failure, List<RoomFillRate>>> call({
+    int? areaId,
+  }) async {
+    return await repository.loadCachedRoomFillRateStats(areaId);
   }
 }

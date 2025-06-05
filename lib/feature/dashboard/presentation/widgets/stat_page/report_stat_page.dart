@@ -1,4 +1,3 @@
-// lib/src/features/dashboard/presentation/widgets/report_stats_page.dart
 import 'package:datn_web_admin/feature/dashboard/domain/entities/report_stats.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_bloc.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_event.dart';
@@ -9,7 +8,6 @@ import 'package:datn_web_admin/feature/room/presentations/bloc/area_bloc/area_st
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../../../../../common/constants/colors.dart';
 
 class ReportStatsPage extends StatefulWidget {
   const ReportStatsPage({Key? key}) : super(key: key);
@@ -23,12 +21,15 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
   int? _selectedAreaId;
   final ScrollController _horizontalScrollController = ScrollController();
   final ScrollController _verticalScrollController = ScrollController();
+  List<ReportStats> _reportStatsData = []; // Cache data
 
   @override
   void initState() {
     super.initState();
-    context.read<StatisticsBloc>().add(FetchReportStats(year: _selectedYear));
+    _fetchData();
     context.read<AreaBloc>().add(FetchAreasEvent(page: 1, limit: 100));
+    // Load cached data
+    context.read<StatisticsBloc>().add(LoadCachedReportStatsEvent());
   }
 
   @override
@@ -39,7 +40,10 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
   }
 
   void _fetchData() {
-    context.read<StatisticsBloc>().add(FetchReportStats(year: _selectedYear, areaId: _selectedAreaId));
+    context.read<StatisticsBloc>().add(FetchReportStats(
+      year: _selectedYear,
+      areaId: _selectedAreaId,
+    ));
   }
 
   @override
@@ -48,12 +52,12 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 1,
-        title: Text(
-                    'Thống kê báo cáo nhận được hằng tháng',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
+        title: const Text(
+          'Thống kê báo cáo nhận được hằng tháng',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -63,7 +67,6 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-
                 Row(
                   children: [
                     BlocBuilder<AreaBloc, AreaState>(
@@ -83,6 +86,7 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
                           onChanged: (value) {
                             setState(() {
                               _selectedAreaId = value;
+                              _reportStatsData = []; // Clear cache
                             });
                             _fetchData();
                           },
@@ -99,6 +103,7 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
                         if (year != null) {
                           setState(() {
                             _selectedYear = year;
+                            _reportStatsData = [];
                           });
                           _fetchData();
                         }
@@ -111,23 +116,51 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
             const SizedBox(height: 16),
             Expanded(
               child: BlocBuilder<StatisticsBloc, StatisticsState>(
+                buildWhen: (previous, current) =>
+                    current is StatisticsLoading ||
+                    current is StatisticsError ||
+                    current is ReportStatsLoaded ||
+                    current is ManualSnapshotTriggered,
                 builder: (context, state) {
-                  if (state is StatisticsLoading) {
-                    return const Center(child: CircularProgressIndicator());
-                  } else if (state is StatisticsError) {
-                    return Center(child: Text('Lỗi: ${state.message}'));
-                  } else if (state is ReportStatsLoaded) {
-                    if (state.reportStatsData.isEmpty) {
-                      return const Center(child: Text('Không có dữ liệu'));
-                    }
+                  if (state is ReportStatsLoaded) {
+                    _reportStatsData = state.reportStatsData;
+                  }
 
+                  if (state is StatisticsLoading) {
+                    if (_reportStatsData.isNotEmpty) {
+                      // Hiển thị dữ liệu cũ khi loading
+                    } else {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                  } else if (state is StatisticsError) {
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Lỗi: ${state.message}'),
+                          ElevatedButton(
+                            onPressed: _fetchData,
+                            child: const Text('Thử lại'),
+                          ),
+                        ],
+                      ),
+                    );
+                  } else if (state is ManualSnapshotTriggered) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(state.message)),
+                      );
+                    });
+                    _fetchData();
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (_reportStatsData.isNotEmpty) {
                     List<ReportStats> filteredData;
                     if (_selectedAreaId == null) {
-                      filteredData = state.reportStatsData;
+                      filteredData = _reportStatsData;
                     } else {
-                      filteredData = state.reportStatsData
-                          .where((area) => area.areaId == _selectedAreaId)
-                          .toList();
+                      filteredData = _reportStatsData.where((area) => area.areaId == _selectedAreaId).toList();
                     }
 
                     if (filteredData.isEmpty) {
@@ -185,9 +218,7 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
                                         reservedSize: 40,
                                         interval: yInterval,
                                         getTitlesWidget: (value, meta) {
-                                          if (value.toInt() % yInterval.toInt() != 0) {
-                                            return const SizedBox.shrink();
-                                          }
+                                          if (value.toInt() % yInterval.toInt() != 0) return const SizedBox.shrink();
                                           return Text(
                                             value.toInt().toString(),
                                             style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -231,7 +262,7 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
                       },
                     );
                   }
-                  return const Center(child: Text('Không có dữ liệu'));
+                  return const Center(child: CircularProgressIndicator());
                 },
               ),
             ),
@@ -291,16 +322,18 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
   }
 
   double _roundMaxYToEven(double maxY) {
-    int rounded = (maxY / 5).ceil() * 5;
-    return rounded.toDouble();
+    return ((maxY / 5).ceil() * 5).toDouble();
   }
 
   double _calculateYInterval(double maxY, double chartHeight) {
+    if (maxY <= 0 || chartHeight <= 10) return 1.0;
     const pixelsPerLabel = 40.0;
     final valuePerPixel = maxY / chartHeight;
+    if (valuePerPixel <= 0 || valuePerPixel.isInfinite || valuePerPixel.isNaN) return 1.0;
     final minIntervalPixels = pixelsPerLabel / valuePerPixel;
+    if (minIntervalPixels.isInfinite || minIntervalPixels.isNaN) return 1.0;
     final interval = (minIntervalPixels / 5).ceil() * 5.0;
-    return interval.clamp(5.0, maxY / 2);
+    return interval.clamp(1.0, maxY / 2);
   }
 
   int _getReportCount(List<ReportStats> data, int month, String reportType) {

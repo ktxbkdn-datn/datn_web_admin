@@ -15,7 +15,14 @@ import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_bloc.dart';
 import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_state.dart';
 
 class ReportPieChart extends StatefulWidget {
-  const ReportPieChart({super.key});
+  final double chartWidth;
+  final double chartHeight;
+
+  const ReportPieChart({
+    super.key,
+    required this.chartWidth,
+    required this.chartHeight,
+  });
 
   @override
   _ReportPieChartState createState() => _ReportPieChartState();
@@ -33,46 +40,46 @@ class _ReportPieChartState extends State<ReportPieChart> {
     final authState = context.read<AuthBloc>().state;
     if (authState.auth != null) {
       context.read<ReportTypeBloc>().add(const GetAllReportTypesEvent());
+      _fetchReportsForMonth(selectedMonth);
     } else {
-      print('ReportPieChart: No auth token, skipping fetch');
+      debugPrint('ReportPieChart: No auth token, skipping fetch');
     }
   }
 
   void _fetchReportsForMonth(DateTime month) {
     final authState = context.read<AuthBloc>().state;
     if (authState.auth != null) {
-      // Chỉ gọi API nếu trạng thái hiện tại là ReportInitial hoặc ReportError
-      final reportState = context.read<ReportBloc>().state;
-      if (reportState is ReportInitial || reportState is ReportError) {
-        context.read<ReportBloc>().add(const GetAllReportsEvent(
-          page: 1,
-          limit: 1000,
-        ));
-      }
+      context.read<ReportBloc>().add(const GetAllReportsEvent(
+        page: 1,
+        limit: 1000,
+      ));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  "Phân bố loại báo cáo - ${DateFormat('MMMM yyyy', 'vi').format(selectedMonth)}",
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Flexible(
+                  child: Text(
+                    "Phân bố loại báo cáo - ${DateFormat('MMMM yyyy', 'vi').format(selectedMonth)}",
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.refresh),
+                      icon: const Icon(Icons.refresh, size: 28),
                       tooltip: 'Làm mới dữ liệu',
                       color: Colors.green,
                       onPressed: () {
@@ -87,13 +94,13 @@ class _ReportPieChartState extends State<ReportPieChart> {
                     ),
                     TextButton(
                       onPressed: () => _showMonthSelectionDialog(context),
-                      child: const Text("Xem thêm"),
+                      child: const Text("Xem thêm", style: TextStyle(fontSize: 16)),
                     ),
                   ],
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             BlocBuilder<ReportBloc, ReportState>(
               builder: (context, reportState) {
                 return BlocBuilder<ReportTypeBloc, ReportTypeState>(
@@ -102,17 +109,17 @@ class _ReportPieChartState extends State<ReportPieChart> {
                       return const Center(child: CircularProgressIndicator());
                     }
                     if (reportState is ReportError) {
-                      return Center(child: Text('Lỗi: ${reportState.message}'));
+                      return Center(child: Text('Lỗi: ${reportState.message}', style: const TextStyle(fontSize: 16)));
                     }
                     if (reportTypeState is ReportTypeError) {
-                      return Center(child: Text('Lỗi: ${reportTypeState.message}'));
+                      return Center(child: Text('Lỗi: ${reportTypeState.message}', style: const TextStyle(fontSize: 16)));
                     }
                     if (reportState is ReportsLoaded && reportTypeState is ReportTypesLoaded) {
                       final reports = reportState.reports;
                       final reportTypes = reportTypeState.reportTypes;
                       return _buildPieChart(context, reports, reportTypes, selectedMonth);
                     }
-                    return const Center(child: Text('Không có dữ liệu'));
+                    return const Center(child: Text('Không có dữ liệu', style: TextStyle(fontSize: 16)));
                   },
                 );
               },
@@ -166,9 +173,9 @@ class _ReportPieChartState extends State<ReportPieChart> {
             color: colors[i % colors.length],
             value: count.toDouble(),
             title: '${percentage.toStringAsFixed(1)}%',
-            radius: 50,
+            radius: 80, // Increased radius for larger chart
             titleStyle: const TextStyle(
-              fontSize: 12,
+              fontSize: 14,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
@@ -188,9 +195,9 @@ class _ReportPieChartState extends State<ReportPieChart> {
           color: Colors.grey,
           value: 1,
           title: 'Không có dữ liệu',
-          radius: 50,
+          radius: 80, // Increased radius
           titleStyle: const TextStyle(
-            fontSize: 16,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
@@ -203,15 +210,18 @@ class _ReportPieChartState extends State<ReportPieChart> {
     }
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
+          flex: 2, // Give more space to the chart
           child: SizedBox(
-            height: 200,
+            width: widget.chartWidth * 0.6, // Use more of the available width
+            height: widget.chartHeight - 60, // Slightly reduced to fit title/buttons
             child: PieChart(
               PieChartData(
                 sections: sections,
-                sectionsSpace: 2,
-                centerSpaceRadius: 40,
+                sectionsSpace: 3,
+                centerSpaceRadius: 30, // Reduced to give more space to sections
                 pieTouchData: PieTouchData(
                   enabled: true,
                   touchCallback: (FlTouchEvent event, PieTouchResponse? pieTouchResponse) {
@@ -229,22 +239,25 @@ class _ReportPieChartState extends State<ReportPieChart> {
             ),
           ),
         ),
-        const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: isEmpty
-              ? [
-                  _buildLegendItem('Không có dữ liệu', Colors.grey),
-                ]
-              : reportTypes
-                  .asMap()
-                  .entries
-                  .where((entry) => reportCounts.containsKey(entry.value.reportTypeId))
-                  .map((entry) => _buildLegendItem(
-                        entry.value.name,
-                        colors[entry.key % colors.length],
-                      ))
-                  .toList(),
+        const SizedBox(width: 24),
+        Expanded(
+          flex: 1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: isEmpty
+                ? [
+                    _buildLegendItem('Không có dữ liệu', Colors.grey),
+                  ]
+                : reportTypes
+                    .asMap()
+                    .entries
+                    .where((entry) => reportCounts.containsKey(entry.value.reportTypeId))
+                    .map((entry) => _buildLegendItem(
+                          entry.value.name,
+                          colors[entry.key % colors.length],
+                        ))
+                    .toList(),
+          ),
         ),
       ],
     );
@@ -252,16 +265,22 @@ class _ReportPieChartState extends State<ReportPieChart> {
 
   Widget _buildLegendItem(String title, Color color) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: Row(
         children: [
           Container(
-            width: 16,
-            height: 16,
+            width: 20,
+            height: 20,
             color: color,
           ),
-          const SizedBox(width: 8),
-          Text(title, style: const TextStyle(fontSize: 14)),
+          const SizedBox(width: 10),
+          Flexible(
+            child: Text(
+              title,
+              style: const TextStyle(fontSize: 16),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
@@ -275,16 +294,16 @@ class _ReportPieChartState extends State<ReportPieChart> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Chọn tháng và năm'),
+              title: const Text('Chọn tháng và năm', style: TextStyle(fontSize: 20)),
               content: SizedBox(
                 width: double.maxFinite,
-                height: 450,
+                height: 500,
                 child: Column(
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text('Năm: ', style: TextStyle(fontSize: 16)),
+                        const Text('Năm: ', style: TextStyle(fontSize: 18)),
                         DropdownButton<int>(
                           value: selectedYear,
                           items: List.generate(
@@ -293,7 +312,7 @@ class _ReportPieChartState extends State<ReportPieChart> {
                               final year = DateTime.now().year - 5 + index;
                               return DropdownMenuItem<int>(
                                 value: year,
-                                child: Text('$year'),
+                                child: Text('$year', style: const TextStyle(fontSize: 16)),
                               );
                             },
                           ),
@@ -307,14 +326,14 @@ class _ReportPieChartState extends State<ReportPieChart> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
                     Expanded(
                       child: GridView.builder(
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 3,
                           childAspectRatio: 2,
-                          mainAxisSpacing: 8,
-                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 10,
+                          crossAxisSpacing: 10,
                         ),
                         itemCount: 12,
                         itemBuilder: (context, index) {
@@ -327,7 +346,10 @@ class _ReportPieChartState extends State<ReportPieChart> {
                               });
                               Navigator.pop(context);
                             },
-                            child: Text('Tháng ${index + 1}'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.all(12),
+                            ),
+                            child: Text('Tháng ${index + 1}', style: const TextStyle(fontSize: 14)),
                           );
                         },
                       ),
@@ -338,11 +360,11 @@ class _ReportPieChartState extends State<ReportPieChart> {
               actions: [
                 TextButton(
                   onPressed: () => _showAllMonthsCharts(context, selectedYear),
-                  child: const Text('Xem tất cả các tháng'),
+                  child: const Text('Xem tất cả các tháng', style: TextStyle(fontSize: 16)),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Đóng'),
+                  child: const Text('Đóng', style: TextStyle(fontSize: 16)),
                 ),
               ],
             );
@@ -358,24 +380,24 @@ class _ReportPieChartState extends State<ReportPieChart> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Phân bố báo cáo theo tháng - Năm $year'),
+          title: Text('Phân bố báo cáo theo tháng - Năm $year', style: const TextStyle(fontSize: 20)),
           content: SizedBox(
             width: double.maxFinite,
-            height: 600,
+            height: 800, // Increased height for larger charts
             child: ListView.builder(
               itemCount: 12,
               itemBuilder: (context, index) {
                 final month = DateTime(year, index + 1);
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  padding: const EdgeInsets.symmetric(vertical: 20.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         DateFormat('MMMM yyyy', 'vi').format(month),
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       BlocBuilder<ReportBloc, ReportState>(
                         builder: (context, reportState) {
                           return BlocBuilder<ReportTypeBloc, ReportTypeState>(
@@ -402,7 +424,7 @@ class _ReportPieChartState extends State<ReportPieChart> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Đóng'),
+              child: const Text('Đóng', style: TextStyle(fontSize: 16)),
             ),
           ],
         );

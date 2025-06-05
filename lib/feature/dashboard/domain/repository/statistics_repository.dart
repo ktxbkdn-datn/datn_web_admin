@@ -1,4 +1,5 @@
 import 'package:dartz/dartz.dart';
+import 'package:datn_web_admin/feature/dashboard/data/model/room_fill_rate_model.dart';
 import 'package:datn_web_admin/src/core/error/failures.dart';
 import '../entities/consumption.dart';
 import '../entities/room_status.dart';
@@ -8,6 +9,7 @@ import '../entities/user_stats.dart';
 import '../entities/user_monthly_stats.dart';
 import '../entities/occupancy_rate.dart';
 import '../entities/report_stats.dart';
+
 
 abstract class StatisticsRepository {
   Future<Either<Failure, List<Consumption>>> getMonthlyConsumption({
@@ -75,6 +77,11 @@ abstract class StatisticsRepository {
     int? areaId,
   });
 
+  Future<Either<Failure, List<RoomFillRate>>> getRoomFillRateStats({
+    int? areaId,
+    int? roomId,
+  });
+
   Future<Either<Failure, List<RoomStatus>>> loadCachedRoomStats();
   Future<Either<Failure, List<UserMonthlyStats>>> loadCachedUserMonthlyStats();
   Future<Either<Failure, List<ReportStats>>> loadCachedReportStats();
@@ -82,4 +89,7 @@ abstract class StatisticsRepository {
 
   Future<Either<Failure, void>> saveConsumption(List<Consumption> stats, int year, int? areaId);
   Future<Either<Failure, List<Consumption>>> loadCachedConsumption(int year, int? areaId);
+
+  Future<Either<Failure, void>> saveRoomFillRateStats(List<RoomFillRate> stats, int? areaId);
+  Future<Either<Failure, List<RoomFillRate>>> loadCachedRoomFillRateStats(int? areaId);
 }

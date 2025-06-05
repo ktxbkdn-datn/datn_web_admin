@@ -22,12 +22,15 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
   final ScrollController _horizontalScrollController = ScrollController();
   final ScrollController _verticalScrollController = ScrollController();
   final Logger _logger = Logger();
+  List<Map<String, dynamic>> _summaryData = []; // Cache data
 
   @override
   void initState() {
     super.initState();
     _fetchData();
     context.read<AreaBloc>().add(FetchAreasEvent(page: 1, limit: 100));
+    // Load cached data
+    context.read<StatisticsBloc>().add(LoadCachedRoomStatsEvent());
   }
 
   @override
@@ -49,7 +52,7 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
     _logger.i('Triggering manual snapshot for year: $_selectedYear');
     context.read<StatisticsBloc>().add(TriggerManualSnapshot(
       year: _selectedYear,
-      month: null, // Snapshot for the whole year
+      month: null,
     ));
   }
 
@@ -106,6 +109,7 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
                           onChanged: (value) {
                             setState(() {
                               _selectedAreaId = value;
+                              _summaryData = []; // Clear cache
                             });
                             _fetchData();
                           },
@@ -122,6 +126,7 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
                         if (year != null) {
                           setState(() {
                             _selectedYear = year;
+                            _summaryData = [];
                           });
                           _fetchData();
                         }
@@ -134,25 +139,58 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
             const SizedBox(height: 16),
             Expanded(
               child: BlocBuilder<StatisticsBloc, StatisticsState>(
+                buildWhen: (previous, current) =>
+                    current is StatisticsLoading ||
+                    (current is PartialLoading && current.requestType == 'room_status_summary') ||
+                    current is StatisticsError ||
+                    current is RoomStatusSummaryLoaded ||
+                    current is ManualSnapshotTriggered,
                 builder: (context, state) {
                   _logger.i('StatisticsBloc state: $state');
-                  if (state is StatisticsLoading || state is PartialLoading) {
-                    return const Center(child: CircularProgressIndicator());
+
+                  if (state is RoomStatusSummaryLoaded) {
+                    _summaryData = state.summaryData;
+                  }
+
+                  if (state is StatisticsLoading ||
+                      (state is PartialLoading && state.requestType == 'room_status_summary') ||
+                      state is StatisticsInitial) {
+                    if (_summaryData.isNotEmpty) {
+                      _logger.i('Displaying cached data while loading');
+                    } else {
+                      return const Center(child: CircularProgressIndicator());
+                    }
                   } else if (state is StatisticsError) {
                     _logger.e('StatisticsError: ${state.message}');
-                    return Center(child: Text('Lỗi: ${state.message}'));
-                  } else if (state is RoomStatusSummaryLoaded) {
-                    if (state.summaryData.isEmpty) {
-                      _logger.w('No room status summary data');
-                      return const Center(child: Text('Không có dữ liệu'));
-                    }
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Lỗi: ${state.message}'),
+                          ElevatedButton(
+                            onPressed: _fetchData,
+                            child: const Text('Thử lại'),
+                          ),
+                        ],
+                      ),
+                    );
+                  } else if (state is ManualSnapshotTriggered) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(state.message)),
+                      );
+                    });
+                    _fetchData();
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                    final statuses = _getStatuses(state.summaryData);
+                  if (_summaryData.isNotEmpty) {
+                    final statuses = _getStatuses(_summaryData);
                     final colors = _generateColors(statuses.length);
-                    final maxY = _getMaxY(state.summaryData, statuses);
+                    final maxY = _getMaxY(_summaryData, statuses);
                     final roundedMaxY = maxY == 0 ? 10.0 : _roundMaxYToEven(maxY);
 
-                    _logger.i('Summary data: ${state.summaryData}');
+                    _logger.i('Summary data: $_summaryData');
                     return LayoutBuilder(
                       builder: (context, constraints) {
                         final chartWidth = constraints.maxWidth;
@@ -175,7 +213,7 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
                                       getTooltipItem: (group, groupIndex, rod, rodIndex) {
                                         final status = _translateStatus(statuses[rodIndex]);
                                         final month = groupIndex + 1;
-                                        final value = _getStatusCount(state.summaryData, month, statuses[rodIndex]);
+                                        final value = _getStatusCount(_summaryData, month, statuses[rodIndex]);
                                         return BarTooltipItem(
                                           '$status\nTháng $month: $value phòng',
                                           const TextStyle(color: Colors.white, fontSize: 12),
@@ -217,7 +255,7 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
                                     drawHorizontalLine: true,
                                     horizontalInterval: yInterval,
                                   ),
-                                  barGroups: List.generate(12, (month) => _buildBarGroup(month, state.summaryData, statuses, colors)),
+                                  barGroups: List.generate(12, (month) => _buildBarGroup(month, _summaryData, statuses, colors)),
                                   minY: 0,
                                   maxY: roundedMaxY,
                                 ),
@@ -243,17 +281,8 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
                         );
                       },
                     );
-                  } else if (state is ManualSnapshotTriggered) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(state.message)),
-                      );
-                    });
-                    _fetchData(); // Refresh data after snapshot
-                    return const Center(child: Text('Đang làm mới dữ liệu sau snapshot...'));
                   }
-                  _logger.w('No data to display');
-                  return const Center(child: Text('Không có dữ liệu'));
+                  return const Center(child: CircularProgressIndicator());
                 },
               ),
             ),

@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import 'package:datn_web_admin/feature/dashboard/data/model/consumption_model.dart';
+import 'package:datn_web_admin/feature/dashboard/data/model/room_fill_rate_model.dart';
 import 'package:datn_web_admin/src/core/error/failures.dart';
 import '../../domain/entities/consumption.dart';
 import '../../domain/entities/room_status.dart';
@@ -9,6 +10,7 @@ import '../../domain/entities/user_stats.dart';
 import '../../domain/entities/user_monthly_stats.dart';
 import '../../domain/entities/occupancy_rate.dart';
 import '../../domain/entities/report_stats.dart';
+
 import '../../domain/repository/statistics_repository.dart';
 import '../datasource/statistic_datasource.dart';
 
@@ -186,7 +188,7 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   @override
-  Future<Either<Failure, List<UserMonthlyStats>>> getUserMonthStats({
+  Future<Either<Failure, List<UserMonthlyStats>>> getUserMonthlyStats({
     int? year,
     int? month,
     int? quarter,
@@ -243,6 +245,55 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   @override
+  Future<Either<Failure, List<RoomFillRate>>> getRoomFillRateStats({
+    int? areaId,
+    int? roomId,
+  }) async {
+    try {
+      final result = await remoteDataSource.getRoomFillRateStats(
+        areaId: areaId,
+        roomId: roomId,
+      );
+      return result.map((models) => models.map((model) => model.toEntity()).toList());
+    } catch (e) {
+      return Left(_handleError(e));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> saveRoomFillRateStats(List<RoomFillRate> stats, int? areaId) async {
+    try {
+      final models = stats.map((e) => RoomFillRateModel(
+        areaId: e.areaId,
+        areaName: e.areaName,
+        totalCapacity: e.totalCapacity,
+        totalUsers: e.totalUsers,
+        areaFillRate: e.areaFillRate,
+        rooms: e.rooms.map((key, value) => MapEntry(key, RoomFillRateDetailModel(
+          roomName: value.roomName,
+          capacity: value.capacity,
+          currentPersonNumber: value.currentPersonNumber,
+          fillRate: value.fillRate,
+        ))),
+      )).toList();
+      final result = await remoteDataSource.saveRoomFillRateStats(models, areaId);
+      return result;
+    } catch (e) {
+      return Left(_handleError(e));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<RoomFillRate>>> loadCachedRoomFillRateStats(int? areaId) async {
+    try {
+      final result = await remoteDataSource.loadRoomFillRateStats(areaId);
+      return result.map((models) => models.map((model) => model.toEntity()).toList());
+    } catch (e) {
+      return Left(_handleError(e));
+    }
+  }
+
+  @override
   Future<Either<Failure, List<RoomStatus>>> loadCachedRoomStats() async {
     try {
       final result = await remoteDataSource.loadRoomStats();
@@ -253,7 +304,7 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
   }
 
   @override
-  Future<Either<Failure, List<UserMonthlyStats>>> loadCachedUserMonthStats() async {
+  Future<Either<Failure, List<UserMonthlyStats>>> loadCachedUserMonthlyStats() async {
     try {
       final result = await remoteDataSource.loadUserMonthlyStats();
       return result.map((models) => models.map((model) => model.toEntity()).toList());
@@ -289,38 +340,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
       return NetworkFailure(error.message);
     } else {
       return ServerFailure('Không thể lấy dữ liệu thống kê');
-    }
-  }
-
-  @override
-  Future<Either<Failure, List<UserMonthlyStats>>> getUserMonthlyStats({
-    int? year,
-    int? month,
-    int? quarter,
-    int? areaId,
-    int? roomId,
-  }) async {
-    try {
-      final result = await remoteDataSource.getUserMonthlyStats(
-        year: year,
-        month: month,
-        quarter: quarter,
-        areaId: areaId,
-        roomId: roomId,
-      );
-      return result.map((models) => models.map((model) => model.toEntity()).toList());
-    } catch (e) {
-      return Left(_handleError(e));
-    }
-  }
-
-  @override
-  Future<Either<Failure, List<UserMonthlyStats>>> loadCachedUserMonthlyStats() async {
-    try {
-      final result = await remoteDataSource.loadUserMonthlyStats();
-      return result.map((models) => models.map((model) => model.toEntity()).toList());
-    } catch (e) {
-      return Left(_handleError(e));
     }
   }
 }

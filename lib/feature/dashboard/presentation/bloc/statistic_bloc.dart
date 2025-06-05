@@ -20,6 +20,9 @@ class StatisticsBloc extends Bloc<StatisticsEvent, StatisticsState> {
   final usecase.GetUserMonthlyStats getUserMonthlyStats;
   final usecase.GetOccupancyRateStats getOccupancyRateStats;
   final usecase.GetReportStats getReportStats;
+  final usecase.GetRoomFillRateStats getRoomFillRateStats;
+  final usecase.SaveRoomFillRate saveRoomFillRate;
+  final usecase.LoadCachedRoomFillRate loadCachedRoomFillRate;
   final usecase.LoadCachedRoomStats loadCachedRoomStats;
   final usecase.LoadCachedUserMonthlyStats loadCachedUserMonthlyStats;
   final usecase.LoadCachedReportStats loadCachedReportStats;
@@ -39,6 +42,9 @@ class StatisticsBloc extends Bloc<StatisticsEvent, StatisticsState> {
     required this.getUserMonthlyStats,
     required this.getOccupancyRateStats,
     required this.getReportStats,
+    required this.getRoomFillRateStats,
+    required this.saveRoomFillRate,
+    required this.loadCachedRoomFillRate,
     required this.loadCachedRoomStats,
     required this.loadCachedUserMonthlyStats,
     required this.loadCachedReportStats,
@@ -56,6 +62,8 @@ class StatisticsBloc extends Bloc<StatisticsEvent, StatisticsState> {
     on<FetchUserMonthlyStats>(_onFetchUserMonthlyStats);
     on<FetchOccupancyRateStats>(_onFetchOccupancyRateStats);
     on<FetchReportStats>(_onFetchReportStats);
+    on<FetchRoomFillRateStats>(_onFetchRoomFillRateStats);
+    on<LoadCachedRoomFillRateStats>(_onLoadCachedRoomFillRateStats);
     on<LoadCachedRoomStatsEvent>(_onLoadCachedRoomStats);
     on<LoadCachedUserMonthlyStatsEvent>(_onLoadCachedUserMonthlyStats);
     on<LoadCachedReportStatsEvent>(_onLoadCachedReportStats);
@@ -160,7 +168,7 @@ class StatisticsBloc extends Bloc<StatisticsEvent, StatisticsState> {
 
   Future<void> _onTriggerManualSnapshot(TriggerManualSnapshot event, Emitter<StatisticsState> emit) async {
     await _handleRequest(
-      () => triggerManualSnapshot.call( // Use .call() for usecase
+      () => triggerManualSnapshot.call(
         year: event.year,
         month: event.month,
       ),
@@ -241,6 +249,31 @@ class StatisticsBloc extends Bloc<StatisticsEvent, StatisticsState> {
       emit,
       (data) => ReportStatsLoaded(reportStatsData: data.reportStats, trends: data.trends),
       'report_stats',
+    );
+  }
+
+  Future<void> _onFetchRoomFillRateStats(FetchRoomFillRateStats event, Emitter<StatisticsState> emit) async {
+    await _handleRequest(
+      () => getRoomFillRateStats(
+        areaId: event.areaId,
+        roomId: event.roomId,
+      ),
+      emit,
+      (data) {
+        // Save to cache
+        saveRoomFillRate(stats: data, areaId: event.areaId);
+        return RoomFillRateLoaded(roomFillRateData: data);
+      },
+      'room_fill_rate',
+    );
+  }
+
+  Future<void> _onLoadCachedRoomFillRateStats(LoadCachedRoomFillRateStats event, Emitter<StatisticsState> emit) async {
+    await _handleRequest(
+      () => loadCachedRoomFillRate(areaId: event.areaId),
+      emit,
+      (data) => RoomFillRateLoaded(roomFillRateData: data),
+      'cached_room_fill_rate',
     );
   }
 

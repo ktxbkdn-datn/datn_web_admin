@@ -11,6 +11,7 @@ import '../model/user_stats_model.dart';
 import '../model/user_monthly_stats_model.dart';
 import '../model/occupancy_rate_model.dart';
 import '../model/report_stats_model.dart';
+import '../model/room_fill_rate_model.dart';
 import '../../domain/entities/report_stats.dart';
 
 abstract class StatisticsRemoteDataSource {
@@ -79,6 +80,11 @@ abstract class StatisticsRemoteDataSource {
     int? areaId,
   });
 
+  Future<Either<Failure, List<RoomFillRateModel>>> getRoomFillRateStats({
+    int? areaId,
+    int? roomId,
+  });
+
   Future<Either<Failure, void>> saveRoomStats(List<RoomStatusModel> stats);
   Future<Either<Failure, List<RoomStatusModel>>> loadRoomStats();
 
@@ -93,6 +99,9 @@ abstract class StatisticsRemoteDataSource {
 
   Future<Either<Failure, void>> saveConsumption(List<ConsumptionModel> stats, int year, int? areaId);
   Future<Either<Failure, List<ConsumptionModel>>> loadConsumption(int year, int? areaId);
+
+  Future<Either<Failure, void>> saveRoomFillRateStats(List<RoomFillRateModel> stats, int? areaId);
+  Future<Either<Failure, List<RoomFillRateModel>>> loadRoomFillRateStats(int? areaId);
 }
 
 class ReportStatsResponseModel {
@@ -430,6 +439,43 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
   }
 
   @override
+  Future<Either<Failure, List<RoomFillRateModel>>> getRoomFillRateStats({
+    int? areaId,
+    int? roomId,
+  }) async {
+    try {
+      // Try loading from cache first
+      final cacheResult = await loadRoomFillRateStats(areaId);
+      if (cacheResult.isRight()) {
+        final cachedData = cacheResult.getOrElse(() => []);
+        if (cachedData.isNotEmpty) {
+          print('StatisticsRemoteDataSource: Loaded cached fill rate data for areaId $areaId');
+          return Right(cachedData);
+        }
+      }
+
+      // Fetch from API if no cache
+      final queryParams = <String, String>{};
+      if (areaId != null) queryParams['area_id'] = areaId.toString();
+      if (roomId != null) queryParams['room_id'] = roomId.toString();
+
+      final response = await apiService.get(
+        '/api/statistics/rooms/fill-rate',
+        queryParams: queryParams,
+      );
+      final fillRateData = (response['data'] as List)
+          .map((json) => RoomFillRateModel.fromJson(json))
+          .toList();
+
+      // Cache the fetched data
+      await saveRoomFillRateStats(fillRateData, areaId);
+      return Right(fillRateData);
+    } catch (e) {
+      return Left(_handleError(e));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> saveRoomStats(List<RoomStatusModel> stats) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -538,6 +584,38 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
       return Right(stats);
     } catch (e) {
       return Left(ServerFailure('Failed to load user stats: ${e.toString()}'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> saveRoomFillRateStats(List<RoomFillRateModel> stats, int? areaId) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String statsJson = jsonEncode(stats.map((stat) => stat.toJson()).toList());
+      String cacheKey = 'room_fill_rate_data${areaId != null ? '_$areaId' : ''}';
+      await prefs.setString(cacheKey, statsJson);
+      print('StatisticsRemoteDataSource: Saved fill rate data to cache with key $cacheKey');
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure('Failed to save room fill rate stats: ${e.toString()}'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<RoomFillRateModel>>> loadRoomFillRateStats(int? areaId) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String cacheKey = 'room_fill_rate_data${areaId != null ? '_$areaId' : ''}';
+      String? statsJson = prefs.getString(cacheKey);
+      if (statsJson == null) {
+        return Right([]);
+      }
+      List<dynamic> statsList = jsonDecode(statsJson);
+      final stats = statsList.map((json) => RoomFillRateModel.fromJson(json)).toList();
+      print('StatisticsRemoteDataSource: Loaded fill rate data from cache with key $cacheKey');
+      return Right(stats);
+    } catch (e) {
+      return Left(ServerFailure('Failed to load room fill rate stats: ${e.toString()}'));
     }
   }
 
