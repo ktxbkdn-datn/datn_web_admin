@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:logger/logger.dart';
 import '../../../report/domain/entities/report_entity.dart';
 import '../../../report/domain/entities/report_type_entity.dart';
 import '../../../report/presentation/bloc/report/report_bloc.dart';
@@ -12,16 +14,19 @@ import '../../../report/presentation/bloc/rp_type/rp_type_bloc.dart';
 import '../../../report/presentation/bloc/rp_type/rp_type_event.dart';
 import '../../../report/presentation/bloc/rp_type/rp_type_state.dart';
 import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_bloc.dart';
-import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_state.dart';
 
 class ReportPieChart extends StatefulWidget {
   final double chartWidth;
   final double chartHeight;
+  final bool isEnlarged; 
+  double pieRadius = 50.0;
 
-  const ReportPieChart({
+  ReportPieChart({
     super.key,
     required this.chartWidth,
     required this.chartHeight,
+    this.isEnlarged = false,
+    required this.pieRadius,
   });
 
   @override
@@ -29,102 +34,184 @@ class ReportPieChart extends StatefulWidget {
 }
 
 class _ReportPieChartState extends State<ReportPieChart> {
-  DateTime selectedMonth = DateTime.now();
+  final ValueNotifier<DateTime> _selectedMonth = ValueNotifier(DateTime.now());
+  final Logger _logger = Logger();
+  bool _isFetchingReports = false;
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
     initializeDateFormatting('vi', null).then((_) {
-      setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     });
     final authState = context.read<AuthBloc>().state;
     if (authState.auth != null) {
+      _logger.i('ReportPieChart: Fetching report types');
       context.read<ReportTypeBloc>().add(const GetAllReportTypesEvent());
-      _fetchReportsForMonth(selectedMonth);
+      _fetchReportsForMonth(_selectedMonth.value);
     } else {
-      debugPrint('ReportPieChart: No auth token, skipping fetch');
+      _logger.w('ReportPieChart: No auth token, skipping fetch');
     }
   }
 
-  void _fetchReportsForMonth(DateTime month) {
+  @override
+  void dispose() {
+    _selectedMonth.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchReportsForMonth(DateTime month) async {
     final authState = context.read<AuthBloc>().state;
-    if (authState.auth != null) {
-      context.read<ReportBloc>().add(const GetAllReportsEvent(
-        page: 1,
-        limit: 1000,
-      ));
-    }
+    if (authState.auth == null || _isFetchingReports) return;
+
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () async {
+      final reportState = context.read<ReportBloc>().state;
+      if (reportState is ReportInitial ||
+          reportState is ReportError ||
+          (reportState is ReportsLoaded &&
+              !reportState.reports.any((r) =>
+                  r.createdAt != null &&
+                  DateTime.tryParse(r.createdAt!)?.month == month.month &&
+                  DateTime.tryParse(r.createdAt!)?.year == month.year))) {
+        _logger.i('ReportPieChart: Fetching reports for month ${month.month}/${month.year}');
+        if (mounted) {
+          setState(() {
+            _isFetchingReports = true;
+          });
+        }
+
+        context.read<ReportBloc>().add(const GetAllReportsEvent(
+          page: 1,
+          limit: 1000,
+        ));
+
+        // Timeout to prevent prolonged loading
+        await Future.any([
+          Future.delayed(const Duration(seconds: 10)),
+          Future(() async {
+            while (_isFetchingReports && mounted) {
+              await Future.delayed(const Duration(milliseconds: 100));
+            }
+          }),
+        ]);
+
+        if (_isFetchingReports && mounted) {
+          setState(() {
+            _isFetchingReports = false;
+          });
+          _logger.w('ReportPieChart: Fetch timeout for month ${month.month}/${month.year}');
+        }
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Text(
-                    "Phân bố loại báo cáo - ${DateFormat('MMMM yyyy', 'vi').format(selectedMonth)}",
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    overflow: TextOverflow.ellipsis,
+        padding: const EdgeInsets.all(16.0),
+        child: SingleChildScrollView(
+          child: ValueListenableBuilder<DateTime>(
+            valueListenable: _selectedMonth,
+            builder: (context, month, _) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          "Phân bố loại báo cáo - ${DateFormat('MMMM yyyy', 'vi').format(month)}",
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.refresh),
+                            tooltip: 'Làm mới dữ liệu',
+                            color: Colors.green,
+                            onPressed: _isFetchingReports
+                                ? null
+                                : () {
+                                    final authState = context.read<AuthBloc>().state;
+                                    if (authState.auth != null) {
+                                      _logger.i('ReportPieChart: Refreshing reports');
+                                      if (mounted) {
+                                        setState(() {
+                                          _isFetchingReports = true;
+                                        });
+                                      }
+                                      context.read<ReportBloc>().add(const GetAllReportsEvent(
+                                        page: 1,
+                                        limit: 1000,
+                                      ));
+                                    }
+                                  },
+                          ),
+                          TextButton(
+                            onPressed: _isFetchingReports ? null : () => _showMonthSelectionDialog(context),
+                            child: const Text("Xem thêm"),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.refresh, size: 28),
-                      tooltip: 'Làm mới dữ liệu',
-                      color: Colors.green,
-                      onPressed: () {
-                        final authState = context.read<AuthBloc>().state;
-                        if (authState.auth != null) {
-                          context.read<ReportBloc>().add(const GetAllReportsEvent(
-                            page: 1,
-                            limit: 1000,
-                          ));
+                  const SizedBox(height: 16),
+                  BlocListener<ReportBloc, ReportState>(
+                    listener: (context, state) {
+                      if (state is ReportsLoaded || state is ReportError) {
+                        if (mounted) {
+                          setState(() {
+                            _isFetchingReports = false;
+                          });
                         }
+                      }
+                    },
+                    child: BlocBuilder<ReportBloc, ReportState>(
+                      builder: (context, reportState) {
+                        return BlocBuilder<ReportTypeBloc, ReportTypeState>(
+                          builder: (context, reportTypeState) {
+                            if (reportState is ReportLoading || reportTypeState is ReportTypeLoading || _isFetchingReports) {
+                              _logger.i('ReportPieChart: Loading state');
+                              return const Center(child: CircularProgressIndicator());
+                            }
+                            if (reportState is ReportError) {
+                              _logger.e('ReportPieChart: Report error - ${reportState.message}');
+                              return Center(child: Text('Lỗi: ${reportState.message}'));
+                            }
+                            if (reportTypeState is ReportTypeError) {
+                              _logger.e('ReportPieChart: Report type error - ${reportTypeState.message}');
+                              return Center(child: Text('Lỗi: ${reportTypeState.message}'));
+                            }
+                            if (reportState is ReportsLoaded && reportTypeState is ReportTypesLoaded) {
+                              if (reportTypeState.reportTypes.isEmpty) {
+                                _logger.w('ReportPieChart: No report types available');
+                                return const Center(child: Text('Không có loại báo cáo'));
+                              }
+                              _logger.i('ReportPieChart: Rendering chart with ${reportState.reports.length} reports and ${reportTypeState.reportTypes.length} report types');
+                              return _buildPieChart(context, reportState.reports, reportTypeState.reportTypes, month);
+                            }
+                            _logger.w('ReportPieChart: No data available');
+                            return const Center(child: Text('Không có dữ liệu'));
+                          },
+                        );
                       },
                     ),
-                    TextButton(
-                      onPressed: () => _showMonthSelectionDialog(context),
-                      child: const Text("Xem thêm", style: TextStyle(fontSize: 16)),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            BlocBuilder<ReportBloc, ReportState>(
-              builder: (context, reportState) {
-                return BlocBuilder<ReportTypeBloc, ReportTypeState>(
-                  builder: (context, reportTypeState) {
-                    if (reportState is ReportLoading || reportTypeState is ReportTypeLoading) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (reportState is ReportError) {
-                      return Center(child: Text('Lỗi: ${reportState.message}', style: const TextStyle(fontSize: 16)));
-                    }
-                    if (reportTypeState is ReportTypeError) {
-                      return Center(child: Text('Lỗi: ${reportTypeState.message}', style: const TextStyle(fontSize: 16)));
-                    }
-                    if (reportState is ReportsLoaded && reportTypeState is ReportTypesLoaded) {
-                      final reports = reportState.reports;
-                      final reportTypes = reportTypeState.reportTypes;
-                      return _buildPieChart(context, reports, reportTypes, selectedMonth);
-                    }
-                    return const Center(child: Text('Không có dữ liệu', style: TextStyle(fontSize: 16)));
-                  },
-                );
-              },
-            ),
-          ],
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -137,18 +224,28 @@ class _ReportPieChartState extends State<ReportPieChart> {
     DateTime month,
   ) {
     final monthReports = reports.where((report) {
-      if (report.createdAt == null) return false;
+      if (report.createdAt == null) {
+        _logger.w('ReportPieChart: Report with null createdAt - reportId: ${report.reportId}');
+        return false;
+      }
       try {
         final reportDate = DateTime.parse(report.createdAt!);
         return reportDate.year == month.year && reportDate.month == month.month;
       } catch (e) {
+        _logger.e('ReportPieChart: Error parsing createdAt for reportId: ${report.reportId} - $e');
         return false;
       }
     }).toList();
 
+    _logger.i('ReportPieChart: Filtered ${monthReports.length} reports for ${month.month}/${month.year}');
+
     final reportCounts = <int, int>{};
     for (var report in monthReports) {
-      reportCounts[report.reportTypeId] = (reportCounts[report.reportTypeId] ?? 0) + 1;
+      if (reportTypes.any((type) => type.reportTypeId == report.reportTypeId)) {
+        reportCounts[report.reportTypeId] = (reportCounts[report.reportTypeId] ?? 0) + 1;
+      } else {
+        _logger.w('ReportPieChart: Report type ${report.reportTypeId} not found in reportTypes');
+      }
     }
 
     final colors = [
@@ -163,26 +260,24 @@ class _ReportPieChartState extends State<ReportPieChart> {
     ];
     final sections = <PieChartSectionData>[];
     final double totalReports = monthReports.length.toDouble();
-    for (var i = 0; i < reportTypes.length; i++) {
-      final reportType = reportTypes[i];
+
+    for (var reportType in reportTypes) {
       final count = reportCounts[reportType.reportTypeId] ?? 0;
       if (count > 0) {
         final percentage = totalReports > 0 ? (count / totalReports) * 100 : 0;
+        final colorIndex = reportTypes.indexOf(reportType) % colors.length;
         sections.add(
           PieChartSectionData(
-            color: colors[i % colors.length],
+            color: colors[colorIndex],
             value: count.toDouble(),
-            title: '${percentage.toStringAsFixed(1)}%',
-            radius: 80, // Increased radius for larger chart
+            title: totalReports > 0 ? '${percentage.toStringAsFixed(1)}%' : '',
+            radius: widget.pieRadius,
             titleStyle: const TextStyle(
-              fontSize: 14,
+              fontSize: 12,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
-            badgeWidget: Text(
-              reportType.name,
-              style: const TextStyle(fontSize: 0),
-            ),
+            badgeWidget: const SizedBox.shrink(),
           ),
         );
       }
@@ -190,21 +285,19 @@ class _ReportPieChartState extends State<ReportPieChart> {
 
     final isEmpty = sections.isEmpty;
     if (isEmpty) {
+      _logger.w('ReportPieChart: No valid sections to render');
       sections.add(
         PieChartSectionData(
           color: Colors.grey,
           value: 1,
           title: 'Không có dữ liệu',
-          radius: 80, // Increased radius
+          radius: 50,
           titleStyle: const TextStyle(
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
-          badgeWidget: const Text(
-            'Không có dữ liệu',
-            style: TextStyle(fontSize: 0),
-          ),
+          badgeWidget: const SizedBox.shrink(),
         ),
       );
     }
@@ -213,24 +306,25 @@ class _ReportPieChartState extends State<ReportPieChart> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          flex: 2, // Give more space to the chart
           child: SizedBox(
-            width: widget.chartWidth * 0.6, // Use more of the available width
-            height: widget.chartHeight - 60, // Slightly reduced to fit title/buttons
+            width: widget.chartWidth / 1.5,
+            height: widget.chartHeight - 40,
             child: PieChart(
               PieChartData(
                 sections: sections,
-                sectionsSpace: 3,
-                centerSpaceRadius: 30, // Reduced to give more space to sections
+                sectionsSpace: 2,
+                centerSpaceRadius: widget.pieRadius / 6,
                 pieTouchData: PieTouchData(
-                  enabled: true,
+                  enabled: widget.isEnlarged, // Enable touch only in enlarged view
                   touchCallback: (FlTouchEvent event, PieTouchResponse? pieTouchResponse) {
                     if (!event.isInterestedForInteractions ||
                         pieTouchResponse == null ||
                         pieTouchResponse.touchedSection == null) {
                       return;
                     }
-                    setState(() {});
+                    if (mounted) {
+                      _logger.i('ReportPieChart: Touched section ${pieTouchResponse.touchedSection!.touchedSectionIndex}');
+                    }
                   },
                 ),
               ),
@@ -239,25 +333,22 @@ class _ReportPieChartState extends State<ReportPieChart> {
             ),
           ),
         ),
-        const SizedBox(width: 24),
-        Expanded(
-          flex: 1,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: isEmpty
-                ? [
-                    _buildLegendItem('Không có dữ liệu', Colors.grey),
-                  ]
-                : reportTypes
-                    .asMap()
-                    .entries
-                    .where((entry) => reportCounts.containsKey(entry.value.reportTypeId))
-                    .map((entry) => _buildLegendItem(
-                          entry.value.name,
-                          colors[entry.key % colors.length],
-                        ))
-                    .toList(),
-          ),
+        const SizedBox(width: 16),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: isEmpty
+              ? [
+                  _buildLegendItem('Không có dữ liệu', Colors.grey),
+                ]
+              : reportTypes
+                  .asMap()
+                  .entries
+                  .where((entry) => reportCounts.containsKey(entry.value.reportTypeId))
+                  .map((entry) => _buildLegendItem(
+                        entry.value.name,
+                        colors[entry.key % colors.length],
+                      ))
+                  .toList(),
         ),
       ],
     );
@@ -265,45 +356,39 @@ class _ReportPieChartState extends State<ReportPieChart> {
 
   Widget _buildLegendItem(String title, Color color) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         children: [
           Container(
-            width: 20,
-            height: 20,
+            width: 16,
+            height: 16,
             color: color,
           ),
-          const SizedBox(width: 10),
-          Flexible(
-            child: Text(
-              title,
-              style: const TextStyle(fontSize: 16),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+          const SizedBox(width: 8),
+          Text(title, style: const TextStyle(fontSize: 14)),
         ],
       ),
     );
   }
 
   void _showMonthSelectionDialog(BuildContext context) {
-    int selectedYear = selectedMonth.year;
+    int selectedYear = _selectedMonth.value.year;
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (dialogContext, setDialogState) {
             return AlertDialog(
-              title: const Text('Chọn tháng và năm', style: TextStyle(fontSize: 20)),
+              title: const Text('Chọn tháng và năm'),
               content: SizedBox(
                 width: double.maxFinite,
-                height: 500,
+                height: 450,
                 child: Column(
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text('Năm: ', style: TextStyle(fontSize: 18)),
+                        const Text('Năm: ', style: TextStyle(fontSize: 16)),
                         DropdownButton<int>(
                           value: selectedYear,
                           items: List.generate(
@@ -312,7 +397,7 @@ class _ReportPieChartState extends State<ReportPieChart> {
                               final year = DateTime.now().year - 5 + index;
                               return DropdownMenuItem<int>(
                                 value: year,
-                                child: Text('$year', style: const TextStyle(fontSize: 16)),
+                                child: Text('$year'),
                               );
                             },
                           ),
@@ -326,30 +411,32 @@ class _ReportPieChartState extends State<ReportPieChart> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                     Expanded(
                       child: GridView.builder(
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 3,
                           childAspectRatio: 2,
-                          mainAxisSpacing: 10,
-                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 8,
+                          crossAxisSpacing: 8,
                         ),
                         itemCount: 12,
                         itemBuilder: (context, index) {
                           final month = DateTime(selectedYear, index + 1);
                           return ElevatedButton(
-                            onPressed: () {
-                              setState(() {
-                                selectedMonth = month;
-                                _fetchReportsForMonth(month);
-                              });
-                              Navigator.pop(context);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.all(12),
-                            ),
-                            child: Text('Tháng ${index + 1}', style: const TextStyle(fontSize: 14)),
+                            onPressed: _isFetchingReports
+                                ? null
+                                : () {
+                                    _logger.i('ReportPieChart: Selected month ${month.month}/${month.year}');
+                                    _selectedMonth.value = month;
+                                    _fetchReportsForMonth(month);
+                                    Future.delayed(Duration.zero, () {
+                                      if (Navigator.canPop(dialogContext)) {
+                                        Navigator.of(dialogContext).pop();
+                                      }
+                                    });
+                                  },
+                            child: Text('Tháng ${index + 1}'),
                           );
                         },
                       ),
@@ -359,12 +446,21 @@ class _ReportPieChartState extends State<ReportPieChart> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => _showAllMonthsCharts(context, selectedYear),
-                  child: const Text('Xem tất cả các tháng', style: TextStyle(fontSize: 16)),
+                  onPressed: _isFetchingReports
+                      ? null
+                      : () {
+                          Navigator.of(dialogContext).pop();
+                          _showAllMonthsCharts(context, selectedYear);
+                        },
+                  child: const Text('Xem tất cả các tháng'),
                 ),
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Đóng', style: TextStyle(fontSize: 16)),
+                  onPressed: () {
+                    if (Navigator.canPop(dialogContext)) {
+                      Navigator.of(dialogContext).pop();
+                    }
+                  },
+                  child: const Text('Đóng'),
                 ),
               ],
             );
@@ -375,29 +471,28 @@ class _ReportPieChartState extends State<ReportPieChart> {
   }
 
   void _showAllMonthsCharts(BuildContext context, int year) {
-    Navigator.pop(context);
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
-          title: Text('Phân bố báo cáo theo tháng - Năm $year', style: const TextStyle(fontSize: 20)),
+          title: Text('Phân bố báo cáo theo tháng - Năm $year'),
           content: SizedBox(
             width: double.maxFinite,
-            height: 800, // Increased height for larger charts
+            height: 600,
             child: ListView.builder(
               itemCount: 12,
               itemBuilder: (context, index) {
                 final month = DateTime(year, index + 1);
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20.0),
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         DateFormat('MMMM yyyy', 'vi').format(month),
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       BlocBuilder<ReportBloc, ReportState>(
                         builder: (context, reportState) {
                           return BlocBuilder<ReportTypeBloc, ReportTypeState>(
@@ -423,8 +518,12 @@ class _ReportPieChartState extends State<ReportPieChart> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Đóng', style: TextStyle(fontSize: 16)),
+              onPressed: () {
+                if (Navigator.canPop(dialogContext)) {
+                  Navigator.of(dialogContext).pop();
+                }
+              },
+              child: const Text('Đóng'),
             ),
           ],
         );

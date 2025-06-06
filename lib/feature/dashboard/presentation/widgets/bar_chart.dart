@@ -244,7 +244,7 @@ class _DashboardBarChartState extends State<DashboardBarChart> {
                       Consumption consumption = _getConsumption(_consumptionData);
                       final services = _getServices(consumption);
                       if (services.isEmpty) {
-                        return const Center(child: Text('Không có dịch vụ nào để hiển thị'));
+                        return const Center(child: Text('Không có dữ liệu hiển thị'));
                       }
 
                       final colors = _generateColors(services.length);

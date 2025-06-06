@@ -608,13 +608,15 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                                                   context,
                                                   ReportPieChart(
                                                     chartWidth: MediaQuery.of(context).size.width * 0.8,
-                                                    chartHeight: 500,
+                                                    chartHeight: 600,
+                                                    pieRadius: MediaQuery.of(context).size.width * 0.15,
                                                   ),
                                                   'Biểu đồ tròn chi tiết',
                                                 ),
                                                 child: ReportPieChart(
                                                   chartWidth: chartWidth,
                                                   chartHeight: chartHeight,
+                                                  pieRadius: MediaQuery.of(context).size.width * 0.03,
                                                 ),
                                               ),
                                             ),
@@ -643,12 +645,14 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                                                 ReportPieChart(
                                                   chartWidth: MediaQuery.of(context).size.width * 0.8,
                                                   chartHeight: 500,
+                                                  pieRadius: MediaQuery.of(context).size.width * 0.08,
                                                 ),
                                                 'Biểu đồ tròn chi tiết',
                                               ),
                                               child: ReportPieChart(
                                                 chartWidth: chartWidth,
                                                 chartHeight: chartHeight,
+                                                pieRadius: MediaQuery.of(context).size.width * 0.08,
                                               ),
                                             ),
                                           ],
