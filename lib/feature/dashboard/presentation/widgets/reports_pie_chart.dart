@@ -478,7 +478,7 @@ class _ReportPieChartState extends State<ReportPieChart> {
           title: Text('Phân bố báo cáo theo tháng - Năm $year'),
           content: SizedBox(
             width: double.maxFinite,
-            height: 600,
+            height: 700,
             child: ListView.builder(
               itemCount: 12,
               itemBuilder: (context, index) {

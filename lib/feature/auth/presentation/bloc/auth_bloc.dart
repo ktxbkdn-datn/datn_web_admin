@@ -49,7 +49,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(state.copyWith(
         isLoading: false,
         auth: null,
-        error: 'Lỗi khởi tạo dịch vụ: $e',
+        // Không đặt error để tránh hiển thị SnackBar
       ));
       return;
     }
@@ -106,7 +106,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             emit(state.copyWith(
               isLoading: false,
               auth: null,
-              error: 'Không thể làm mới token: $e',
+              // Không đặt error để tránh hiển thị SnackBar
             ));
             return;
           }
@@ -116,7 +116,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(state.copyWith(
           isLoading: false,
           auth: null,
-          error: 'Lỗi kiểm tra trạng thái đăng nhập: $e',
+          // Không đặt error để tránh hiển thị SnackBar
         ));
         return;
       }
@@ -167,10 +167,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final token = state.auth?.accessToken ?? apiService.token ?? '';
       final result = await logout(token);
       result.fold(
-        (failure) => emit(state.copyWith(
-          isLoading: false,
-          error: failure.message,
-        )),
+        (failure) {
+          // Nếu thất bại (ví dụ, token bị mất), vẫn cho phép đăng xuất
+          apiService.clearToken(force: true);
+          emit(const AuthState(
+            successMessage: "Đăng xuất thành công",
+            auth: null,
+          ));
+        },
         (_) {
           apiService.clearToken(force: true); // Xóa token khi đăng xuất
           emit(const AuthState(
@@ -180,9 +184,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         },
       );
     } catch (e) {
-      emit(state.copyWith(
-        isLoading: false,
-        error: e is ServerFailure ? e.message : "Lỗi không xác định.",
+      // Nếu có lỗi bất ngờ, vẫn cho phép đăng xuất
+      apiService.clearToken(force: true);
+      emit(const AuthState(
+        successMessage: "Đăng xuất thành công",
+        auth: null,
       ));
     }
   }
@@ -261,7 +267,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(state.copyWith(
         isLoading: false,
         auth: null,
-        error: 'Lỗi làm mới token: $e',
+        // Không đặt error để tránh hiển thị SnackBar
       ));
     }
   }

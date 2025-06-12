@@ -1,5 +1,6 @@
 // lib/src/app.dart
 import 'package:datn_web_admin/feature/admin/presentation/pages/admin_management_page.dart';
+import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_state.dart';
 import 'package:datn_web_admin/feature/bill/presentation/bloc/bill_bloc.dart';
 import 'package:datn_web_admin/feature/bill/presentation/page/bill_management_page.dart';
 import 'package:datn_web_admin/feature/contract/presentation/bloc/contract_bloc.dart';
@@ -60,26 +61,37 @@ class App extends StatelessWidget {
         BlocProvider(create: (_) => getIt<NotificationTypeBloc>()),
         BlocProvider(create: (_) => getIt<StatisticsBloc>()),
       ],
-      child: GetMaterialApp(
-        title: 'Dormitory Management',
-        theme: AppTheme.lightTheme,
-        debugShowCheckedModeBanner: false,
-        initialRoute: '/login',
-        routes: {
-          '/login': (_) => const LoginPage(),
-          '/forgot-password': (_) => const ForgotPasswordPage(),
-          '/reset-password': (_) => const ResetPasswordPage(),
-          '/dashboard': (_) => const DashboardPage(),
-          '/admin-management': (_) => const AdminManagementPage(),
-          '/users': (_) => const UserPage(),
-          '/rooms': (_) => const RoomManagementPage(),
-          '/registrations': (_) => const RegistrationManagementPage(),
-          '/contracts': (_) => const ContractManagementPage(),
-          '/services': (_) => const ServiceManagementPage(),
-          '/bills': (_) => const BillManagementPage(),
-          '/reports': (_) => const ReportManagementPage(),
-          '/notifications': (_) => const NotificationManagementPage(),
+      child: BlocListener<AuthBloc, AuthState>(
+        listener: (context, state) {
+          if (state.auth == null && state.successMessage == 'Vui lòng đăng nhập lại') {
+            // ignore: use_build_context_synchronously
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Vui lòng đăng nhập lại'), backgroundColor: Colors.red),
+            );
+            Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+          }
         },
+        child: GetMaterialApp(
+          title: 'Dormitory Management',
+          theme: AppTheme.lightTheme,
+          debugShowCheckedModeBanner: false,
+          initialRoute: '/login',
+          routes: {
+            '/login': (_) => const LoginPage(),
+            '/forgot-password': (_) => const ForgotPasswordPage(),
+            '/reset-password': (_) => const ResetPasswordPage(),
+            '/dashboard': (_) => const DashboardPage(),
+            '/admin-management': (_) => const AdminManagementPage(),
+            '/users': (_) => const UserPage(),
+            '/rooms': (_) => const RoomManagementPage(),
+            '/registrations': (_) => const RegistrationManagementPage(),
+            '/contracts': (_) => const ContractManagementPage(),
+            '/services': (_) => const ServiceManagementPage(),
+            '/bills': (_) => const BillManagementPage(),
+            '/reports': (_) => const ReportManagementPage(),
+            '/notifications': (_) => const NotificationManagementPage(),
+          },
+        ),
       ),
     );
   }

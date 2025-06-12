@@ -77,24 +77,24 @@ class FillRatePieChart extends StatelessWidget {
               const SizedBox(height: 8),
               SizedBox(
                 width: chartWidth,
-                height: chartHeight - 80, // Reduced to fit within constraints
+                height: chartHeight - 60, 
                 child: PieChart(
                   PieChartData(
                     sectionsSpace: 2,
-                    centerSpaceRadius: 40,
+                    centerSpaceRadius: 20,
                     sections: [
                       PieChartSectionData(
                         color: Colors.blue,
                         value: totalUsers,
                         title: '${(totalUsers / (totalCapacity > 0 ? totalCapacity : 1) * 100).toStringAsFixed(1)}%',
-                        radius: 50,
+                        radius: 200,
                         titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                       PieChartSectionData(
                         color: Colors.grey[300]!,
                         value: totalCapacity - totalUsers,
                         title: '${((totalCapacity - totalUsers) / (totalCapacity > 0 ? totalCapacity : 1) * 100).toStringAsFixed(1)}%',
-                        radius: 50,
+                        radius: 200,
                         titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87),
                       ),
                     ],

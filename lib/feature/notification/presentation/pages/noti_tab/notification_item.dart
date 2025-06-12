@@ -45,6 +45,7 @@ class NotificationItem extends StatefulWidget {
   final String? Function(String?) formatDateTime;
   final String baseUrl;
   final VoidCallback? onDelete;
+  final VoidCallback? onEdit; // Thêm callback cho chỉnh sửa
 
   const NotificationItem({
     Key? key,
@@ -56,6 +57,7 @@ class NotificationItem extends StatefulWidget {
     required this.formatDateTime,
     required this.baseUrl,
     this.onDelete,
+    this.onEdit,
   }) : super(key: key);
 
   @override
@@ -298,12 +300,20 @@ class _NotificationItemState extends State<NotificationItem> {
                         ],
                       ),
                     ),
-                    if (widget.onDelete != null)
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red, size: 28),
-                        onPressed: widget.onDelete,
-                        tooltip: 'Delete Notification',
-                      ),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue, size: 28),
+                          onPressed: widget.onEdit, // Nếu không truyền gì thì sẽ bị disable
+                          tooltip: 'Chỉnh sửa thông báo',
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red, size: 28),
+                          onPressed: widget.onDelete,
+                          tooltip: 'Xoá thông báo',
+                        ),
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),

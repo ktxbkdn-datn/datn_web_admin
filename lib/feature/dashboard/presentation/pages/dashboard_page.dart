@@ -33,9 +33,9 @@ import 'package:datn_web_admin/feature/report/presentation/bloc/rp_type/rp_type_
 import 'package:datn_web_admin/feature/report/presentation/bloc/rp_type/rp_type_state.dart';
 import 'package:datn_web_admin/feature/report/presentation/page/widget/report_tab/report_detail_dialog.dart';
 import 'package:datn_web_admin/common/constants/colors.dart'; // Ensure this exists
-import '../widgets/bar_chart.dart'; // Ensure DashboardBarChart is defined
+import '../widgets/consumptions_bar_chart.dart'; // Ensure DashboardBarChart is defined
 import '../widgets/maintenance_request_card.dart';
-import '../widgets/pie_chart.dart'; // Ensure ReportPieChart is defined
+import '../widgets/reports_pie_chart.dart'; // Ensure ReportPieChart is defined
 import '../widgets/registration_card.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -153,7 +153,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Container(
             width: MediaQuery.of(context).size.width * 0.9,
-            height: MediaQuery.of(context).size.height * 0.8,
+            height: MediaQuery.of(context).size.height * 0.9,
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -608,7 +608,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                                                   context,
                                                   ReportPieChart(
                                                     chartWidth: MediaQuery.of(context).size.width * 0.8,
-                                                    chartHeight: 600,
+                                                    chartHeight: 800,
                                                     pieRadius: MediaQuery.of(context).size.width * 0.15,
                                                   ),
                                                   'Biểu đồ tròn chi tiết',
@@ -644,7 +644,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                                                 context,
                                                 ReportPieChart(
                                                   chartWidth: MediaQuery.of(context).size.width * 0.8,
-                                                  chartHeight: 500,
+                                                  chartHeight: 800,
                                                   pieRadius: MediaQuery.of(context).size.width * 0.08,
                                                 ),
                                                 'Biểu đồ tròn chi tiết',
@@ -774,16 +774,16 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                                                       },
                                                       icon: const Icon(Icons.refresh, color: Colors.green),
                                                       tooltip: 'Làm mới',
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 10),
-                                                BlocBuilder<ReportBloc, ReportState>(
-                                                  builder: (context, state) => buildReportContent(state, context),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 10),
+                                                  BlocBuilder<ReportBloc, ReportState>(
+                                                    builder: (context, state) => buildReportContent(state, context),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
                                         );
                                 },
                               ),
@@ -803,29 +803,31 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                             ),
                             BlocListener<AuthBloc, AuthState>(
                               listener: (context, state) {
-                                if (state.auth == null && state.successMessage != null) {
+                                if (state.auth == null) {
                                   _refreshTimer?.cancel();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(state.successMessage!),
-                                      backgroundColor: Colors.green,
-                                      duration: const Duration(seconds: 2),
-                                    ),
-                                  );
+                                  if (state.successMessage != null) {
+                                    // Chỉ hiển thị SnackBar khi đăng xuất thành công
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(state.successMessage!),
+                                        backgroundColor: Colors.green,
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+                                  }
+                                  // Chuyển hướng về trang đăng nhập
                                   Navigator.pushReplacementNamed(context, '/login');
-                                }
-                                if (state.error != null) {
-                                  _refreshTimer?.cancel();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(state.error!),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                  if (state.error!.contains('Authorization') ||
-                                      state.error!.contains('Token') ||
-                                      state.error!.contains('Phiên đăng nhập đã hết hạn')) {
-                                    Navigator.pushReplacementNamed(context, '/login');
+                                } else if (state.error != null) {
+                                  // Chỉ hiển thị SnackBar cho các lỗi không liên quan đến token
+                                  if (!state.error!.contains('Authorization') &&
+                                      !state.error!.contains('Token') &&
+                                      !state.error!.contains('Phiên đăng nhập đã hết hạn')) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(state.error!),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
                                   }
                                 }
                               },
@@ -836,6 +838,13 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                                 if (state is RegistrationError) {
                                   if (state.message.contains('Phiên đăng nhập đã hết hạn')) {
                                     Navigator.pushReplacementNamed(context, '/login');
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Lỗi: ${state.message}'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
                                   }
                                 }
                               },

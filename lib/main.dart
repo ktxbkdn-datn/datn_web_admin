@@ -8,7 +8,6 @@ import 'app.dart';
 import 'src/core/di/injection.dart';
 
 void main() async {
-  usePathUrlStrategy();
   // Initialize dependency injection
   setup();
   try {

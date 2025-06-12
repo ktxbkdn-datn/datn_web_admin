@@ -30,46 +30,25 @@ class _CustomDrawerState extends State<CustomDrawer>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _widthAnimation;
-  bool _isExpanded = true;
+  final bool _isExpanded = false; // Luôn thu gọn, không thay đổi
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 350), // Tăng thời gian để mượt hơn
+      duration: const Duration(milliseconds: 350),
       vsync: this,
     );
     _widthAnimation = Tween<double>(
-      begin: 200.0, // Chiều rộng mở rộng
-      end: 60.0, // Chiều rộng thu nhỏ
+      begin: 60.0, // Chỉ dùng chiều rộng thu gọn
+      end: 60.0,
     ).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: Curves.easeInOut, // Curve mượt
+        curve: Curves.easeInOut,
       ),
     );
-    // Khởi tạo trạng thái ban đầu
-    if (!_isExpanded) {
-      _controller.value = 1.0; // Drawer bắt đầu ở trạng thái thu nhỏ
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _toggleExpansion() {
-    setState(() {
-      _isExpanded = !_isExpanded;
-      if (_isExpanded) {
-        _controller.reverse();
-      } else {
-        _controller.forward();
-      }
-      widget.onExpansionChanged?.call(_isExpanded);
-    });
+    _controller.value = 1.0; // Luôn ở trạng thái thu nhỏ
   }
 
   @override
@@ -82,50 +61,34 @@ class _CustomDrawerState extends State<CustomDrawer>
           color: Colors.blueGrey[900],
           child: Column(
             children: [
-              // Header
-              GestureDetector(
-                onTap: _toggleExpansion,
-                child: Container(
-                  height: 120,
-                  color: Colors.blueGrey[800],
-                  child: Center(
-                    child: _isExpanded
-                        ?  Text(
-                            // Sử dụng const để tối ưu
-                            widget.title, // Thay bằng widget.title nếu cần động
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          )
-                        : Icon(
-                            widget.headerIcon,
-                            color: Colors.white,
-                            size: 30,
-                          ),
+              // Header (không cho mở rộng nữa)
+              Container(
+                height: 120,
+                color: Colors.blueGrey[800],
+                child: Center(
+                  child: Icon(
+                    widget.headerIcon,
+                    color: Colors.white,
+                    size: 30,
                   ),
                 ),
               ),
-              // Drawer items
+              // Drawer items (chỉ hiện icon)
               Expanded(
                 child: ListView.builder(
                   itemCount: widget.items.length,
                   itemBuilder: (context, index) {
                     final item = widget.items[index];
                     return ListTile(
-                      leading: Icon(
-                        item.icon,
-                        color: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      leading: Tooltip(
+                        message: item.title, // Hiển thị tên khi hover hoặc nhấn giữ
+                        child: Icon(
+                          item.icon,
+                          color: Colors.white,
+                        ),
                       ),
-                      title: _isExpanded
-                          ? Text(
-                              item.title,
-                              style: const TextStyle(
-                                color: Colors.white,
-                              ),
-                            )
-                          : null,
+                      title: null, // Không hiện text
                       selected: widget.selectedIndex == index,
                       selectedTileColor: Colors.blueGrey[700],
                       onTap: () {

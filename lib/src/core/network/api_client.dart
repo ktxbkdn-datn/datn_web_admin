@@ -8,6 +8,14 @@ import 'dart:io';
 import '../../../feature/auth/presentation/bloc/auth_state.dart';
 import '../error/failures.dart';
 
+class SessionExpiredException implements Exception {
+  final String message;
+  SessionExpiredException({this.message = 'Phiên hết hạn. Vui lòng đăng nhập lại.'});
+  
+  @override
+  String toString() => message;
+}
+
 class ApiService {
   final String baseUrl;
   String? _token;
@@ -308,7 +316,12 @@ class ApiService {
 
         if (response.statusCode == 401 && !isPublic) {
           print('Received 401 Unauthorized for $endpoint, attempting to refresh token');
-          await refreshAccessToken();
+          try {
+            await refreshAccessToken();
+          } catch (e) {
+            // Nếu refresh token cũng hết hạn, throw SessionExpiredException
+            throw SessionExpiredException();
+          }
           retryCount++;
           print('Retrying request with new access token ($retryCount/$maxRetries) for $endpoint');
           continue;
@@ -326,7 +339,8 @@ class ApiService {
         throw NetworkFailure('Lỗi kết nối: Không thể kết nối đến server');
       } on AuthFailure catch (e) {
         print('AuthFailure for $endpoint: $e');
-        throw e;
+        // Nếu là lỗi xác thực, throw SessionExpiredException
+        throw SessionExpiredException();
       } catch (e) {
         print('Unexpected error for $endpoint: $e');
         throw ServerFailure('Lỗi không xác định: $e');

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:chewie/chewie.dart';
 import 'package:datn_web_admin/common/widget/pagination_controls.dart';
 import 'package:datn_web_admin/feature/notification/presentation/pages/noti_tab/local_notification_storage.dart';
+import 'package:datn_web_admin/feature/notification/presentation/pages/noti_tab/update_noti_dialog.dart';
 import 'package:flutter/material.dart' hide Notification;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -574,6 +575,20 @@ class _NotificationListViewState extends State<_NotificationListView> {
                                                           setState(() => _isProcessing = true);
                                                           context.read<NotificationBloc>().add(
                                                               DeleteNotificationEvent(notificationId: notification.notificationId!));
+                                                        },
+                                                  onEdit: _isProcessing
+                                                      ? null
+                                                      : () {
+                                                          setState(() => _isProcessing = true);
+                                                          showDialog(
+                                                            context: context,
+                                                            builder: (context) => UpdateNotificationDialog(
+                                                              notification: notification,
+                                                            ),
+                                                          ).then((_) {
+                                                            setState(() => _isProcessing = false);
+                                                            _fetchNotifications();
+                                                          });
                                                         },
                                                 );
                                               } catch (e) {
