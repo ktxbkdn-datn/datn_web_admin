@@ -616,7 +616,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                                                 child: ReportPieChart(
                                                   chartWidth: chartWidth,
                                                   chartHeight: chartHeight,
-                                                  pieRadius: MediaQuery.of(context).size.width * 0.03,
+                                                  pieRadius: MediaQuery.of(context).size.width * 0.06,
                                                 ),
                                               ),
                                             ),

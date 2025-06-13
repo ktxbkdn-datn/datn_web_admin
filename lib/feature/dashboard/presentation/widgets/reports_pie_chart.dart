@@ -19,7 +19,7 @@ class ReportPieChart extends StatefulWidget {
   final double chartWidth;
   final double chartHeight;
   final bool isEnlarged; 
-  double pieRadius = 50.0;
+  double pieRadius = 100.0;
 
   ReportPieChart({
     super.key,
@@ -291,7 +291,7 @@ class _ReportPieChartState extends State<ReportPieChart> {
           color: Colors.grey,
           value: 1,
           title: 'Không có dữ liệu',
-          radius: 50,
+          radius: 1000,
           titleStyle: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,

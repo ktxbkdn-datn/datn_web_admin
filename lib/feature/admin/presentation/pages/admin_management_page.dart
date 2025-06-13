@@ -1,3 +1,4 @@
+import 'package:datn_web_admin/feature/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_bloc.dart';
@@ -21,12 +22,13 @@ class AdminManagementPage extends StatefulWidget {
 class _AdminManagementPageState extends State<AdminManagementPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isExpanded = true;
-  int _selectedIndex = 0;
+  int _selectedIndex = 2; // Mặc định mở AdminListPage
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
+    _tabController.index = _selectedIndex; // Đặt tab mặc định
     final authState = context.read<AuthBloc>().state;
     if (authState.auth != null) {
       context.read<AdminBloc>().add(FetchCurrentAdminEvent(authState.auth!.id));
@@ -90,6 +92,7 @@ class _AdminManagementPageState extends State<AdminManagementPage> with SingleTi
                   controller: _tabController,
                   physics: const NeverScrollableScrollPhysics(),
                   children: [
+                    DashboardPage(), 
                     const CurrentAdminTab(),
                     const AdminListPage(),
                     CreateAdminTab(),
