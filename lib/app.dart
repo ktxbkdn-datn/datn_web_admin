@@ -72,7 +72,7 @@ class App extends StatelessWidget {
           }
         },
         child: GetMaterialApp(
-          title: 'Dormitory Management',
+          title: 'Quản Lý Ký Túc Xá - DHBK-DHDN',
           theme: AppTheme.lightTheme,
           debugShowCheckedModeBanner: false,
           initialRoute: '/login',
