@@ -140,7 +140,7 @@ class _UserListTabState extends State<UserListTab> {
                       } else if (state is UserDeleted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Xóa người dùng thành công!'),
+                            content: Text('Xóa sinh viên thành công!'),
                             backgroundColor: Colors.green,
                             duration: Duration(seconds: 2),
                           ),
@@ -148,7 +148,7 @@ class _UserListTabState extends State<UserListTab> {
                       } else if (state is UserCreated) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Tạo người dùng thành công!'),
+                            content: Text('Tạo sinh viên thành công!'),
                             backgroundColor: Colors.green,
                             duration: Duration(seconds: 2),
                           ),
@@ -156,7 +156,7 @@ class _UserListTabState extends State<UserListTab> {
                       } else if (state is UserUpdated) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Cập nhật người dùng thành công!'),
+                            content: Text('Cập nhật sinh viên thành công!'),
                             backgroundColor: Colors.green,
                             duration: Duration(seconds: 2),
                           ),
@@ -196,7 +196,7 @@ class _UserListTabState extends State<UserListTab> {
                               child: Row(
                                 children: [
                                   FilterTab(
-                                    label: 'Tất cả người dùng ($_totalItems)',
+                                    label: 'Tất cả sinh viên ($_totalItems)',
                                     isSelected: true,
                                     onTap: () {},
                                   ),
@@ -217,7 +217,7 @@ class _UserListTabState extends State<UserListTab> {
                                         _fetchUsers();
                                       });
                                     },
-                                    hintText: 'Tìm kiếm người dùng...',
+                                    hintText: 'Tìm kiếm sinh viên...',
                                     initialValue: _searchQuery,
                                   ),
                                 ),

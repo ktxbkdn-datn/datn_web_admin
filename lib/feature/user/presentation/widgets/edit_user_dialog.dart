@@ -110,7 +110,7 @@ class _EditUserDialogState extends State<EditUserDialog> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'Cập nhật Người dùng',
+                          'Cập nhật sinh viên',
                           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                         ),
                         IconButton(

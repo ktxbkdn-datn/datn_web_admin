@@ -54,7 +54,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
   Timer? _refreshTimer;
 
   final List<MenuItem> menuItems = const [
-    MenuItem(title: 'Người dùng', icon: Iconsax.people, route: '/users'),
+    MenuItem(title: 'Sinh viên', icon: Iconsax.people, route: '/users'),
     MenuItem(title: 'Phòng', icon: Iconsax.house, route: '/rooms'),
     MenuItem(title: 'Hợp đồng', icon: Iconsax.document, route: '/contracts'),
     MenuItem(title: 'Đăng kí', icon: Iconsax.path, route: '/registrations'),

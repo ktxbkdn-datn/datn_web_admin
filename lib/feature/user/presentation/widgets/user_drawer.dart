@@ -16,7 +16,7 @@ class UserDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomDrawer(
-      title: 'Quản lý Người dùng',
+      title: 'Quản lý sinh viên',
       headerIcon: Iconsax.people,
       items: [
         DrawerItem(
@@ -25,11 +25,11 @@ class UserDrawer extends StatelessWidget {
           route: '/dashboard',
         ),
         DrawerItem(
-          title: 'Danh sách Người dùng',
+          title: 'Danh sách sinh viên',
           icon: Icons.list,
         ),
         DrawerItem(
-          title: 'Tạo Người dùng',
+          title: 'Tạo sinh viên mới',
           icon: Icons.add,
         ),
       ],

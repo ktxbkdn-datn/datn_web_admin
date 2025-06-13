@@ -14,7 +14,7 @@ class AddUserDialog extends StatelessWidget {
     final phoneController = TextEditingController();
 
     return AlertDialog(
-      title: const Text('Thêm Người dùng'),
+      title: const Text('Thêm sinh viên'),
       content: SingleChildScrollView(
         child: Column(
           children: [

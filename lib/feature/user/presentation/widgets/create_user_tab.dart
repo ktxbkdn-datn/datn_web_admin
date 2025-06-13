@@ -113,7 +113,7 @@ class _CreateUserTabState extends State<CreateUserTab> {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   const Text(
-                                    'Tạo Người dùng Mới',
+                                    'Tạo sinh viên Mới',
                                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                                   ),
                                   IconButton(

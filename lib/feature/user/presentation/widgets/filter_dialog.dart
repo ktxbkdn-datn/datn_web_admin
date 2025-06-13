@@ -53,7 +53,7 @@ class _FilterDialogState extends State<FilterDialog> {
       elevation: 8,
       contentPadding: const EdgeInsets.all(24),
       title: const Text(
-        'Lọc Người dùng',
+        'Lọc sinh viên',
         style: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.bold,
