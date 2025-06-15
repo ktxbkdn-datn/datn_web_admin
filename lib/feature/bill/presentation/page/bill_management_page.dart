@@ -1,8 +1,8 @@
 import 'package:datn_web_admin/feature/bill/presentation/bloc/bill_bloc.dart';
 import 'package:datn_web_admin/feature/bill/presentation/bloc/bill_event.dart';
-import 'package:datn_web_admin/feature/bill/presentation/page/widget/bill_detail_list_page.dart';
+import 'package:datn_web_admin/feature/bill/presentation/page/widget/bill_meter_details/bill_detail_list_page.dart';
 import 'package:datn_web_admin/feature/bill/presentation/page/widget/bill_drawer.dart';
-import 'package:datn_web_admin/feature/bill/presentation/page/widget/bill_list_page.dart';
+import 'package:datn_web_admin/feature/bill/presentation/page/widget/monthly_bill/monthly_bill_list_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui';

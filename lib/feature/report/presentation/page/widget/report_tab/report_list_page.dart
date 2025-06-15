@@ -1,4 +1,3 @@
-
 import 'package:datn_web_admin/feature/report/presentation/page/widget/report_tab/report_detail_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -98,7 +97,13 @@ class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveC
   }
 
   void _fetchReports() {
-    context.read<ReportBloc>().add(GetAllReportsEvent(page: _currentPage, limit: _limit));
+    context.read<ReportBloc>().add(GetAllReportsEvent(
+      page: _currentPage, 
+      limit: _limit,
+      status: _filterStatus == 'All' ? null : _filterStatus,  // Chuyển null khi "All"
+      reportTypeId: _filterReportTypeId,
+      searchQuery: _searchQuery.isEmpty ? null : _searchQuery  // Chuyển null khi rỗng
+    ));
   }
 
   void _applyFilters() {
@@ -107,7 +112,7 @@ class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveC
     setState(() {
       final filtered = _allReports.where((report) {
         bool matchesStatus = _filterStatus == 'All' || report.status.toUpperCase() == _filterStatus.toUpperCase();
-        bool matchesReportType = _filterStatus == 'PENDING' || _filterReportTypeId == null || report.reportTypeId == _filterReportTypeId;
+        bool matchesReportType = _filterReportTypeId == null || report.reportTypeId == _filterReportTypeId;
         bool matchesSearch = _searchQuery.isEmpty ||
             report.title.toLowerCase().contains(_searchQuery.toLowerCase());
         bool matchesAll = matchesStatus && matchesReportType && matchesSearch;
@@ -116,11 +121,29 @@ class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveC
         }
         return matchesAll;
       }).toList();
-      _filteredReports = filtered.sublist(
-        (_currentPage - 1) * _limit,
-        (_currentPage * _limit) > filtered.length ? filtered.length : _currentPage * _limit,
-      );
-      print('Filtered reports: ${_filteredReports.length}');
+      
+      // Fix the pagination issue with empty list
+      if (filtered.isEmpty) {
+        _filteredReports = [];
+        _currentPage = 1; // Reset to page 1 if no data
+      } else {
+        // Calculate start index
+        int startIndex = (_currentPage - 1) * _limit;
+        
+        // If startIndex >= filtered.length, reset to page 1
+        if (startIndex >= filtered.length) {
+          _currentPage = 1;
+          startIndex = 0;
+        }
+        
+        // Apply pagination
+        _filteredReports = filtered.sublist(
+          startIndex,
+          startIndex + _limit > filtered.length ? filtered.length : startIndex + _limit,
+        );
+      }
+      
+      print('Filtered reports: ${_filteredReports.length}, current page: $_currentPage');
     });
   }
 
@@ -156,7 +179,7 @@ class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveC
                     listener: (context, state) {
                       if (state is ReportError) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Lỗi: ${state.message}')),
+                          SnackBar(content: Text('${state.message}')),
                         );
                       } else if (state is ReportDeleted) {
                         setState(() {
@@ -245,42 +268,43 @@ class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveC
                                 scrollDirection: Axis.horizontal,
                                 child: Row(
                                   children: [
+                                    // Tab lọc theo trạng thái
                                     FilterTab(
-                                      label: 'Tất cả (${_allReports.length})',
+                                      label: 'Tất cả',
                                       isSelected: _filterStatus == 'All',
                                       onTap: () {
                                         setState(() {
                                           _filterStatus = 'All';
                                           _currentPage = 1;
                                           _saveLocalData();
-                                          _applyFilters();
                                         });
+                                        _fetchReports();  // Quan trọng: Gửi yêu cầu mới đến server
                                       },
                                     ),
                                     const SizedBox(width: 10),
                                     FilterTab(
-                                      label: 'Chưa tiếp nhận (${_allReports.where((report) => report.status.toUpperCase() == 'PENDING').length})',
+                                      label: 'Chưa tiếp nhận',
                                       isSelected: _filterStatus == 'PENDING',
                                       onTap: () {
                                         setState(() {
                                           _filterStatus = 'PENDING';
                                           _currentPage = 1;
                                           _saveLocalData();
-                                          _applyFilters();
                                         });
+                                        _fetchReports();
                                       },
                                     ),
                                     const SizedBox(width: 10),
                                     FilterTab(
-                                      label: 'Đã tiếp nhận (${_allReports.where((report) => report.status.toUpperCase() == 'RECEIVED').length})',
+                                      label: 'Đã tiếp nhận',
                                       isSelected: _filterStatus == 'RECEIVED',
                                       onTap: () {
                                         setState(() {
                                           _filterStatus = 'RECEIVED';
                                           _currentPage = 1;
                                           _saveLocalData();
-                                          _applyFilters();
                                         });
+                                        _fetchReports();
                                       },
                                     ),
                                     const SizedBox(width: 10),
@@ -292,8 +316,8 @@ class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveC
                                           _filterStatus = 'IN_PROGRESS';
                                           _currentPage = 1;
                                           _saveLocalData();
-                                          _applyFilters();
                                         });
+                                        _fetchReports();
                                       },
                                     ),
                                     const SizedBox(width: 10),
@@ -305,8 +329,8 @@ class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveC
                                           _filterStatus = 'RESOLVED';
                                           _currentPage = 1;
                                           _saveLocalData();
-                                          _applyFilters();
                                         });
+                                        _fetchReports();
                                       },
                                     ),
                                     const SizedBox(width: 10),
@@ -318,8 +342,8 @@ class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveC
                                           _filterStatus = 'CLOSED';
                                           _currentPage = 1;
                                           _saveLocalData();
-                                          _applyFilters();
                                         });
+                                        _fetchReports();
                                       },
                                     ),
                                   ],
@@ -335,50 +359,47 @@ class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveC
                                         Expanded(
                                           child: _isReportTypesLoaded
                                               ? DropdownButton<int?>(
-                                            value: _reportTypes.any((type) => type.reportTypeId == _filterReportTypeId)
-                                                ? _filterReportTypeId
-                                                : null,
-                                            hint: const Text('Chọn loại báo cáo'),
-                                            isExpanded: true,
-                                            underline: const SizedBox(),
-                                            items: [
-                                              const DropdownMenuItem<int>(
-                                                value: null,
-                                                child: Text('Tất cả loại báo cáo'),
-                                              ),
-                                              ..._reportTypes.map((reportType) {
-                                                return DropdownMenuItem<int>(
-                                                  value: reportType.reportTypeId,
-                                                  child: Text(reportType.name),
-                                                );
-                                              }).toList(),
-                                            ],
-                                            onChanged: (value) {
-                                              setState(() {
-                                                _filterReportTypeId = value;
-                                                _currentPage = 1;
-                                                _saveLocalData();
-                                                _applyFilters();
-                                              });
-                                            },
-                                          )
+                                                  value: _filterReportTypeId,
+                                                  onChanged: (value) {
+                                                    setState(() {
+                                                      _filterReportTypeId = value;
+                                                      _currentPage = 1;
+                                                      _saveLocalData();
+                                                    });
+                                                    _fetchReports();  // Quan trọng: Gửi yêu cầu mới đến server
+                                                  },
+                                                  hint: const Text('Chọn loại báo cáo'),
+                                                  isExpanded: true,
+                                                  underline: const SizedBox(),
+                                                  items: [
+                                                    const DropdownMenuItem<int>(
+                                                      value: null,
+                                                      child: Text('Tất cả loại báo cáo'),
+                                                    ),
+                                                    ..._reportTypes.map((reportType) {
+                                                      return DropdownMenuItem<int>(
+                                                        value: reportType.reportTypeId,
+                                                        child: Text(reportType.name),
+                                                      );
+                                                    }).toList(),
+                                                  ],
+                                                )
                                               : const SizedBox(
-                                            width: 24,
-                                            height: 24,
-                                            child: CircularProgressIndicator(strokeWidth: 2),
-                                          ),
+                                                  width: 24,
+                                                  height: 24,
+                                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                                ),
                                         ),
                                         const SizedBox(width: 16),
                                         Expanded(
                                           child: SearchBarTab(
-                                            key: const ValueKey('search_bar'),
                                             onChanged: (value) {
                                               setState(() {
                                                 _searchQuery = value;
                                                 _currentPage = 1;
                                                 _saveLocalData();
-                                                _applyFilters();
                                               });
+                                              _fetchReports();  // Quan trọng: Gửi yêu cầu mới đến server
                                             },
                                             hintText: 'Tìm kiếm báo cáo...',
                                             initialValue: _searchQuery,
@@ -415,104 +436,105 @@ class ReportListPageState extends State<ReportListPage> with AutomaticKeepAliveC
                         child: SingleChildScrollView(
                           child: BlocBuilder<ReportBloc, ReportState>(
                             builder: (context, state) {
-                              bool isLoading = state is ReportLoading;
-                              String? errorMessage;
-                              int totalItems = _allReports.length;
-
-                              if (state is ReportError) {
-                                errorMessage = state.message;
-                              } else if (state is ReportsLoaded) {
-                                totalItems = state.totalItems;
+                              if (state is ReportLoading) {
+                                return const Center(child: CircularProgressIndicator());
                               }
+                              if (state is ReportError) {
+                                return Center(child: Text('Lỗi: ${state.message}'));
+                              }
+                              if (state is ReportsLoaded) {
+                                // Nếu là tab "Tất cả", sắp xếp theo thời gian mới nhất
+                                final List<ReportEntity> sortedReports = _filterStatus == 'All'
+                                    ? (List<ReportEntity>.from(state.reports)
+                                        ..sort((a, b) => (b.createdAt ?? '').compareTo(a.createdAt ?? '')))
+                                    : state.reports;
 
-                              return isLoading && _isInitialLoad
-                                  ? const Center(child: CircularProgressIndicator())
-                                  : errorMessage != null
-                                  ? Center(child: Text('Lỗi: $errorMessage'))
-                                  : Column(
-                                children: [
-                                  GenericDataTable<ReportEntity>(
-                                    headers: const [
-                                      'Tiêu đề',
-                                      'Người gửi',
-                                      'Trạng thái',
-                                      'Ngày tạo',
-                                      '',
-                                    ],
-                                    data: _filteredReports,
-                                    columnWidths: _columnWidths,
-                                    cellBuilder: (report, index) {
-                                      switch (index) {
-                                        case 0:
-                                          return Text(
-                                            report.title,
-                                            style: const TextStyle(fontWeight: FontWeight.bold),
-                                            textAlign: TextAlign.center,
-                                            overflow: TextOverflow.ellipsis,
-                                          );
-                                        case 1:
-                                          return Text(
-                                            report.userFullname ?? 'N/A',
-                                            textAlign: TextAlign.center,
-                                            overflow: TextOverflow.ellipsis,
-                                          );
-                                        case 2:
-                                          return Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: _getStatusColor(report.status),
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                            child: Text(
-                                              _getStatusDisplayText(report.status),
-                                              style: const TextStyle(color: Colors.white),
+                                return Column(
+                                  children: [
+                                    GenericDataTable<ReportEntity>(
+                                      headers: const [
+                                        'Tiêu đề',
+                                        'Người gửi',
+                                        'Trạng thái',
+                                        'Ngày tạo',
+                                        '',
+                                      ],
+                                      data: sortedReports, // <-- truyền danh sách đã sắp xếp
+                                      columnWidths: _columnWidths,
+                                      cellBuilder: (report, index) {
+                                        switch (index) {
+                                          case 0:
+                                            return Text(
+                                              report.title,
+                                              style: const TextStyle(fontWeight: FontWeight.bold),
                                               textAlign: TextAlign.center,
-                                            ),
-                                          );
-                                        case 3:
-                                          return Text(
-                                            _formatDateTime(report.createdAt) ?? 'N/A',
-                                            textAlign: TextAlign.center,
-                                            overflow: TextOverflow.ellipsis,
-                                          );
-                                        case 4:
-                                          return Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              IconButton(
-                                                icon: const Icon(Icons.visibility),
-                                                onPressed: () {
-                                                  context.read<ReportBloc>().add(GetReportByIdEvent(report.reportId));
-                                                  context.read<ReportImageBloc>().add(GetReportImagesEvent(report.reportId));
-                                                  showDialog(
-                                                    context: context,
-                                                    barrierDismissible: false,
-                                                    builder: (dialogContext) => ReportDetailDialog(report: report),
-                                                  );
-                                                },
+                                              overflow: TextOverflow.ellipsis,
+                                            );
+                                          case 1:
+                                            return Text(
+                                              report.userFullname ?? 'N/A',
+                                              textAlign: TextAlign.center,
+                                              overflow: TextOverflow.ellipsis,
+                                            );
+                                          case 2:
+                                            return Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: _getStatusColor(report.status),
+                                                borderRadius: BorderRadius.circular(12),
                                               ),
-                                            ],
-                                          );
-                                        default:
-                                          return const SizedBox();
-                                      }
-                                    },
-                                  ),
-                                  PaginationControls(
-                                    currentPage: _currentPage,
-                                    totalItems: totalItems,
-                                    limit: _limit,
-                                    onPageChanged: (page) {
-                                      setState(() {
-                                        _currentPage = page;
-                                        _saveLocalData();
-                                        _fetchReports();
-                                      });
-                                    },
-                                  ),
-                                ],
-                              );
+                                              child: Text(
+                                                _getStatusDisplayText(report.status),
+                                                style: const TextStyle(color: Colors.white),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            );
+                                          case 3:
+                                            return Text(
+                                              _formatDateTime(report.createdAt) ?? 'N/A',
+                                              textAlign: TextAlign.center,
+                                              overflow: TextOverflow.ellipsis,
+                                            );
+                                          case 4:
+                                            return Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                IconButton(
+                                                  icon: const Icon(Icons.visibility),
+                                                  onPressed: () {
+                                                    context.read<ReportBloc>().add(GetReportByIdEvent(report.reportId));
+                                                    context.read<ReportImageBloc>().add(GetReportImagesEvent(report.reportId));
+                                                    showDialog(
+                                                      context: context,
+                                                      barrierDismissible: false,
+                                                      builder: (dialogContext) => ReportDetailDialog(report: report),
+                                                    );
+                                                  },
+                                                ),
+                                              ],
+                                            );
+                                          default:
+                                            return const SizedBox();
+                                        }
+                                      },
+                                    ),
+                                    PaginationControls(
+                                      currentPage: _currentPage,
+                                      totalItems: state.totalItems,  // Lấy tổng số từ state
+                                      limit: _limit,
+                                      onPageChanged: (page) {
+                                        setState(() {
+                                          _currentPage = page;
+                                          _saveLocalData();
+                                        });
+                                        _fetchReports();  // Quan trọng: Gửi yêu cầu mới đến server
+                                      },
+                                    ),
+                                  ],
+                                );
+                              }
+                              return const SizedBox.shrink();
                             },
                           ),
                         ),

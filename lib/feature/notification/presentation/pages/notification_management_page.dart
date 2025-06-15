@@ -50,7 +50,7 @@ class _NotificationManagementPageState extends State<NotificationManagementPage>
             listener: (context, state) {
               if (state is NotificationError) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Lỗi: ${state.message}')),
+                  SnackBar(content: Text('${state.message}')),
                 );
               }
             },
@@ -59,7 +59,7 @@ class _NotificationManagementPageState extends State<NotificationManagementPage>
             listener: (context, state) {
               if (state is NotificationMediaError) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Lỗi: ${state.message}')),
+                  SnackBar(content: Text('${state.message}')),
                 );
               }
             },

@@ -96,7 +96,7 @@ class _ReportTypeListTabState extends State<ReportTypeListTab> with AutomaticKee
                 listener: (context, state) {
                   if (state is ReportTypeError) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Lỗi: ${state.message}')),
+                      SnackBar(content: Text('${state.message}')),
                     );
                   } else if (state is ReportTypeDeleted) {
                     setState(() {

@@ -54,7 +54,7 @@ class ReportRemoteDataSourceImpl implements ReportRemoteDataSource {
         if (userId != null) 'user_id': userId.toString(),
         if (roomId != null) 'room_id': roomId.toString(),
         if (status != null) 'status': status,
-        if (reportTypeId != null) 'report_type_id': reportTypeId.toString(),
+        if (reportTypeId != null) 'report_type_id': reportTypeId.toString(), // QUAN TRỌNG
         if (searchQuery != null) 'search': searchQuery,
       };
       print('Calling API GET /admin/reports with params: $queryParams');

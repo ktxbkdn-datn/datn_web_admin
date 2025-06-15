@@ -52,7 +52,7 @@ class _UserPageState extends State<UserPage> with SingleTickerProviderStateMixin
           if (state is UserError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Lỗi: ${state.message}'),
+                content: Text('${state.message}'),
                 backgroundColor: Colors.red,
               ),
             );

@@ -13,7 +13,7 @@ import 'package:datn_web_admin/feature/room/presentations/bloc/area_bloc/area_bl
 import 'package:datn_web_admin/feature/room/presentations/bloc/area_bloc/area_event.dart';
 import 'package:datn_web_admin/feature/room/presentations/bloc/area_bloc/area_state.dart';
 import 'package:datn_web_admin/feature/room/presentations/bloc/room_bloc/room_bloc.dart';
-import 'package:datn_web_admin/feature/bill/presentation/page/widget/bill_detail_dialog.dart';
+import 'package:datn_web_admin/feature/bill/presentation/page/widget/monthly_bill/monthly_bill_detail_dialog.dart';
 import 'package:datn_web_admin/feature/service/data/models/service_model.dart';
 import 'package:datn_web_admin/feature/service/domain/entities/service_entity.dart';
 import 'package:datn_web_admin/feature/service/presentation/bloc/service_bloc.dart';
@@ -24,9 +24,9 @@ import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'dart:ui';
 
-import '../../../../../common/constants/colors.dart';
-import '../../../../../common/widget/custom_data_table.dart';
-import '../../bloc/bill_state.dart';
+import '../../../../../../common/constants/colors.dart';
+import '../../../../../../common/widget/custom_data_table.dart';
+import '../../../bloc/bill_state.dart';
 
 class BillListPage extends StatefulWidget {
   const BillListPage({Key? key}) : super(key: key);

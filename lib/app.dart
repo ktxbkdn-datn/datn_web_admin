@@ -63,11 +63,11 @@ class App extends StatelessWidget {
       ],
       child: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
-          if (state.auth == null && state.successMessage == 'Vui lòng đăng nhập lại') {
-            // ignore: use_build_context_synchronously
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Vui lòng đăng nhập lại'), backgroundColor: Colors.red),
-            );
+          final currentRoute = Get.currentRoute;
+          if (state.auth == null &&
+              state.successMessage == 'Vui lòng đăng nhập lại' &&
+              currentRoute != '/forgot-password' &&
+              currentRoute != '/reset-password') {
             Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
           }
         },

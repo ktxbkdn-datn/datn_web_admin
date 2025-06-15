@@ -104,7 +104,7 @@ class _CreateContractDialogState extends State<CreateContractDialog> {
         _updatePendingOperations(-1);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi: $e'),
+            content: Text(' $e'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),

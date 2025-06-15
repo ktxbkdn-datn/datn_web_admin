@@ -56,20 +56,10 @@ class _ServiceDetailDialogState extends State<ServiceDetailDialog> {
   }
 
   void _addServiceRate() {
-    if (widget.service.serviceId != null) {
-      showDialog(
-        context: context,
-        builder: (context) => SetServiceRateDialog(serviceId: widget.service.serviceId!),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không thể thêm mức giá: ID không hợp lệ.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
+    showDialog(
+      context: context,
+      builder: (context) => SetServiceRateDialog(serviceId: widget.service.serviceId!),
+    );
   }
 
   @override

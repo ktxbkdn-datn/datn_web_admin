@@ -1,6 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../src/core/error/failures.dart';
 import '../../domain/entities/admin_entity.dart';
 import '../../domain/usecase/change_password.dart';
 import '../../domain/usecase/confirm_reset_password.dart';
@@ -65,11 +64,9 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     final result = await getAdminById(event.adminId);
     result.fold(
           (failure) {
-        print('Failure in _onFetchAdminById: $failure, message: ${failure.message}');
         emit(AdminError(failure: failure));
       },
           (admin) {
-        // Cập nhật danh sách admin cục bộ nếu admin đã tồn tại
         final updatedAdmins = _admins.map((a) => a.adminId == admin.adminId ? admin : a).toList();
         if (!_admins.any((a) => a.adminId == admin.adminId)) {
           updatedAdmins.add(admin);
@@ -85,7 +82,6 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     final result = await getAdminById(event.adminId);
     result.fold(
           (failure) {
-        print('Failure in _onFetchCurrentAdmin: $failure, message: ${failure.message}');
         emit(AdminError(failure: failure));
       },
           (admin) => emit(AdminUpdated(currentAdmin: admin, successMessage: '')),
@@ -103,7 +99,7 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     );
     result.fold(
           (failure) {
-        print('Failure in _onCreateAdmin: $failure, message: ${failure.message}');
+
         emit(AdminError(failure: failure));
       },
           (admin) {
@@ -123,7 +119,7 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     );
     result.fold(
           (failure) {
-        print('Failure in _onUpdateAdmin: $failure, message: ${failure.message}');
+
         emit(AdminError(failure: failure));
       },
           (admin) {
@@ -139,7 +135,7 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     final result = await deleteAdmin(event.adminId);
     result.fold(
           (failure) {
-        print('Failure in _onDeleteAdmin: $failure, message: ${failure.message}');
+
         emit(AdminError(failure: failure));
       },
           (_) {
@@ -171,7 +167,7 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     );
     result.fold(
           (failure) {
-        print('Failure in _onConfirmResetPassword: $failure, message: ${failure.message}');
+ 
         emit(AdminError(failure: failure));
       },
           (_) => emit(const AdminPasswordChanged(successMessage: 'Đặt lại mật khẩu thành công')),
@@ -186,7 +182,7 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     );
     result.fold(
           (failure) {
-        print('Failure in _onChangePassword: $failure, message: ${failure.message}');
+  
         emit(AdminError(failure: failure));
       },
           (_) => emit(const AdminPasswordChanged(successMessage: 'Đổi mật khẩu thành công')),

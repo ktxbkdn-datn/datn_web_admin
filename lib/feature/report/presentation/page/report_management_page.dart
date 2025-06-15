@@ -71,7 +71,7 @@ class _ReportManagementPageState extends State<ReportManagementPage> with Single
             listener: (context, state) {
               if (state is ReportTypeError) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Lỗi: ${state.message}')),
+                  SnackBar(content: Text('${state.message}')),
                 );
               }
             },
@@ -80,7 +80,7 @@ class _ReportManagementPageState extends State<ReportManagementPage> with Single
             listener: (context, state) {
               if (state is ReportError) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Lỗi: ${state.message}')),
+                  SnackBar(content: Text('${state.message}')),
                 );
               }
             },
@@ -89,7 +89,7 @@ class _ReportManagementPageState extends State<ReportManagementPage> with Single
             listener: (context, state) {
               if (state is ReportImageError) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Lỗi: ${state.message}')),
+                  SnackBar(content: Text('${state.message}')),
                 );
               }
             },

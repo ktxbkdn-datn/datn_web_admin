@@ -133,7 +133,7 @@ class _UserListTabState extends State<UserListTab> {
                       if (state is UserError) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Lỗi: ${state.message}'),
+                            content: Text('${state.message}'),
                             backgroundColor: Colors.red,
                           ),
                         );

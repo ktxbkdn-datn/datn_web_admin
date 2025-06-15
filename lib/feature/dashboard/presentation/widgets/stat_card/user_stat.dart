@@ -170,7 +170,7 @@ class _UserStatCardState extends State<UserStatCard> {
             Color changeColor = percentageChange < 0 ? Colors.red : Colors.green;
 
             return StatCard(
-              title: 'Tổng số người dùng được tạo',
+              title: 'Tổng số người dùng',
               value: _totalUsers.toString(),
               percentageChange: percentageChangeText,
               lastMonthTotal: _lastMonthTotal.toString(),

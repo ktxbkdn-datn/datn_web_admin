@@ -180,7 +180,7 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                     listener: (context, state) {
                       if (state is RoomError) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Lỗi: ${state.message}')),
+                          SnackBar(content: Text('${state.message}')),
                         );
                       } else if (state is RoomDeleted) {
                         setState(() {

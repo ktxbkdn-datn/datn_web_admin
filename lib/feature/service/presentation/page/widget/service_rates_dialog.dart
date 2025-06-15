@@ -41,7 +41,7 @@ class _ServiceRatesDialogState extends State<ServiceRatesDialog> {
           );
         } else if (state is ServiceError) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Lỗi: ${state.message}')),
+            SnackBar(content: Text('${state.message}')),
           );
         }
       },

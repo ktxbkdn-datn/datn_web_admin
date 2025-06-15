@@ -127,7 +127,7 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
                             backgroundColor: Colors.red,
                             colorText: Colors.white,
                             margin: const EdgeInsets.all(16),
-                            duration: const Duration(seconds: 3),
+                            duration: const Duration(seconds: 1),
                           );
                         }
                       } else if (state is ContractDeleted) {
@@ -312,7 +312,7 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
                               String? errorMessage;
 
                               if (state is ContractError) {
-                                errorMessage = state.errorMessage;
+                                errorMessage = "Tải lại dữ liệu";
                               }
 
                               List<Contract> displayContracts = _contracts;

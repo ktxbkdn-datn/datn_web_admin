@@ -4,7 +4,7 @@ import 'package:datn_web_admin/feature/bill/domain/entities/monthly_bill_entity.
 import 'package:datn_web_admin/feature/bill/presentation/bloc/bill_bloc.dart';
 import 'package:datn_web_admin/feature/bill/presentation/bloc/bill_event.dart';
 import 'package:datn_web_admin/feature/bill/presentation/bloc/bill_state.dart';
-import 'package:datn_web_admin/feature/bill/presentation/page/widget/bill_details_dialog.dart';
+import 'package:datn_web_admin/feature/bill/presentation/page/widget/monthly_bill/bill_details_dialog.dart';
 import 'package:intl/intl.dart';
 
 class BillDetailDialog extends StatefulWidget {
@@ -40,7 +40,7 @@ class _BillDetailDialogState extends State<BillDetailDialog> {
         if (state is BillError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Lỗi: ${state.message}'),
+              content: Text('${state.message}'),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 3),
             ),

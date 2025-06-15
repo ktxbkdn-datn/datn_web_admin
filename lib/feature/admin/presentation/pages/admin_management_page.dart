@@ -2,7 +2,6 @@ import 'package:datn_web_admin/feature/dashboard/presentation/pages/dashboard_pa
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_bloc.dart';
-import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_state.dart';
 import 'package:datn_web_admin/feature/admin/presentation/bloc/admin_bloc.dart';
 import 'package:datn_web_admin/feature/admin/presentation/bloc/admin_event.dart';
 import 'package:datn_web_admin/feature/admin/presentation/bloc/admin_state.dart';
@@ -56,7 +55,7 @@ class _AdminManagementPageState extends State<AdminManagementPage> with SingleTi
           if (state is AdminError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Lỗi: ${state.failure.message}'),
+                content: Text(' ${state.failure.message}'),
                 backgroundColor: Colors.red,
               ),
             );

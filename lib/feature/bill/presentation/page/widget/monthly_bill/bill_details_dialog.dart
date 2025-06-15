@@ -42,7 +42,7 @@ class _BillDetailsDialogState extends State<BillDetailsDialog> {
       listener: (context, state) {
         if (state is BillError) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Lỗi: ${state.message}'), backgroundColor: Colors.red),
+            SnackBar(content: Text(' ${state.message}'), backgroundColor: Colors.red),
           );
         }
       },

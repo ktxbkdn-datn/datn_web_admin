@@ -1,6 +1,5 @@
 import 'package:dartz/dartz.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Thêm import
 import '../../../../src/core/error/failures.dart';
 import '../datasources/auth_datasource.dart';
 import '../../domain/entities/auth_entity.dart';

@@ -422,7 +422,7 @@ class _NotificationListViewState extends State<_NotificationListView> {
                                     });
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text('Lỗi: ${state.message}'),
+                                        content: Text('${state.message}'),
                                         action: SnackBarAction(label: 'Thử lại', onPressed: _fetchNotifications),
                                       ),
                                     );

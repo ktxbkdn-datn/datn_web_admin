@@ -61,7 +61,7 @@ class _CreateRoomDialogState extends State<CreateRoomDialog> {
         _updatePendingOperations(-1);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi: $e'),
+            content: Text('$e'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -120,7 +120,7 @@ class _CreateRoomDialogState extends State<CreateRoomDialog> {
                       print('Room Creation Error: ${state.message}');
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Lỗi: ${state.message}'),
+                          content: Text('${state.message}'),
                           backgroundColor: Colors.red,
                           duration: const Duration(seconds: 3),
                         ),

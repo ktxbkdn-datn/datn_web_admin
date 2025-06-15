@@ -252,6 +252,18 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: displayRegistrations.map((reg) => RegistrationCard(registration: reg)).toList(),
           ),
+        // Thêm chú thích icon ở đây
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _legendRegistrationIcon(Icons.pending, Colors.orange, 'Chờ duyệt'),
+            const SizedBox(width: 12),
+            _legendRegistrationIcon(Icons.check_circle, Colors.green, 'Đã duyệt'),
+            const SizedBox(width: 12),
+            _legendRegistrationIcon(Icons.cancel, Colors.red, 'Từ chối'),
+          ],
+        ),
       ],
     );
   }
@@ -336,6 +348,21 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
               );
             }).toList(),
           const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _legendIcon(Icons.pending, Colors.orange, 'Chờ xử lý'),
+              const SizedBox(width: 12),
+              _legendIcon(Icons.receipt, Colors.yellow, 'Đã tiếp nhận'),
+              const SizedBox(width: 12),
+              _legendIcon(Icons.build, Colors.blue, 'Đang xử lý'),
+              const SizedBox(width: 12),
+              _legendIcon(Icons.check_circle, Colors.green, 'Đã xử lý'),
+              const SizedBox(width: 12),
+              _legendIcon(Icons.lock, Colors.grey, 'Đã đóng'),
+            ],
+          ),
+          const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -475,7 +502,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              'Xin chào, $adminName!',
+                                              'Xin chào',
                                               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                                     fontWeight: FontWeight.bold,
                                                     color: Colors.black87,
@@ -793,8 +820,9 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                                 if (state is AdminError) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Lỗi: ${state.failure.message}'),
+                                      content: Text('${state.failure.message}'),
                                       backgroundColor: Colors.red,
+                                      duration: const Duration(seconds: 1), 
                                     ),
                                   );
                                 }
@@ -811,7 +839,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                                       SnackBar(
                                         content: Text(state.successMessage!),
                                         backgroundColor: Colors.green,
-                                        duration: const Duration(seconds: 2),
+                                        duration: const Duration(seconds: 1),
                                       ),
                                     );
                                   }
@@ -841,7 +869,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                                   } else {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text('Lỗi: ${state.message}'),
+                                        content: Text('${state.message}'),
                                         backgroundColor: Colors.red,
                                       ),
                                     );
@@ -876,7 +904,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
 
     switch (status) {
       case 'PENDING':
-        statusIcon = Icons.person;
+        statusIcon = Icons.pending;
         statusColor = Colors.orange;
         break;
       case 'RECEIVED':
@@ -965,6 +993,26 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _legendIcon(IconData icon, Color color, String label) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 18),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(fontSize: 12)),
+      ],
+    );
+  }
+
+  Widget _legendRegistrationIcon(IconData icon, Color color, String label) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 18),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(fontSize: 12)),
+      ],
     );
   }
 }

@@ -48,7 +48,7 @@ class CreateAdminTab extends StatelessWidget {
                 } else if (state is AdminError) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Lỗi: ${state.failure.message}'),
+                      content: Text('${state.failure.message}'),
                       backgroundColor: Colors.red,
                     ),
                   );

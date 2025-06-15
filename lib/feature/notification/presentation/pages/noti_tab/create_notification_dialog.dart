@@ -281,7 +281,7 @@ class _CreateNotificationDialogState extends State<CreateNotificationDialog> {
         if (!_hasShownErrorMessage) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Lỗi: $e'),
+              content: Text('$e'),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 3),
             ),

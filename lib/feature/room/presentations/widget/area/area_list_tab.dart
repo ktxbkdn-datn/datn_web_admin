@@ -99,7 +99,7 @@ class _AreaListTabState extends State<AreaListTab> with AutomaticKeepAliveClient
                 listener: (context, state) {
                   if (state.error != null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Lỗi: ${state.error!}')),
+                      SnackBar(content: Text(' ${state.error!}')),
                     );
                   } else if (state is AreaDeleted) {
                     setState(() {

@@ -124,7 +124,7 @@ class _EditContractDialogState extends State<EditContractDialog> {
                   print('Contract Update Error: ${state.errorMessage}');
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Lỗi: ${state.errorMessage}'),
+                      content: Text('${state.errorMessage}'),
                       backgroundColor: Colors.red,
                       duration: const Duration(seconds: 3),
                     ),

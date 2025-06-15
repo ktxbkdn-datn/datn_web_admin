@@ -93,7 +93,7 @@ class _RegistrationDetailDialogState extends State<RegistrationDetailDialog> {
             } else if (state is RegistrationError) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Lỗi: ${state.message}'),
+                  content: Text('${state.message}'),
                   backgroundColor: Colors.red,
                   duration: const Duration(seconds: 3),
                 ),

@@ -123,41 +123,33 @@ class ApiService {
 
     if (refreshToken != null) {
       await prefs.setString('refresh_token', refreshToken);
-      print('Saved refresh_token to SharedPreferences: $refreshToken');
     } else {
       await prefs.remove('refresh_token');
-      print('Removed refresh_token from SharedPreferences');
+
     }
 
     if (!kIsWeb) {
       if (token != null) {
         await _secureStorage.write(key: 'auth_token', value: token);
-        print('Saved access_token to FlutterSecureStorage: $token');
         // Verify storage
         final storedToken = await _secureStorage.read(key: 'auth_token');
-        print('Verified access_token in FlutterSecureStorage: $storedToken');
       } else {
         await _secureStorage.delete(key: 'auth_token');
-        print('Removed access_token from FlutterSecureStorage');
       }
 
       if (refreshToken != null) {
         await _secureStorage.write(key: 'refresh_token', value: refreshToken);
-        print('Saved refresh_token to FlutterSecureStorage: $refreshToken');
         // Verify storage
         final storedRefreshToken = await _secureStorage.read(key: 'refresh_token');
-        print('Verified refresh_token in FlutterSecureStorage: $storedRefreshToken');
       } else {
         await _secureStorage.delete(key: 'refresh_token');
-        print('Removed refresh_token from FlutterSecureStorage');
       }
     }
 
     await prefs.setBool('remember_me', rememberMe);
-    print('Saved rememberMe to SharedPreferences: $rememberMe');
     // Verify storage
     final storedRememberMe = prefs.getBool('remember_me');
-    print('Verified rememberMe in SharedPreferences: $storedRememberMe');
+
   }
 
   Future<void> clearToken({bool force = false}) async {
@@ -172,9 +164,8 @@ class ApiService {
       if (!rememberMe) { // Chỉ xóa saved_username và saved_password nếu !rememberMe
         await prefs.remove('saved_username');
         await prefs.remove('saved_password');
-        print('Cleared saved_username and saved_password (rememberMe: $rememberMe)');
       }
-      print('Cleared all tokens (force: $force, rememberMe: $rememberMe)');
+
       const bool kIsWeb = bool.fromEnvironment('dart.library.js_util');
       if (!kIsWeb) {
         await _secureStorage.delete(key: 'auth_token');
@@ -193,7 +184,7 @@ class ApiService {
     try {
       final decodedToken = JwtDecoder.decode(_token!);
       final userId = decodedToken['sub'] as String?;
-      print('Extracted user ID from token: $userId');
+
       return userId;
     } catch (e) {
       print('Error decoding token: $e');
@@ -222,7 +213,7 @@ class ApiService {
         },
       );
 
-      print('Refresh token response: ${response.statusCode} - ${response.body}');
+
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         final newAccessToken = responseData['access_token'] as String?;
@@ -241,7 +232,7 @@ class ApiService {
           newRefreshToken ??= _refreshToken;
 
           await setToken(newAccessToken, refreshToken: newRefreshToken);
-          print('Access token refreshed successfully');
+
           return;
         } else {
           throw ServerFailure('No access token in refresh response');
@@ -250,7 +241,7 @@ class ApiService {
         throw AuthFailure('Failed to refresh token: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error refreshing token: $e');
+
       if (e is SocketException) {
         throw NetworkFailure('Network error while refreshing token: $e');
       }
@@ -259,9 +250,9 @@ class ApiService {
   }
 
   void _checkToken() {
-    print('Checking token: $_token');
+
     if (_token == null) {
-      print('Token is null');
+
       throw AuthFailure('Token không tồn tại. Vui lòng đăng nhập lại.');
     }
   }
@@ -281,7 +272,7 @@ class ApiService {
       return responseBody;
     } catch (e) {
       print('Error parsing response body: $e');
-      throw Exception('Lỗi parse JSON: $e');
+      throw Exception('Lỗi: $e');
     }
   }
 
@@ -302,20 +293,19 @@ class ApiService {
         if (!isPublic && _token != null) {
           final isValid = await _isTokenValid(_token!);
           if (!isValid) {
-            print('Token is invalid before request, attempting to refresh');
+  
             await refreshAccessToken();
           }
         }
 
         final response = await requestFunction();
-        print('Response status for $endpoint: ${response.statusCode} - ${response.body}');
 
         if (isSuccess(response)) {
           return await parseResponse(response);
         }
 
         if (response.statusCode == 401 && !isPublic) {
-          print('Received 401 Unauthorized for $endpoint, attempting to refresh token');
+
           try {
             await refreshAccessToken();
           } catch (e) {
@@ -323,7 +313,7 @@ class ApiService {
             throw SessionExpiredException();
           }
           retryCount++;
-          print('Retrying request with new access token ($retryCount/$maxRetries) for $endpoint');
+
           continue;
         }
 
@@ -335,15 +325,15 @@ class ApiService {
         throw ServerFailure(
             responseData['message'] ?? 'Lỗi server: ${response.statusCode}');
       } on SocketException catch (e) {
-        print('SocketException for $endpoint: $e');
-        throw NetworkFailure('Lỗi kết nối: Không thể kết nối đến server');
+   
+        throw NetworkFailure('Lỗi: Không thể kết nối đến server');
       } on AuthFailure catch (e) {
-        print('AuthFailure for $endpoint: $e');
+   
         // Nếu là lỗi xác thực, throw SessionExpiredException
         throw SessionExpiredException();
       } catch (e) {
-        print('Unexpected error for $endpoint: $e');
-        throw ServerFailure('Lỗi không xác định: $e');
+     
+        throw ServerFailure('Lỗi: $e');
       }
     }
 
@@ -473,7 +463,7 @@ class ApiService {
     return await _performRequestWithRefresh(
       () async {
         final uri = Uri.parse('$baseUrl$endpoint');
-        print('PUT Multipart Request URL: $uri');
+
 
         var request = http.MultipartRequest('PUT', uri);
 
@@ -487,18 +477,18 @@ class ApiService {
         if (headers != null) {
           request.headers.addAll(headers);
         }
-        print('PUT Multipart Request Headers: ${request.headers}');
+      
 
         if (fields != null) {
           request.fields.addAll(fields);
-          print('PUT Multipart Request Fields: $fields');
+        
         } else {
           print('PUT Multipart Request Fields: None');
         }
 
         if (files != null) {
           request.files.addAll(files);
-          print('PUT Multipart Request Files: ${files.map((f) => f.filename).toList()}');
+       
         } else {
           print('PUT Multipart Request Files: None');
         }
@@ -510,7 +500,7 @@ class ApiService {
           },
         );
 
-        print('PUT Multipart Response Status: ${streamedResponse.statusCode}');
+ 
 
         return await http.Response.fromStream(streamedResponse);
       },
@@ -518,7 +508,7 @@ class ApiService {
       (response) async {
         try {
           final decodedResponse = await _parseResponseBody(response);
-          print('PUT Multipart Decoded Response: $decodedResponse');
+ 
           return decodedResponse;
         } catch (e) {
           print('PUT Multipart JSON Decode Error: $e');

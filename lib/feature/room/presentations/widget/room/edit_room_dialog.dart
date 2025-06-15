@@ -134,7 +134,7 @@ class _EditRoomDialogState extends State<EditRoomDialog> {
                   print('Room Update Error: ${state.message}');
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Lỗi: ${state.message}'),
+                      content: Text('${state.message}'),
                       backgroundColor: Colors.red,
                       duration: const Duration(seconds: 3),
                     ),
@@ -399,7 +399,7 @@ class _ImageManagementDialogState extends State<_ImageManagementDialog> {
                   if (!state.message.contains('Không tìm thấy ảnh cho phòng này')) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Lỗi: ${state.message}'),
+                        content: Text('${state.message}'),
                         backgroundColor: Colors.red,
                         duration: const Duration(seconds: 3),
                       ),

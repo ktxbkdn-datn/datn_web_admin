@@ -20,7 +20,6 @@ class ReportRepositoryImpl implements ReportRepository {
     String? searchQuery,
   }) async {
     try {
-      print('Fetching all reports with params: page=$page, limit=$limit, userId=$userId, roomId=$roomId, status=$status, reportTypeId=$reportTypeId, searchQuery=$searchQuery');
       final result = await remoteDataSource.getAllReports(
         page: page,
         limit: limit,
@@ -30,10 +29,9 @@ class ReportRepositoryImpl implements ReportRepository {
         reportTypeId: reportTypeId,
         searchQuery: searchQuery,
       );
-      print('Received reports from remote data source: ${result.$1.map((report) => report.toJson()).toList()}, total: ${result.$2}');
+      // ...mapping model sang entity như cũ...
       return Right(result);
     } catch (e) {
-      print('Error fetching all reports: $e');
       return Left(ServerFailure(e.toString()));
     }
   }

@@ -16,8 +16,9 @@ class ReportBloc extends Bloc<ReportEvent, ReportState> {
   final UpdateReportStatus updateReportStatus;
   final DeleteReport deleteReport;
   final Map<int, ReportEntity> _reportCache = {};
-  final Map<int, List<ReportEntity>> _pageCache = {};
+  final Map<String, List<ReportEntity>> _pageCache = {};
   static const int _maxCachedPages = 5;
+  int _lastTotalItems = 0; // Thêm biến này
 
   ReportBloc({
     required this.getAllReports,
@@ -33,14 +34,21 @@ class ReportBloc extends Bloc<ReportEvent, ReportState> {
     on<DeleteReportEvent>(_onDeleteReport);
     on<ResetReportStateEvent>(_onResetReportState);
   }
-
-  void _managePageCache(int page, List<ReportEntity> reports) {
-    print('ReportBloc: Caching page $page with ${reports.length} reports');
-    _pageCache[page] = List.from(reports); // Create a copy to avoid mutating the original list
+  // Generate a unique cache key based on all filter parameters
+  String _generateCacheKey(GetAllReportsEvent event) {
+    return 'page=${event.page}:limit=${event.limit}:userId=${event.userId ?? "null"}:roomId=${event.roomId ?? "null"}:status=${event.status ?? "null"}:reportTypeId=${event.reportTypeId ?? "null"}:search=${event.searchQuery ?? "null"}';
+  }
+  void _managePageCache(String cacheKey, List<ReportEntity> reports) {
+    print('ReportBloc: Caching with key $cacheKey with ${reports.length} reports');
+    _pageCache[cacheKey] = List.from(reports); // Create a copy to avoid mutating the original list
     if (_pageCache.length > _maxCachedPages) {
-      final oldestPage = _pageCache.keys.reduce((a, b) => a < b ? a : b);
-      _pageCache.remove(oldestPage);
-      print('ReportBloc: Removed oldest page cache: $oldestPage');
+      // Get all keys and find the oldest one to remove
+      final keys = _pageCache.keys.toList();
+      if (keys.isNotEmpty) {
+        final oldestKey = keys.first; // Simple approach - remove first key
+        _pageCache.remove(oldestKey);
+        print('ReportBloc: Removed oldest page cache: $oldestKey');
+      }
     }
   }
 
@@ -52,10 +60,12 @@ class ReportBloc extends Bloc<ReportEvent, ReportState> {
   Future<void> _onGetAllReports(GetAllReportsEvent event, Emitter<ReportState> emit) async {
     print('ReportBloc: Handling GetAllReportsEvent: page=${event.page}, limit=${event.limit}, userId=${event.userId}, roomId=${event.roomId}, status=${event.status}, reportTypeId=${event.reportTypeId}, searchQuery=${event.searchQuery}');
 
+    final cacheKey = _generateCacheKey(event);
+    
     // Check cache first
-    if (_pageCache.containsKey(event.page)) {
-      print('ReportBloc: Serving reports from cache for page ${event.page}');
-      emit(ReportsLoaded(reports: List.from(_pageCache[event.page]!), totalItems: 0));
+    if (_pageCache.containsKey(cacheKey)) {
+      print('ReportBloc: Serving reports from cache for key $cacheKey');
+      emit(ReportsLoaded(reports: List.from(_pageCache[cacheKey]!), totalItems: _lastTotalItems));
       return;
     }
 
@@ -83,7 +93,8 @@ class ReportBloc extends Bloc<ReportEvent, ReportState> {
         },
         (data) {
           print('ReportBloc: Successfully fetched ${data.$1.length} reports, totalItems: ${data.$2}');
-          _managePageCache(event.page, data.$1);
+          _managePageCache(cacheKey, data.$1);
+          _lastTotalItems = data.$2; // Cập nhật lại biến này
           emit(ReportsLoaded(reports: List.from(data.$1), totalItems: data.$2));
         },
       );

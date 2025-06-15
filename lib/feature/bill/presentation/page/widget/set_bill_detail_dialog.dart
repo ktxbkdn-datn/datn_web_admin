@@ -99,7 +99,7 @@ class _SetBillDetailDialogState extends State<SetBillDetailDialog> {
             } else if (state is BillError) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Lỗi: ${state.message}'),
+                  content: Text(' ${state.message}'),
                   backgroundColor: Colors.red,
                   duration: const Duration(seconds: 3),
                 ),

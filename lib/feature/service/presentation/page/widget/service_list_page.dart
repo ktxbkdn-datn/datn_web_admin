@@ -182,7 +182,7 @@ class _ServiceListPageState extends State<ServiceListPage> with AutomaticKeepAli
                   if (state is ServiceError) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Lỗi: ${state.message}'),
+                        content: Text('${state.message}'),
                         backgroundColor: Colors.red,
                         duration: const Duration(seconds: 3),
                       ),

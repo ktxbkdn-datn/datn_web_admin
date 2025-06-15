@@ -4,8 +4,8 @@ import '../entities/report_entity.dart';
 
 abstract class ReportRepository {
   Future<Either<Failure, (List<ReportEntity>, int)>> getAllReports({
-    int page,
-    int limit,
+    int page = 1,
+    int limit = 10,
     int? userId,
     int? roomId,
     String? status,
