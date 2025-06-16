@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_card/fill_rate_stat_card.dart';
+import 'package:datn_web_admin/feature/dashboard/presentation/widgets/statistic_overview_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iconsax/iconsax.dart';
@@ -527,6 +529,23 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                                     children: [
                                       ElevatedButton.icon(
                                         onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(builder: (_) => const StatisticsOverviewPage()),
+                                          );
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.deepPurple,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                        icon: const Icon(Icons.bar_chart, color: Colors.white),
+                                        label: const Text('Thống kê', style: TextStyle(color: Colors.white)),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      ElevatedButton.icon(
+                                        onPressed: () {
                                           Navigator.pushNamed(context, '/admin-management');
                                         },
                                         style: ElevatedButton.styleFrom(
@@ -578,25 +597,25 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.all(16.0),
-                              decoration: BoxDecoration(                       
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  children: [
-                                    RoomStatCard(),
-                                    SizedBox(width: 16),
-                                    UserStatCard(),
-                                    SizedBox(width: 16),
-                                    ReportStatCard(),
-                                  ],
-                                ),
-                              ),
-                            ),
+                            // Container(
+                            //   padding: const EdgeInsets.all(16.0),
+                            //   decoration: BoxDecoration(                       
+                            //     borderRadius: BorderRadius.circular(12),
+                            //   ),
+                            //   child: SingleChildScrollView(
+                            //     scrollDirection: Axis.horizontal,
+                            //     child: const Row(
+                            //       mainAxisAlignment: MainAxisAlignment.start,
+                            //       children: [
+                            //         RoomStatCard(),
+                            //         SizedBox(width: 16),
+                            //         FillRateStatCard(), // Thay thế UserStatCard bằng FillRateStatCard
+                            //         SizedBox(width: 16),
+                            //         ReportStatCard(),
+                            //       ],
+                            //     ),
+                            //   ),
+                            // ),
                             const SizedBox(height: 16),
                             Container(
                               padding: const EdgeInsets.all(16.0),

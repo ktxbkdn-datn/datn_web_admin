@@ -58,236 +58,229 @@ class _RoomStatsPageState extends State<RoomStatsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Thống kê trạng thái phòng hằng tháng',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
-        ),
-        backgroundColor: Colors.white,
-        elevation: 1,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.black87),
-            tooltip: 'Làm mới dữ liệu',
-            onPressed: _fetchData,
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Tiêu đề
+          const Text(
+            'Thống kê trạng thái phòng hằng tháng',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
-          IconButton(
-            icon: const Icon(Icons.camera_alt, color: Colors.black87),
-            tooltip: 'Chụp snapshot',
-            onPressed: _triggerSnapshot,
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    BlocBuilder<AreaBloc, AreaState>(
-                      builder: (context, areaState) {
-                        if (areaState.isLoading) {
-                          return const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2));
-                        } else if (areaState.error != null) {
-                          _logger.e('AreaBloc error: ${areaState.error}');
-                          return const Text('Lỗi tải khu vực');
-                        }
-                        List<DropdownMenuItem<int?>> items = [
-                          const DropdownMenuItem(value: null, child: Text('Tất cả')),
-                          ...areaState.areas.map((area) => DropdownMenuItem(value: area.areaId, child: Text(area.name))),
-                        ];
-                        return DropdownButton<int?>(
-                          value: _selectedAreaId,
-                          items: items,
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedAreaId = value;
-                              _summaryData = []; // Clear cache
-                            });
-                            _fetchData();
-                          },
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    DropdownButton<int>(
-                      value: _selectedYear,
-                      items: List.generate(10, (index) => DateTime.now().year - 5 + index)
-                          .map((year) => DropdownMenuItem(value: year, child: Text(year.toString())))
-                          .toList(),
-                      onChanged: (year) {
-                        if (year != null) {
+          // Các button, dropdown, snapshot...
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  // Dropdown chọn khu vực
+                  BlocBuilder<AreaBloc, AreaState>(
+                    builder: (context, areaState) {
+                      if (areaState.isLoading) {
+                        return const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2));
+                      } else if (areaState.error != null) {
+                        _logger.e('AreaBloc error: ${areaState.error}');
+                        return const Text('Lỗi tải khu vực');
+                      }
+                      List<DropdownMenuItem<int?>> items = [
+                        const DropdownMenuItem(value: null, child: Text('Tất cả')),
+                        ...areaState.areas.map((area) => DropdownMenuItem(value: area.areaId, child: Text(area.name))),
+                      ];
+                      return DropdownButton<int?>(
+                        value: _selectedAreaId,
+                        items: items,
+                        onChanged: (value) {
                           setState(() {
-                            _selectedYear = year;
-                            _summaryData = [];
+                            _selectedAreaId = value;
+                            _summaryData = []; // Clear cache
                           });
                           _fetchData();
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: BlocBuilder<StatisticsBloc, StatisticsState>(
-                buildWhen: (previous, current) =>
-                    current is StatisticsLoading ||
-                    (current is PartialLoading && current.requestType == 'room_status_summary') ||
-                    current is StatisticsError ||
-                    current is RoomStatusSummaryLoaded ||
-                    current is ManualSnapshotTriggered,
-                builder: (context, state) {
-                  _logger.i('StatisticsBloc state: $state');
-
-                  if (state is RoomStatusSummaryLoaded) {
-                    _summaryData = state.summaryData;
-                  }
-
-                  if (state is StatisticsLoading ||
-                      (state is PartialLoading && state.requestType == 'room_status_summary') ||
-                      state is StatisticsInitial) {
-                    if (_summaryData.isNotEmpty) {
-                      _logger.i('Displaying cached data while loading');
-                    } else {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                  } else if (state is StatisticsError) {
-                    _logger.e('StatisticsError: ${state.message}');
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('Lỗi: ${state.message}'),
-                          ElevatedButton(
-                            onPressed: _fetchData,
-                            child: const Text('Thử lại'),
-                          ),
-                        ],
-                      ),
-                    );
-                  } else if (state is ManualSnapshotTriggered) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(state.message)),
+                        },
                       );
-                    });
-                    _fetchData();
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  // Dropdown chọn năm
+                  DropdownButton<int>(
+                    value: _selectedYear,
+                    items: List.generate(10, (index) => DateTime.now().year - 5 + index)
+                        .map((year) => DropdownMenuItem(value: year, child: Text(year.toString())))
+                        .toList(),
+                    onChanged: (year) {
+                      if (year != null) {
+                        setState(() {
+                          _selectedYear = year;
+                          _summaryData = [];
+                        });
+                        _fetchData();
+                      }
+                    },
+                  ),
+                ],
+              ),
+              // Nút snapshot chỉ là icon camera
+              IconButton(
+                onPressed: _triggerSnapshot,
+                icon: const Icon(Icons.camera_alt, color: Colors.orange),
+                tooltip: 'Chụp snapshot',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // ...phần Expanded BlocBuilder chart giữ nguyên...
+          Expanded(
+            child: BlocBuilder<StatisticsBloc, StatisticsState>(
+              buildWhen: (previous, current) =>
+                  current is StatisticsLoading ||
+                  (current is PartialLoading && current.requestType == 'room_status_summary') ||
+                  current is StatisticsError ||
+                  current is RoomStatusSummaryLoaded ||
+                  current is ManualSnapshotTriggered,
+              builder: (context, state) {
+                _logger.i('StatisticsBloc state: $state');
+
+                if (state is RoomStatusSummaryLoaded) {
+                  _summaryData = state.summaryData;
+                }
+
+                if (state is StatisticsLoading ||
+                    (state is PartialLoading && state.requestType == 'room_status_summary') ||
+                    state is StatisticsInitial) {
+                  if (_summaryData.isNotEmpty) {
+                    _logger.i('Displaying cached data while loading');
+                  } else {
                     return const Center(child: CircularProgressIndicator());
                   }
+                } else if (state is StatisticsError) {
+                  _logger.e('StatisticsError: ${state.message}');
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Lỗi: ${state.message}'),
+                        ElevatedButton(
+                          onPressed: _fetchData,
+                          child: const Text('Thử lại'),
+                        ),
+                      ],
+                    ),
+                  );
+                } else if (state is ManualSnapshotTriggered) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(state.message)),
+                    );
+                  });
+                  _fetchData();
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                  if (_summaryData.isNotEmpty) {
-                    final statuses = _getStatuses(_summaryData);
-                    final colors = _generateColors(statuses.length);
-                    final maxY = _getMaxY(_summaryData, statuses);
-                    final roundedMaxY = maxY == 0 ? 10.0 : _roundMaxYToEven(maxY);
+                if (_summaryData.isNotEmpty) {
+                  final statuses = _getStatuses(_summaryData);
+                  final colors = _generateColors(statuses.length);
+                  final maxY = _getMaxY(_summaryData, statuses);
+                  final roundedMaxY = maxY == 0 ? 10.0 : _roundMaxYToEven(maxY);
 
-                    _logger.i('Summary data: $_summaryData');
-                    return LayoutBuilder(
-                      builder: (context, constraints) {
-                        final chartWidth = constraints.maxWidth;
-                        final chartHeight = constraints.maxHeight * 0.8 > 0 ? constraints.maxHeight * 0.8 : 200.0;
-                        final yInterval = _calculateYInterval(roundedMaxY, chartHeight);
+                  _logger.i('Summary data: $_summaryData');
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final chartWidth = constraints.maxWidth;
+                      final chartHeight = constraints.maxHeight * 0.8 > 0 ? constraints.maxHeight * 0.8 : 200.0;
+                      final yInterval = _calculateYInterval(roundedMaxY, chartHeight);
 
-                        _logger.d('Chart dimensions: width=$chartWidth, height=$chartHeight, maxY=$maxY, yInterval=$yInterval');
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: chartWidth,
-                              height: chartHeight,
-                              child: BarChart(
-                                BarChartData(
-                                  alignment: BarChartAlignment.spaceAround,
-                                  barTouchData: BarTouchData(
-                                    enabled: true,
-                                    touchTooltipData: BarTouchTooltipData(
-                                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                                        final status = _translateStatus(statuses[rodIndex]);
-                                        final month = groupIndex + 1;
-                                        final value = _getStatusCount(_summaryData, month, statuses[rodIndex]);
-                                        return BarTooltipItem(
-                                          '$status\nTháng $month: $value phòng',
-                                          const TextStyle(color: Colors.white, fontSize: 12),
+                      _logger.d('Chart dimensions: width=$chartWidth, height=$chartHeight, maxY=$maxY, yInterval=$yInterval');
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: chartWidth,
+                            height: chartHeight,
+                            child: BarChart(
+                              BarChartData(
+                                alignment: BarChartAlignment.spaceAround,
+                                barTouchData: BarTouchData(
+                                  enabled: true,
+                                  touchTooltipData: BarTouchTooltipData(
+                                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                                      final status = _translateStatus(statuses[rodIndex]);
+                                      final month = groupIndex + 1;
+                                      final value = _getStatusCount(_summaryData, month, statuses[rodIndex]);
+                                      return BarTooltipItem(
+                                        '$status\nTháng $month: $value phòng',
+                                        const TextStyle(color: Colors.white, fontSize: 12),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                titlesData: FlTitlesData(
+                                  show: true,
+                                  bottomTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      getTitlesWidget: (value, meta) {
+                                        final month = value.toInt() + 1;
+                                        return Text('T$month', style: const TextStyle(fontSize: 12, color: Colors.grey));
+                                      },
+                                    ),
+                                  ),
+                                  leftTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      reservedSize: 40,
+                                      interval: yInterval,
+                                      getTitlesWidget: (value, meta) {
+                                        if (value.toInt() % yInterval.toInt() != 0) return const SizedBox.shrink();
+                                        return Text(
+                                          value.toInt().toString(),
+                                          style: const TextStyle(fontSize: 12, color: Colors.grey),
                                         );
                                       },
                                     ),
                                   ),
-                                  titlesData: FlTitlesData(
-                                    show: true,
-                                    bottomTitles: AxisTitles(
-                                      sideTitles: SideTitles(
-                                        showTitles: true,
-                                        getTitlesWidget: (value, meta) {
-                                          final month = value.toInt() + 1;
-                                          return Text('T$month', style: const TextStyle(fontSize: 12, color: Colors.grey));
-                                        },
-                                      ),
-                                    ),
-                                    leftTitles: AxisTitles(
-                                      sideTitles: SideTitles(
-                                        showTitles: true,
-                                        reservedSize: 40,
-                                        interval: yInterval,
-                                        getTitlesWidget: (value, meta) {
-                                          if (value.toInt() % yInterval.toInt() != 0) return const SizedBox.shrink();
-                                          return Text(
-                                            value.toInt().toString(),
-                                            style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                  ),
-                                  borderData: FlBorderData(show: false),
-                                  gridData: FlGridData(
-                                    show: true,
-                                    drawHorizontalLine: true,
-                                    horizontalInterval: yInterval,
-                                  ),
-                                  barGroups: List.generate(12, (month) => _buildBarGroup(month, _summaryData, statuses, colors)),
-                                  minY: 0,
-                                  maxY: roundedMaxY,
+                                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                 ),
+                                borderData: FlBorderData(show: false),
+                                gridData: FlGridData(
+                                  show: true,
+                                  drawHorizontalLine: true,
+                                  horizontalInterval: yInterval,
+                                ),
+                                barGroups: List.generate(12, (month) => _buildBarGroup(month, _summaryData, statuses, colors)),
+                                minY: 0,
+                                maxY: roundedMaxY,
                               ),
                             ),
-                            const SizedBox(height: 16),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 4,
-                              children: List.generate(statuses.length, (index) {
-                                final status = _translateStatus(statuses[index]);
-                                return Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(width: 10, height: 10, color: colors[index]),
-                                    const SizedBox(width: 4),
-                                    Text(status, style: const TextStyle(fontSize: 12)),
-                                  ],
-                                );
-                              }),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  }
-                  return const Center(child: CircularProgressIndicator());
-                },
-              ),
+                          ),
+                          const SizedBox(height: 16),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            children: List.generate(statuses.length, (index) {
+                              final status = _translateStatus(statuses[index]);
+                              return Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(width: 10, height: 10, color: colors[index]),
+                                  const SizedBox(width: 4),
+                                  Text(status, style: const TextStyle(fontSize: 12)),
+                                ],
+                              );
+                            }),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                }
+                return const Center(child: CircularProgressIndicator());
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
