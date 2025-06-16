@@ -1,14 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_card/fill_rate_stat_card.dart';
+
 import 'package:datn_web_admin/feature/dashboard/presentation/widgets/statistic_overview_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-// Replace these with actual imports for your project
 import 'package:datn_web_admin/feature/admin/domain/entities/admin_entity.dart';
 import 'package:datn_web_admin/feature/admin/presentation/bloc/admin_bloc.dart';
 import 'package:datn_web_admin/feature/admin/presentation/bloc/admin_event.dart';
@@ -18,10 +16,6 @@ import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_event.dart';
 import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_state.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_bloc.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_event.dart';
-import 'package:datn_web_admin/feature/dashboard/presentation/widgets/dashboard_drawer.dart';
-import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_card/report_stat.dart';
-import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_card/room_stat.dart';
-import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_card/user_stat.dart';
 import 'package:datn_web_admin/feature/register/domain/entity/register_entity.dart';
 import 'package:datn_web_admin/feature/register/presentation/bloc/registration_bloc.dart';
 import 'package:datn_web_admin/feature/register/presentation/bloc/registration_event.dart';
@@ -34,11 +28,11 @@ import 'package:datn_web_admin/feature/report/presentation/bloc/rp_type/rp_type_
 import 'package:datn_web_admin/feature/report/presentation/bloc/rp_type/rp_type_event.dart';
 import 'package:datn_web_admin/feature/report/presentation/bloc/rp_type/rp_type_state.dart';
 import 'package:datn_web_admin/feature/report/presentation/page/widget/report_tab/report_detail_dialog.dart';
-import 'package:datn_web_admin/common/constants/colors.dart'; // Ensure this exists
-import '../widgets/consumptions_bar_chart.dart'; // Ensure DashboardBarChart is defined
-import '../widgets/maintenance_request_card.dart';
-import '../widgets/reports_pie_chart.dart'; // Ensure ReportPieChart is defined
-import '../widgets/registration_card.dart';
+import 'package:datn_web_admin/common/constants/colors.dart';
+import 'package:datn_web_admin/feature/dashboard/presentation/widgets/consumptions_bar_chart.dart';
+import 'package:datn_web_admin/feature/dashboard/presentation/widgets/maintenance_request_card.dart';
+import 'package:datn_web_admin/feature/dashboard/presentation/widgets/reports_pie_chart.dart';
+import 'package:datn_web_admin/feature/dashboard/presentation/widgets/registration_card.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -48,23 +42,11 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> with RouteAware {
-  int _selectedIndex = 0;
   AdminEntity? _currentAdmin;
   int _currentReportTypePage = 0;
   List<int> _reportTypeIds = [4];
   bool _isLoading = false;
   Timer? _refreshTimer;
-
-  final List<MenuItem> menuItems = const [
-    MenuItem(title: 'Sinh viên', icon: Iconsax.people, route: '/users'),
-    MenuItem(title: 'Phòng', icon: Iconsax.house, route: '/rooms'),
-    MenuItem(title: 'Hợp đồng', icon: Iconsax.document, route: '/contracts'),
-    MenuItem(title: 'Đăng kí', icon: Iconsax.path, route: '/registrations'),
-    MenuItem(title: 'Báo cáo', icon: Iconsax.ticket, route: '/reports'),
-    MenuItem(title: 'Thông báo', icon: Iconsax.notification, route: '/notifications'),
-    MenuItem(title: 'Dịch vụ', icon: Iconsax.electricity, route: '/services'),
-    MenuItem(title: 'Hoá đơn tháng', icon: Iconsax.receipt, route: '/bills'),
-  ];
 
   @override
   void initState() {
@@ -254,7 +236,6 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: displayRegistrations.map((reg) => RegistrationCard(registration: reg)).toList(),
           ),
-        // Thêm chú thích icon ở đây
         const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -455,454 +436,416 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
           SafeArea(
             child: ConstrainedBox(
               constraints: const BoxConstraints(minWidth: 960, minHeight: 600),
-              child: Row(
-                children: [
-                  DashboardDrawer(
-                    selectedIndex: _selectedIndex,
-                    onTap: (index) {
-                      setState(() {
-                        _selectedIndex = index;
-                      });
-                      Navigator.pushNamed(context, menuItems[index].route);
-                    },
-                    menuItems: menuItems,
-                  ),
-                  const VerticalDivider(thickness: 1, width: 1),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Padding(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
                         padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(16.0),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black12,
-                                    blurRadius: 10,
-                                    offset: Offset(0, 5),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: BlocBuilder<AdminBloc, AdminState>(
-                                      builder: (context, state) {
-                                        String adminName = _currentAdmin?.fullName ?? 'Admin';
-                                        if (state is AdminUpdated) {
-                                          _currentAdmin = state.currentAdmin;
-                                          adminName = _currentAdmin?.fullName ?? 'Admin';
-                                          _saveLocalAdmin();
-                                        }
-                                        return Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Xin chào',
-                                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.black87,
-                                                  ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              'Khám phá thông tin và quản lý hoạt động về ký túc xá của bạn',
-                                              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      ElevatedButton.icon(
-                                        onPressed: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(builder: (_) => const StatisticsOverviewPage()),
-                                          );
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.deepPurple,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                        ),
-                                        icon: const Icon(Icons.bar_chart, color: Colors.white),
-                                        label: const Text('Thống kê', style: TextStyle(color: Colors.white)),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      ElevatedButton.icon(
-                                        onPressed: () {
-                                          Navigator.pushNamed(context, '/admin-management');
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.blue,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                        ),
-                                        icon: const Icon(Iconsax.personalcard, color: Colors.white),
-                                        label: const Text('Quản lý Admin', style: TextStyle(color: Colors.white)),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      BlocBuilder<AuthBloc, AuthState>(
-                                        builder: (context, state) {
-                                          return Stack(
-                                            alignment: Alignment.center,
-                                            children: [
-                                              ElevatedButton.icon(
-                                                onPressed: state.isLoading
-                                                    ? null
-                                                    : () {
-                                                        context.read<AuthBloc>().add(LogoutSubmitted());
-                                                      },
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: Colors.red,
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius: BorderRadius.circular(8),
-                                                  ),
-                                                ),
-                                                icon: const Icon(Iconsax.logout, color: Colors.white),
-                                                label: const Text('Đăng xuất', style: TextStyle(color: Colors.white)),
-                                              ),
-                                              if (state.isLoading)
-                                                const SizedBox(
-                                                  width: 24,
-                                                  height: 24,
-                                                  child: CircularProgressIndicator(
-                                                    color: Colors.white,
-                                                    strokeWidth: 2,
-                                                  ),
-                                                ),
-                                            ],
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            // Container(
-                            //   padding: const EdgeInsets.all(16.0),
-                            //   decoration: BoxDecoration(                       
-                            //     borderRadius: BorderRadius.circular(12),
-                            //   ),
-                            //   child: SingleChildScrollView(
-                            //     scrollDirection: Axis.horizontal,
-                            //     child: const Row(
-                            //       mainAxisAlignment: MainAxisAlignment.start,
-                            //       children: [
-                            //         RoomStatCard(),
-                            //         SizedBox(width: 16),
-                            //         FillRateStatCard(), // Thay thế UserStatCard bằng FillRateStatCard
-                            //         SizedBox(width: 16),
-                            //         ReportStatCard(),
-                            //       ],
-                            //     ),
-                            //   ),
-                            // ),
-                            const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.all(16.0),
-                              decoration: BoxDecoration(                  
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: LayoutBuilder(
-                                builder: (context, constraints) {
-                                  const chartHeight = 300.0;
-                                  final chartWidth = constraints.maxWidth > 600
-                                      ? (constraints.maxWidth - 32) / 2
-                                      : constraints.maxWidth;
-                                  return constraints.maxWidth > 600
-                                      ? Row(
-                                          children: [
-                                            Expanded(
-                                              child: GestureDetector(
-                                                onTap: () => _showChartDialog(
-                                                  context,
-                                                  DashboardBarChart(
-                                                    chartWidth: MediaQuery.of(context).size.width * 0.8,
-                                                    chartHeight: 500,
-                                                  ),
-                                                  'Biểu đồ cột chi tiết',
-                                                ),
-                                                child: DashboardBarChart(
-                                                  chartWidth: chartWidth,
-                                                  chartHeight: chartHeight,
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 16),
-                                            Expanded(
-                                              child: GestureDetector(
-                                                onTap: () => _showChartDialog(
-                                                  context,
-                                                  ReportPieChart(
-                                                    chartWidth: MediaQuery.of(context).size.width * 0.8,
-                                                    chartHeight: 800,
-                                                    pieRadius: MediaQuery.of(context).size.width * 0.15,
-                                                  ),
-                                                  'Biểu đồ tròn chi tiết',
-                                                ),
-                                                child: ReportPieChart(
-                                                  chartWidth: chartWidth,
-                                                  chartHeight: chartHeight,
-                                                  pieRadius: MediaQuery.of(context).size.width * 0.06,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        )
-                                      : Column(
-                                          children: [
-                                            GestureDetector(
-                                              onTap: () => _showChartDialog(
-                                                context,
-                                                DashboardBarChart(
-                                                  chartWidth: MediaQuery.of(context).size.width * 0.8,
-                                                  chartHeight: 500,
-                                                ),
-                                                'Biểu đồ cột chi tiết',
-                                              ),
-                                              child: DashboardBarChart(
-                                                chartWidth: chartWidth,
-                                                chartHeight: chartHeight,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 16),
-                                            GestureDetector(
-                                              onTap: () => _showChartDialog(
-                                                context,
-                                                ReportPieChart(
-                                                  chartWidth: MediaQuery.of(context).size.width * 0.8,
-                                                  chartHeight: 800,
-                                                  pieRadius: MediaQuery.of(context).size.width * 0.08,
-                                                ),
-                                                'Biểu đồ tròn chi tiết',
-                                              ),
-                                              child: ReportPieChart(
-                                                chartWidth: chartWidth,
-                                                chartHeight: chartHeight,
-                                                pieRadius: MediaQuery.of(context).size.width * 0.08,
-                                              ),
-                                            ),
-                                          ],
-                                        );
-                                },
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.only(top: 10.0, left: 16.0, right: 16.0, bottom: 16.0),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black12,
-                                    blurRadius: 10,
-                                    offset: Offset(0, 5),
-                                  ),
-                                ],
-                              ),
-                              child: LayoutBuilder(
-                                builder: (context, constraints) {
-                                  return constraints.maxWidth > 600
-                                      ? Row(
-                                          children: [
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  BlocBuilder<RegistrationBloc, RegistrationState>(
-                                                    builder: (context, state) => buildRegistrationContent(state, context),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(width: 16),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Row(
-                                                    mainAxisAlignment: MainAxisAlignment.start,
-                                                    children: [
-                                                      BlocBuilder<ReportBloc, ReportState>(
-                                                        builder: (context, state) => buildReportHeader(state),
-                                                      ),
-                                                      const SizedBox(width: 8),
-                                                      TextButton(
-                                                        onPressed: () {
-                                                          Navigator.pushNamed(
-                                                            context,
-                                                            '/reports',
-                                                            arguments: {'initialTab': 0, 'statusFilter': 'PENDING'},
-                                                          );
-                                                        },
-                                                        child: const Text('Xem tất cả', style: TextStyle(color: Colors.blue)),
-                                                      ),
-                                                      const SizedBox(width: 8),
-                                                      IconButton(
-                                                        onPressed: () {
-                                                          final authState = context.read<AuthBloc>().state;
-                                                          if (authState.auth != null) {
-                                                            context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
-                                                          }
-                                                        },
-                                                        icon: const Icon(Icons.refresh, color: Colors.green),
-                                                        tooltip: 'Làm mới',
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(height: 10),
-                                                  BlocBuilder<ReportBloc, ReportState>(
-                                                    builder: (context, state) => buildReportContent(state, context),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        )
-                                      : Column(
-                                          children: [
-                                            Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                BlocBuilder<RegistrationBloc, RegistrationState>(
-                                                  builder: (context, state) => buildRegistrationContent(state, context),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 16),
-                                            Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  mainAxisAlignment: MainAxisAlignment.start,
-                                                  children: [
-                                                    BlocBuilder<ReportBloc, ReportState>(
-                                                      builder: (context, state) => buildReportHeader(state),
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    TextButton(
-                                                      onPressed: () {
-                                                        Navigator.pushNamed(
-                                                          context,
-                                                          '/reports',
-                                                          arguments: {'initialTab': 0, 'statusFilter': 'PENDING'},
-                                                        );
-                                                      },
-                                                      child: const Text('Xem tất cả', style: TextStyle(color: Colors.blue)),
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    IconButton(
-                                                      onPressed: () {
-                                                        final authState = context.read<AuthBloc>().state;
-                                                        if (authState.auth != null) {
-                                                          context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
-                                                        }
-                                                      },
-                                                      icon: const Icon(Icons.refresh, color: Colors.green),
-                                                      tooltip: 'Làm mới',
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(height: 10),
-                                                  BlocBuilder<ReportBloc, ReportState>(
-                                                    builder: (context, state) => buildReportContent(state, context),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                        );
-                                },
-                              ),
-                            ),
-                            BlocListener<AdminBloc, AdminState>(
-                              listener: (context, state) {
-                                if (state is AdminError) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('${state.failure.message}'),
-                                      backgroundColor: Colors.red,
-                                      duration: const Duration(seconds: 1), 
-                                    ),
-                                  );
-                                }
-                              },
-                              child: const SizedBox.shrink(),
-                            ),
-                            BlocListener<AuthBloc, AuthState>(
-                              listener: (context, state) {
-                                if (state.auth == null) {
-                                  _refreshTimer?.cancel();
-                                  if (state.successMessage != null) {
-                                    // Chỉ hiển thị SnackBar khi đăng xuất thành công
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(state.successMessage!),
-                                        backgroundColor: Colors.green,
-                                        duration: const Duration(seconds: 1),
-                                      ),
-                                    );
-                                  }
-                                  // Chuyển hướng về trang đăng nhập
-                                  Navigator.pushReplacementNamed(context, '/login');
-                                } else if (state.error != null) {
-                                  // Chỉ hiển thị SnackBar cho các lỗi không liên quan đến token
-                                  if (!state.error!.contains('Authorization') &&
-                                      !state.error!.contains('Token') &&
-                                      !state.error!.contains('Phiên đăng nhập đã hết hạn')) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(state.error!),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              child: const SizedBox.shrink(),
-                            ),
-                            BlocListener<RegistrationBloc, RegistrationState>(
-                              listener: (context, state) {
-                                if (state is RegistrationError) {
-                                  if (state.message.contains('Phiên đăng nhập đã hết hạn')) {
-                                    Navigator.pushReplacementNamed(context, '/login');
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('${state.message}'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              child: const SizedBox.shrink(),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 10,
+                              offset: Offset(0, 5),
                             ),
                           ],
                         ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: BlocBuilder<AdminBloc, AdminState>(
+                                builder: (context, state) {
+                                  String adminName = _currentAdmin?.fullName ?? 'Admin';
+                                  if (state is AdminUpdated) {
+                                    _currentAdmin = state.currentAdmin;
+                                    adminName = _currentAdmin?.fullName ?? 'Admin';
+                                    _saveLocalAdmin();
+                                  }
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Xin chào',
+                                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87,
+                                            ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Khám phá thông tin và quản lý hoạt động về ký túc xá của bạn',
+                                        style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+     
+                            // Row(
+                            //   mainAxisSize: MainAxisSize.min,
+                            //   children: [
+                            //     ElevatedButton.icon(
+                            //       onPressed: () {
+                            //         Navigator.push(
+                            //           context,
+                            //           MaterialPageRoute(builder: (_) => const StatisticsOverviewPage()),
+                            //         );
+                            //       },
+                            //       style: ElevatedButton.styleFrom(
+                            //         backgroundColor: Colors.deepPurple,
+                            //         shape: RoundedRectangleBorder(
+                            //           borderRadius: BorderRadius.circular(8),
+                            //         ),
+                            //       ),
+                            //       icon: const Icon(Icons.bar_chart, color: Colors.white),
+                            //       label: const Text('Thống kê', style: TextStyle(color: Colors.white)),
+                            //     ),
+                            //     const SizedBox(width: 10),
+                            //     ElevatedButton.icon(
+                            //       onPressed: () {
+                            //         Navigator.pushNamed(context, '/admin-management');
+                            //       },
+                            //       style: ElevatedButton.styleFrom(
+                            //         backgroundColor: Colors.blue,
+                            //         shape: RoundedRectangleBorder(
+                            //           borderRadius: BorderRadius.circular(8),
+                            //         ),
+                            //       ),
+                            //       icon: const Icon(Iconsax.personalcard, color: Colors.white),
+                            //       label: const Text('Quản lý Admin', style: TextStyle(color: Colors.white)),
+                            //     ),
+                            //     const SizedBox(width: 10),
+                            //     BlocBuilder<AuthBloc, AuthState>(
+                            //       builder: (context, state) {
+                            //         return Stack(
+                            //           alignment: Alignment.center,
+                            //           children: [
+                            //             ElevatedButton.icon(
+                            //               onPressed: state.isLoading
+                            //                   ? null
+                            //                   : () {
+                            //                       context.read<AuthBloc>().add(LogoutSubmitted());
+                            //                     },
+                            //               style: ElevatedButton.styleFrom(
+                            //                 backgroundColor: Colors.red,
+                            //                 shape: RoundedRectangleBorder(
+                            //                   borderRadius: BorderRadius.circular(8),
+                            //                 ),
+                            //               ),
+                            //               icon: const Icon(Iconsax.logout, color: Colors.white),
+                            //               label: const Text('Đăng xuất', style: TextStyle(color: Colors.white)),
+                            //             ),
+                            //             if (state.isLoading)
+                            //               const SizedBox(
+                            //                 width: 24,
+                            //                 height: 24,
+                            //                 child: CircularProgressIndicator(
+                            //                   color: Colors.white,
+                            //                   strokeWidth: 2,
+                            //                 ),
+                            //               ),
+                            //           ],
+                            //         );
+                            //       },
+                            //     ),
+                            //   ],
+                            // ),
+      
+                          ],
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(16.0),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            const chartHeight = 300.0;
+                            final chartWidth = constraints.maxWidth > 600
+                                ? (constraints.maxWidth - 32) / 2
+                                : constraints.maxWidth;
+                            return constraints.maxWidth > 600
+                                ? Row(
+                                    children: [
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () => _showChartDialog(
+                                            context,
+                                            DashboardBarChart(
+                                              chartWidth: MediaQuery.of(context).size.width * 0.8,
+                                              chartHeight: 500,
+                                            ),
+                                            'Biểu đồ cột chi tiết',
+                                          ),
+                                          child: DashboardBarChart(
+                                            chartWidth: chartWidth,
+                                            chartHeight: chartHeight,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () => _showChartDialog(
+                                            context,
+                                            ReportPieChart(
+                                              chartWidth: MediaQuery.of(context).size.width * 0.8,
+                                              chartHeight: 800,
+                                              pieRadius: MediaQuery.of(context).size.width * 0.15,
+                                            ),
+                                            'Biểu đồ tròn chi tiết',
+                                          ),
+                                          child: ReportPieChart(
+                                            chartWidth: chartWidth,
+                                            chartHeight: chartHeight,
+                                            pieRadius: MediaQuery.of(context).size.width * 0.06,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : Column(
+                                    children: [
+                                      GestureDetector(
+                                        onTap: () => _showChartDialog(
+                                          context,
+                                          DashboardBarChart(
+                                            chartWidth: MediaQuery.of(context).size.width * 0.8,
+                                            chartHeight: 500,
+                                          ),
+                                          'Biểu đồ cột chi tiết',
+                                        ),
+                                        child: DashboardBarChart(
+                                          chartWidth: chartWidth,
+                                          chartHeight: chartHeight,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      GestureDetector(
+                                        onTap: () => _showChartDialog(
+                                          context,
+                                          ReportPieChart(
+                                            chartWidth: MediaQuery.of(context).size.width * 0.8,
+                                            chartHeight: 800,
+                                            pieRadius: MediaQuery.of(context).size.width * 0.08,
+                                          ),
+                                          'Biểu đồ tròn chi tiết',
+                                        ),
+                                        child: ReportPieChart(
+                                          chartWidth: chartWidth,
+                                          chartHeight: chartHeight,
+                                          pieRadius: MediaQuery.of(context).size.width * 0.08,
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.only(top: 10.0, left: 16.0, right: 16.0, bottom: 16.0),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 10,
+                              offset: Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            return constraints.maxWidth > 600
+                                ? Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            BlocBuilder<RegistrationBloc, RegistrationState>(
+                                              builder: (context, state) => buildRegistrationContent(state, context),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.start,
+                                              children: [
+                                                BlocBuilder<ReportBloc, ReportState>(
+                                                  builder: (context, state) => buildReportHeader(state),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.pushNamed(
+                                                      context,
+                                                      '/reports',
+                                                      arguments: {'initialTab': 0, 'statusFilter': 'PENDING'},
+                                                    );
+                                                  },
+                                                  child: const Text('Xem tất cả', style: TextStyle(color: Colors.blue)),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                IconButton(
+                                                  onPressed: () {
+                                                    final authState = context.read<AuthBloc>().state;
+                                                    if (authState.auth != null) {
+                                                      context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
+                                                    }
+                                                  },
+                                                  icon: const Icon(Icons.refresh, color: Colors.green),
+                                                  tooltip: 'Làm mới',
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 10),
+                                            BlocBuilder<ReportBloc, ReportState>(
+                                              builder: (context, state) => buildReportContent(state, context),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : Column(
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          BlocBuilder<RegistrationBloc, RegistrationState>(
+                                            builder: (context, state) => buildRegistrationContent(state, context),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.start,
+                                            children: [
+                                              BlocBuilder<ReportBloc, ReportState>(
+                                                builder: (context, state) => buildReportHeader(state),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              TextButton(
+                                                onPressed: () {
+                                                  Navigator.pushNamed(
+                                                    context,
+                                                    '/reports',
+                                                    arguments: {'initialTab': 0, 'statusFilter': 'PENDING'},
+                                                  );
+                                                },
+                                                child: const Text('Xem tất cả', style: TextStyle(color: Colors.blue)),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              IconButton(
+                                                onPressed: () {
+                                                  final authState = context.read<AuthBloc>().state;
+                                                  if (authState.auth != null) {
+                                                    context.read<ReportBloc>().add(const GetAllReportsEvent(page: 1, limit: 1000));
+                                                  }
+                                                },
+                                                icon: const Icon(Icons.refresh, color: Colors.green),
+                                                tooltip: 'Làm mới',
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 10),
+                                          BlocBuilder<ReportBloc, ReportState>(
+                                            builder: (context, state) => buildReportContent(state, context),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  );
+                          },
+                        ),
+                      ),
+                      BlocListener<AdminBloc, AdminState>(
+                        listener: (context, state) {
+                          if (state is AdminError) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('${state.failure.message}'),
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 1),
+                              ),
+                            );
+                          }
+                        },
+                        child: const SizedBox.shrink(),
+                      ),
+                      BlocListener<AuthBloc, AuthState>(
+                        listener: (context, state) {
+                          if (state.auth == null) {
+                            _refreshTimer?.cancel();
+                            if (state.successMessage != null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(state.successMessage!),
+                                  backgroundColor: Colors.green,
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            }
+                            Navigator.pushReplacementNamed(context, '/login');
+                          } else if (state.error != null) {
+                            if (!state.error!.contains('Authorization') &&
+                                !state.error!.contains('Token') &&
+                                !state.error!.contains('Phiên đăng nhập đã hết hạn')) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(state.error!),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        child: const SizedBox.shrink(),
+                      ),
+                      BlocListener<RegistrationBloc, RegistrationState>(
+                        listener: (context, state) {
+                          if (state is RegistrationError) {
+                            if (state.message.contains('Phiên đăng nhập đã hết hạn')) {
+                              Navigator.pushReplacementNamed(context, '/login');
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('${state.message}'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        child: const SizedBox.shrink(),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -1034,18 +977,6 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
       ],
     );
   }
-}
-
-class MenuItem {
-  final String title;
-  final IconData icon;
-  final String route;
-
-  const MenuItem({
-    required this.title,
-    required this.icon,
-    required this.route,
-  });
 }
 
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();

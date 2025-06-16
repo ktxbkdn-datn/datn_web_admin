@@ -1,11 +1,10 @@
-import 'package:datn_web_admin/feature/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_bloc.dart';
 import 'package:datn_web_admin/feature/admin/presentation/bloc/admin_bloc.dart';
 import 'package:datn_web_admin/feature/admin/presentation/bloc/admin_event.dart';
 import 'package:datn_web_admin/feature/admin/presentation/bloc/admin_state.dart';
-import 'widgets/admin_drawer.dart';
+import 'package:iconsax/iconsax.dart';
 import 'widgets/current_admin_tab.dart';
 import 'admin_list_page.dart';
 import 'widgets/create_admin_tab.dart';
@@ -79,11 +78,57 @@ class _AdminManagementPageState extends State<AdminManagementPage> with SingleTi
         },
         child: Row(
           children: [
-            AdminDrawer(
+            NavigationRail(
               selectedIndex: _selectedIndex,
-              onTap: _onDrawerItemTap,
-              tabController: _tabController,
+              onDestinationSelected: (index) {
+                setState(() {
+                  _selectedIndex = index;
+                  _tabController.index = index;
+                });
+              },
+              labelType: NavigationRailLabelType.none, // Ẩn label
+              backgroundColor: Colors.blueGrey[900],
+              leading: IconButton(
+                icon: const Icon(Iconsax.home, color: Colors.white),
+                tooltip: 'Quay lại',
+                onPressed: () => Navigator.pop(context),
+              ),
+              destinations: const [
+                NavigationRailDestination(
+                  icon: Tooltip(
+                    message: 'Thông tin Admin',
+                    child: Icon(Icons.person, color: Colors.white),
+                  ),
+                  selectedIcon: Icon(Icons.person, color: Colors.deepPurpleAccent),
+                  label: Text('Thông tin Admin'),
+                ),
+                NavigationRailDestination(
+                  icon: Tooltip(
+                    message: 'Danh sách Admin',
+                    child: Icon(Icons.list, color: Colors.white),
+                  ),
+                  selectedIcon: Icon(Icons.list, color: Colors.deepPurpleAccent),
+                  label: Text('Danh sách Admin'),
+                ),
+                NavigationRailDestination(
+                  icon: Tooltip(
+                    message: 'Tạo Admin',
+                    child: Icon(Icons.add, color: Colors.white),
+                  ),
+                  selectedIcon: Icon(Icons.add, color: Colors.deepPurpleAccent),
+                  label: Text('Tạo Admin'),
+                ),
+                NavigationRailDestination(
+                  icon: Tooltip(
+                    message: 'Đổi Mật khẩu',
+                    child: Icon(Icons.lock, color: Colors.white),
+                  ),
+                  selectedIcon: Icon(Icons.lock, color: Colors.deepPurpleAccent),
+                  label: Text('Đổi Mật khẩu'),
+                ),
+              ],
             ),
+            const VerticalDivider(thickness: 1, width: 1),
             Expanded(
               child: Container(
                 color: Colors.grey[50],
@@ -91,7 +136,6 @@ class _AdminManagementPageState extends State<AdminManagementPage> with SingleTi
                   controller: _tabController,
                   physics: const NeverScrollableScrollPhysics(),
                   children: [
-                    DashboardPage(), 
                     const CurrentAdminTab(),
                     const AdminListPage(),
                     CreateAdminTab(),

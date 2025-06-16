@@ -137,7 +137,7 @@ class LoginPage extends StatelessWidget {
                       print('AuthState updated: isLoading=${state.isLoading}, auth=${state.auth}, error=${state.error}, successMessage=${state.successMessage}');
                       if (state.auth != null) {
                         print('Navigating to DashboardPage');
-                        Get.offAllNamed('/dashboard'); // Sử dụng Get.offAllNamed
+                        Get.offAllNamed('/home'); // Sử dụng Get.offAllNamed
                       }
                       if (state.error != null) {
                         print('Showing error: ${state.error}');

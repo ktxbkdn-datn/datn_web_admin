@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:iconsax/iconsax.dart';
 import '../bloc/user_bloc.dart';
 import '../bloc/user_event.dart';
 import '../bloc/user_state.dart';
 import '../widgets/create_user_tab.dart';
-import '../widgets/user_drawer.dart';
 import '../widgets/user_list_tab.dart';
 
 class UserPage extends StatefulWidget {
@@ -16,32 +16,19 @@ class UserPage extends StatefulWidget {
 
 class _UserPageState extends State<UserPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  int _selectedIndex = 0;
+  int _selectedIndex = 0; // 0: Danh sách, 1: Tạo mới
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _selectedIndex = 1; // Default to "Danh sách Người dùng" tab
+    _tabController.index = _selectedIndex;
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
-  }
-
-  void _onDrawerItemTap(int index) {
-    setState(() {
-      _selectedIndex = index;
-      if (index == 1) {
-        _tabController.animateTo(0); // "Danh sách Người dùng" tab
-      } else if (index == 2) {
-        _tabController.animateTo(1); // "Tạo Người dùng" tab
-      } else if (index == 0) {
-        Navigator.pushNamed(context, '/dashboard'); // Navigate to Dashboard
-      }
-    });
   }
 
   @override
@@ -84,11 +71,35 @@ class _UserPageState extends State<UserPage> with SingleTickerProviderStateMixin
         },
         child: Row(
           children: [
-            UserDrawer(
+            NavigationRail(
               selectedIndex: _selectedIndex,
-              onTap: _onDrawerItemTap,
-              tabController: _tabController,
+              onDestinationSelected: (index) {
+                setState(() {
+                  _selectedIndex = index;
+                  _tabController.index = index;
+                });
+              },
+              labelType: NavigationRailLabelType.all,
+              backgroundColor: Colors.blueGrey[900],
+              leading: IconButton(
+                icon: const Icon(Iconsax.home, color: Colors.white),
+                tooltip: 'Quay lại',
+                onPressed: () => Navigator.pop(context),
+              ),
+              destinations: const [
+                NavigationRailDestination(
+                  icon: Icon(Icons.list, color: Colors.white),
+                  selectedIcon: Icon(Icons.list, color: Colors.deepPurpleAccent),
+                  label: Text('Danh sách Người dùng', style: TextStyle(color: Colors.white)),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.add, color: Colors.white),
+                  selectedIcon: Icon(Icons.add, color: Colors.deepPurpleAccent),
+                  label: Text('Tạo Người dùng', style: TextStyle(color: Colors.white)),
+                ),
+              ],
             ),
+            const VerticalDivider(thickness: 1, width: 1),
             Expanded(
               child: Container(
                 color: Colors.grey[50],

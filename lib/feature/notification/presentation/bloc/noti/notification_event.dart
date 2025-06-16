@@ -26,15 +26,17 @@ class GetAllNotificationsEvent extends NotificationEvent {
   final int page;
   final int limit;
   final String? targetType;
+  final String? keyword; // Thêm dòng này
 
   const GetAllNotificationsEvent({
     this.page = 1,
     this.limit = 10,
     this.targetType,
+    this.keyword, // Thêm dòng này
   });
 
   @override
-  List<Object?> get props => [page, limit, targetType];
+  List<Object?> get props => [page, limit, targetType, keyword];
 }
 
 class GetNotificationRecipientsEvent extends NotificationEvent {

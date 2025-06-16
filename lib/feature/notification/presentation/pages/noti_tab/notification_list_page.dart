@@ -51,18 +51,13 @@ class _NotificationListViewState extends State<_NotificationListView> {
   final ScrollController _scrollController = ScrollController();
   String _filterTargetType = 'ALL';
   String _searchQuery = '';
-  int _currentPage = 1; // Track current page
+  int _currentPage = 1;
   bool _isProcessing = false;
-  bool _isDataLoaded = false;
   final String baseUrl = APIbaseUrl;
   final Map<String, ChewieController> _chewieControllers = {};
   final Map<String, VideoPlayerController> _videoControllers = {};
   final Map<int, PageController> _pageControllers = {};
-  List<Notification> _localNotifications = [];
-  List<Notification> _filteredNotifications = [];
-  String? _authToken;
   final Map<int, List<MediaInfo>> _mediaCache = {};
-  final LocalNotificationStorage _storage = LocalNotificationStorage();
   Timer? _debounce;
 
   String _getFilterDisplayText(String targetType) {
@@ -81,7 +76,7 @@ class _NotificationListViewState extends State<_NotificationListView> {
   @override
   void initState() {
     super.initState();
-    _loadLocalData();
+    _fetchNotifications();
   }
 
   @override
@@ -102,86 +97,20 @@ class _NotificationListViewState extends State<_NotificationListView> {
     _debounce = Timer(const Duration(milliseconds: 300), () {
       setState(() {
         _searchQuery = query;
-        _currentPage = 1; // Reset to first page on search
-        _applyFilters();
+        _currentPage = 1;
         _fetchNotifications();
       });
-      _saveLocalData();
     });
-  }
-
-  Future<void> _loadLocalData() async {
-    try {
-      setState(() => _isProcessing = true);
-      final prefs = await SharedPreferences.getInstance();
-      _authToken = prefs.getString('auth_token');
-      final storedFilter = await _storage.loadFilterType();
-      print('Loaded filter from storage: $storedFilter');
-      _filterTargetType = ['ALL', 'ROOM', 'USER'].contains(storedFilter) ? storedFilter! : 'ALL';
-      if (storedFilter != null && !['ALL', 'ROOM', 'USER'].contains(storedFilter)) {
-        await _storage.saveFilterType('ALL');
-        _filterTargetType = 'ALL';
-        print('Cleared invalid stored filter, set to ALL');
-      }
-      _searchQuery = await _storage.loadSearchQuery();
-      _currentPage = prefs.getInt('notification_current_page') ?? 1; // Load current page
-      final notificationsWithMedia = await _storage.loadNotifications();
-      _localNotifications = notificationsWithMedia.map((item) {
-        final notification = Notification.fromJson(item['notification']);
-        if (notification.notificationId != null && item['media'] != null) {
-          final mediaItems = (item['media'] as List<dynamic>)
-              .map((media) => MediaInfo.fromJson(media as Map<String, dynamic>))
-              .toList();
-          _mediaCache[notification.notificationId!] = mediaItems;
-          print('Đã tải phương tiện cho thông báo ${notification.notificationId}: $mediaItems');
-        }
-        return notification;
-      }).toList();
-
-      setState(() => _applyFilters());
-
-      if (_authToken == null) {
-        setState(() => _isProcessing = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Thiếu mã xác thực. Vui lòng đăng nhập lại.')),
-        );
-      } else {
-        _fetchNotifications();
-      }
-    } catch (e) {
-      print('Lỗi khi tải dữ liệu cục bộ: $e');
-      setState(() => _isProcessing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi khi tải dữ liệu cục bộ: $e')),
-      );
-    }
-  }
-
-  Future<void> _saveLocalData() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final notificationsWithMedia = _localNotifications.map((notification) => {
-            'notification': notification.toJson(),
-            'media': (_mediaCache[notification.notificationId] ?? notification.media ?? []),
-          }).toList();
-      await _storage.saveNotifications(notificationsWithMedia);
-      await _storage.saveFilterType(_filterTargetType);
-      await _storage.saveSearchQuery(_searchQuery);
-      await prefs.setInt('notification_current_page', _currentPage); // Save current page
-      print('Saved filter to storage: $_filterTargetType, currentPage: $_currentPage');
-    } catch (e) {
-      print('Lỗi khi lưu dữ liệu cục bộ: $e');
-    }
   }
 
   void _fetchNotifications() {
     if (_isProcessing) return;
     setState(() => _isProcessing = true);
-    print('Fetching notifications: targetType=$_filterTargetType, page=$_currentPage');
     context.read<NotificationBloc>().add(GetAllNotificationsEvent(
       page: _currentPage,
-      limit: 10, // Fixed limit
+      limit: 10,
       targetType: _filterTargetType,
+      keyword: _searchQuery,
     ));
   }
 
@@ -208,7 +137,6 @@ class _NotificationListViewState extends State<_NotificationListView> {
       );
       return;
     }
-    print('Hiển thị phương tiện toàn màn hình tại chỉ số: $initialIndex, ID thông báo: $notificationId, tổng phương tiện: ${mediaItems.length}');
     showDialog(
       context: context,
       builder: (context) => FullScreenMediaDialog(
@@ -234,30 +162,8 @@ class _NotificationListViewState extends State<_NotificationListView> {
       final vnDateTime = utcDateTime.add(const Duration(hours: 7));
       return DateFormat('dd/MM/yyyy HH:mm').format(vnDateTime);
     } catch (e) {
-      print('Lỗi định dạng ngày: $e');
       return 'Ngày không hợp lệ';
     }
-  }
-
-  void _applyFilters() {
-    print('Applying filters: targetType=$_filterTargetType, searchQuery=$_searchQuery');
-    _filteredNotifications = _localNotifications.where((notification) {
-      try {
-        bool matchesTargetType = _filterTargetType == 'ALL' || notification.targetType == _filterTargetType;
-        bool matchesSearch = _searchQuery.isEmpty ||
-            (notification.title?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-            (notification.message?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
-        return matchesTargetType && matchesSearch;
-      } catch (e) {
-        print('Lỗi khi lọc thông báo: $e');
-        return false;
-      }
-    }).toList();
-    _filteredNotifications.sort((a, b) {
-      final dateA = a.createdAt ?? '1970-01-01';
-      final dateB = b.createdAt ?? '1970-01-01';
-      return DateTime.parse(dateB).compareTo(DateTime.parse(dateA));
-    });
   }
 
   @override
@@ -308,9 +214,7 @@ class _NotificationListViewState extends State<_NotificationListView> {
                                     if (_isProcessing) return;
                                     setState(() {
                                       _filterTargetType = 'ALL';
-                                      _currentPage = 1; // Reset to first page
-                                      _saveLocalData();
-                                      _applyFilters();
+                                      _currentPage = 1;
                                       _fetchNotifications();
                                     });
                                   },
@@ -323,9 +227,7 @@ class _NotificationListViewState extends State<_NotificationListView> {
                                     if (_isProcessing) return;
                                     setState(() {
                                       _filterTargetType = 'USER';
-                                      _currentPage = 1; // Reset to first page
-                                      _saveLocalData();
-                                      _applyFilters();
+                                      _currentPage = 1;
                                       _fetchNotifications();
                                     });
                                   },
@@ -338,9 +240,7 @@ class _NotificationListViewState extends State<_NotificationListView> {
                                     if (_isProcessing) return;
                                     setState(() {
                                       _filterTargetType = 'ROOM';
-                                      _currentPage = 1; // Reset to first page
-                                      _saveLocalData();
-                                      _applyFilters();
+                                      _currentPage = 1;
                                       _fetchNotifications();
                                     });
                                   },
@@ -381,7 +281,10 @@ class _NotificationListViewState extends State<_NotificationListView> {
                                             showDialog(
                                               context: context,
                                               builder: (context) => CreateNotificationDialog(),
-                                            ).then((_) => setState(() => _isProcessing = false));
+                                            ).then((_) {
+                                              setState(() => _isProcessing = false);
+                                              _fetchNotifications();
+                                            });
                                           },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.blue,
@@ -406,19 +309,10 @@ class _NotificationListViewState extends State<_NotificationListView> {
                           listeners: [
                             BlocListener<NotificationBloc, NotificationState>(
                               listener: (context, state) {
-                                print('NotificationBloc state: $state');
                                 WidgetsBinding.instance.addPostFrameCallback((_) {
                                   if (state is NotificationError) {
-                                    print('NotificationError: ${state.message}');
                                     setState(() {
                                       _isProcessing = false;
-                                      _isDataLoaded = true;
-                                      if (state.message.contains('target_type')) {
-                                        _filterTargetType = 'ALL';
-                                        _currentPage = 1;
-                                        _saveLocalData();
-                                        WidgetsBinding.instance.addPostFrameCallback((_) => _fetchNotifications());
-                                      }
                                     });
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
@@ -429,36 +323,18 @@ class _NotificationListViewState extends State<_NotificationListView> {
                                   } else if (state is NotificationDeleted) {
                                     setState(() {
                                       _isProcessing = false;
-                                      _localNotifications.removeWhere((n) => n.notificationId == state.notificationId);
-                                      _applyFilters();
                                     });
-                                    _saveLocalData();
-                                    _fetchNotifications(); // Re-fetch current page
+                                    _fetchNotifications();
                                   } else if (state is NotificationCreated) {
                                     setState(() {
                                       _isProcessing = false;
-                                      _currentPage = 1; // Reset to first page
+                                      _currentPage = 1;
                                     });
-                                    _fetchNotifications(); // Re-fetch current page
+                                    _fetchNotifications();
                                   } else if (state is NotificationsLoaded) {
                                     setState(() {
                                       _isProcessing = false;
-                                      _isDataLoaded = true;
-                                      _localNotifications = state.notifications;
-                                      // Adjust _currentPage if it exceeds total pages
-                                      final totalPages = (state.totalItems / 10).ceil();
-                                      if (_currentPage > totalPages && totalPages > 0) {
-                                        _currentPage = totalPages;
-                                        _fetchNotifications();
-                                      }
-                                      for (var notification in state.notifications) {
-                                        if (notification.notificationId != null) {
-                                          _mediaCache[notification.notificationId!] = notification.media ?? [];
-                                        }
-                                      }
-                                      _applyFilters();
                                     });
-                                    _saveLocalData();
                                     _fetchMediaForNotifications(state.notifications);
                                   }
                                 });
@@ -470,51 +346,11 @@ class _NotificationListViewState extends State<_NotificationListView> {
                                   if (state is NotificationMediaLoaded) {
                                     setState(() {
                                       _mediaCache[state.notificationId] = state.mediaItems;
-                                      _localNotifications = _localNotifications.map((notification) {
-                                        if (notification.notificationId == state.notificationId) {
-                                          print('Cập nhật phương tiện cho thông báo ${state.notificationId}: ${state.mediaItems}');
-                                          return Notification(
-                                            notificationId: notification.notificationId,
-                                            title: notification.title,
-                                            message: notification.message,
-                                            targetType: notification.targetType,
-                                            createdAt: notification.createdAt,
-                                            isDeleted: notification.isDeleted,
-                                            deletedAt: notification.deletedAt,
-                                            uploadedMedia: notification.uploadedMedia,
-                                            failedUploads: notification.failedUploads,
-                                            media: state.mediaItems,
-                                          );
-                                        }
-                                        return notification;
-                                      }).toList();
-                                      _applyFilters();
                                     });
-                                    _saveLocalData();
                                   } else if (state is NotificationMediaError) {
                                     setState(() {
                                       _mediaCache[state.notificationId] = [];
-                                      _localNotifications = _localNotifications.map((notification) {
-                                        if (notification.notificationId == state.notificationId) {
-                                          print('Không thể tải phương tiện cho thông báo ${state.notificationId}: ${state.message}');
-                                          return Notification(
-                                            notificationId: notification.notificationId,
-                                            title: notification.title,
-                                            message: notification.message,
-                                            targetType: notification.targetType,
-                                            createdAt: notification.createdAt,
-                                            isDeleted: notification.isDeleted,
-                                            deletedAt: notification.deletedAt,
-                                            uploadedMedia: notification.uploadedMedia,
-                                            failedUploads: notification.failedUploads,
-                                            media: [],
-                                          );
-                                        }
-                                        return notification;
-                                      }).toList();
-                                      _applyFilters();
                                     });
-                                    _saveLocalData();
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(content: Text('Lỗi khi tải phương tiện: ${state.message}')),
                                     );
@@ -528,75 +364,97 @@ class _NotificationListViewState extends State<_NotificationListView> {
                               Expanded(
                                 child: BlocBuilder<NotificationBloc, NotificationState>(
                                   builder: (context, state) {
-                                    if (!_isDataLoaded || state is NotificationLoading) {
+                                    if (state is NotificationLoading) {
                                       return const Center(child: CircularProgressIndicator());
                                     }
-                                    return _filteredNotifications.isEmpty
-                                        ? Center(
-                                            child: Column(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                const Text('Không có thông báo nào'),
-                                                const SizedBox(height: 16),
-                                                ElevatedButton.icon(
-                                                  onPressed: _isProcessing ? null : _fetchNotifications,
-                                                  style: ElevatedButton.styleFrom(
-                                                    backgroundColor: Colors.green,
-                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                                  ),
-                                                  icon: const Icon(Icons.refresh),
-                                                  label: const Text('Thử lại'),
+                                    if (state is NotificationsLoaded) {
+                                      final notifications = state.notifications;
+                                      final filtered = notifications.where((notification) {
+                                        final matchesTargetType = _filterTargetType == 'ALL' || notification.targetType == _filterTargetType;
+                                        final matchesSearch = _searchQuery.isEmpty ||
+                                            (notification.title?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
+                                            (notification.message?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
+                                        return matchesTargetType && matchesSearch;
+                                      }).toList()
+                                        ..sort((a, b) {
+                                          final dateA = a.createdAt ?? '1970-01-01';
+                                          final dateB = b.createdAt ?? '1970-01-01';
+                                          return DateTime.parse(dateB).compareTo(DateTime.parse(dateA));
+                                        });
+
+                                      if (filtered.isEmpty) {
+                                        return Center(
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              const Text('Không có thông báo nào'),
+                                              const SizedBox(height: 16),
+                                              ElevatedButton.icon(
+                                                onPressed: _isProcessing ? null : _fetchNotifications,
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: Colors.green,
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                                 ),
-                                              ],
-                                            ),
-                                          )
-                                        : ListView.builder(
-                                            controller: _scrollController,
-                                            padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 12),
-                                            itemCount: _filteredNotifications.length,
-                                            itemBuilder: (context, index) {
-                                              try {
-                                                final notification = _filteredNotifications[index];
-                                                final mediaItems = _mediaCache[notification.notificationId] ?? notification.media ?? [];
-                                                print('Hiển thị thông báo ${notification.notificationId} với phương tiện: $mediaItems');
-                                                return NotificationItem(
-                                                  notification: notification,
-                                                  pageControllers: _pageControllers,
-                                                  chewieControllers: _chewieControllers,
-                                                  videoControllers: _videoControllers,
-                                                  showFullScreenMedia: (context, _, initialIndex, notificationId) {
-                                                    _showFullScreenMedia(context, mediaItems, initialIndex, notificationId);
-                                                  },
-                                                  formatDateTime: _formatDateTime,
-                                                  baseUrl: baseUrl,
-                                                  onDelete: _isProcessing
-                                                      ? null
-                                                      : () {
-                                                          setState(() => _isProcessing = true);
-                                                          context.read<NotificationBloc>().add(
-                                                              DeleteNotificationEvent(notificationId: notification.notificationId!));
-                                                        },
-                                                  onEdit: _isProcessing
-                                                      ? null
-                                                      : () {
-                                                          setState(() => _isProcessing = true);
-                                                          showDialog(
-                                                            context: context,
-                                                            builder: (context) => UpdateNotificationDialog(
-                                                              notification: notification,
-                                                            ),
-                                                          ).then((_) {
-                                                            setState(() => _isProcessing = false);
-                                                            _fetchNotifications();
-                                                          });
-                                                        },
-                                                );
-                                              } catch (e) {
-                                                print('Lỗi khi hiển thị mục thông báo tại chỉ số $index: $e');
-                                                return const SizedBox.shrink();
-                                              }
-                                            },
-                                          );
+                                                icon: const Icon(Icons.refresh),
+                                                label: const Text('Thử lại'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }
+
+                                      return ListView.builder(
+                                        controller: _scrollController,
+                                        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 12),
+                                        itemCount: filtered.length,
+                                        itemBuilder: (context, index) {
+                                          try {
+                                            final notification = filtered[index];
+                                            final mediaItems = _mediaCache[notification.notificationId] ?? notification.media ?? [];
+                                            return NotificationItem(
+                                              notification: notification,
+                                              pageControllers: _pageControllers,
+                                              chewieControllers: _chewieControllers,
+                                              videoControllers: _videoControllers,
+                                              showFullScreenMedia: (context, _, initialIndex, notificationId) {
+                                                _showFullScreenMedia(context, mediaItems, initialIndex, notificationId);
+                                              },
+                                              formatDateTime: _formatDateTime,
+                                              baseUrl: baseUrl,
+                                              onDelete: _isProcessing
+                                                  ? null
+                                                  : () {
+                                                      setState(() => _isProcessing = true);
+                                                      context.read<NotificationBloc>().add(
+                                                          DeleteNotificationEvent(notificationId: notification.notificationId!));
+                                                    },
+                                              onEdit: _isProcessing
+                                                  ? null
+                                                  : () {
+                                                      setState(() => _isProcessing = true);
+                                                      showDialog(
+                                                        context: context,
+                                                        builder: (context) => UpdateNotificationDialog(
+                                                          notification: notification,
+                                                        ),
+                                                      ).then((_) {
+                                                        setState(() => _isProcessing = false);
+                                                        _fetchNotifications();
+                                                      });
+                                                    },
+                                            );
+                                          } catch (e) {
+                                            return const SizedBox.shrink();
+                                          }
+                                        },
+                                      );
+                                    }
+                                    if (state is NotificationError) {
+                                      return Center(
+                                        child: Text('Lỗi: ${state.message}'),
+                                      );
+                                    }
+                                    return const Center(child: CircularProgressIndicator());
                                   },
                                 ),
                               ),
@@ -605,19 +463,17 @@ class _NotificationListViewState extends State<_NotificationListView> {
                                   int totalItems = 0;
                                   if (state is NotificationsLoaded) {
                                     totalItems = state.totalItems;
-                                    print('Total items: $totalItems'); // Debug log
                                   }
                                   return PaginationControls(
                                     currentPage: _currentPage,
                                     totalItems: totalItems,
-                                    limit: 10, 
+                                    limit: 10,
                                     onPageChanged: (page) {
                                       if (_isProcessing) return;
                                       setState(() {
                                         _currentPage = page;
                                         _fetchNotifications();
                                       });
-                                      _saveLocalData();
                                     },
                                   );
                                 },

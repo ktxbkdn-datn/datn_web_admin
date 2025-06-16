@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
 import '../widgets/stat_page/room_stat_page.dart';
 import '../widgets/stat_page/user_stat_page.dart';
 import '../widgets/stat_page/report_stat_page.dart';
@@ -40,7 +41,7 @@ class _StatisticsOverviewPageState extends State<StatisticsOverviewPage> {
               },
               labelType: NavigationRailLabelType.all,
               leading: IconButton(
-                icon: const Icon(Icons.arrow_back),
+                icon: const Icon(Iconsax.home),
                 tooltip: 'Quay lại',
                 onPressed: () => Navigator.pop(context),
               ),

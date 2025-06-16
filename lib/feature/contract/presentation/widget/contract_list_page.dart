@@ -16,16 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 class ContractListPage extends StatefulWidget {
-  final bool showExpired;
-  final bool showAll;
-  final Function({required bool showAll, required bool showExpired}) onTabChanged;
-
-  const ContractListPage({
-    Key? key,
-    this.showExpired = false,
-    this.showAll = false,
-    required this.onTabChanged,
-  }) : super(key: key);
+  const ContractListPage({Key? key}) : super(key: key);
 
   @override
   _ContractListPageState createState() => _ContractListPageState();
@@ -40,6 +31,10 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
   int _totalItems = 0;
   bool _isSearching = false;
   final List<double> _columnWidths = [150.0, 150.0, 150.0, 150.0, 150.0, 100.0];
+
+  // Thay thế các tham số truyền vào bằng state nội bộ
+  bool _showAll = true;
+  bool _showExpired = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -87,6 +82,15 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
     return end.isAfter(now) && end.isBefore(fifteenDaysFromNow);
   }
 
+  void _onTabChanged({required bool showAll, required bool showExpired}) {
+    setState(() {
+      _showAll = showAll;
+      _showExpired = showExpired;
+      _currentPage = 1;
+    });
+    _fetchContracts(status: showAll ? null : showExpired ? null : 'ACTIVE');
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -118,12 +122,11 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
                   BlocListener<ContractBloc, ContractState>(
                     listener: (context, state) {
                       if (state is ContractError) {
-                        // Use Get.snackbar for error messages, show only the message without "Lỗi: "
                         if (!_isSearching) {
                           Get.snackbar(
-                            'Lỗi', // Title
-                            state.errorMessage, // Message
-                            snackPosition: SnackPosition.TOP, // Position at top
+                            'Lỗi',
+                            state.errorMessage,
+                            snackPosition: SnackPosition.TOP,
                             backgroundColor: Colors.red,
                             colorText: Colors.white,
                             margin: const EdgeInsets.all(16),
@@ -144,7 +147,7 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
                           margin: const EdgeInsets.all(16),
                           duration: const Duration(seconds: 2),
                         );
-                        _fetchContracts(status: widget.showAll ? null : widget.showExpired ? null : 'ACTIVE');
+                        _fetchContracts(status: _showAll ? null : _showExpired ? null : 'ACTIVE');
                       } else if (state is ContractListLoaded) {
                         setState(() {
                           _contracts = state.contracts;
@@ -194,37 +197,25 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
                                   children: [
                                     FilterTab(
                                       label: 'Tất cả ($_totalItems)',
-                                      isSelected: widget.showAll,
+                                      isSelected: _showAll,
                                       onTap: () {
-                                        widget.onTabChanged(showAll: true, showExpired: false);
-                                        setState(() {
-                                          _currentPage = 1;
-                                        });
-                                        _fetchContracts();
+                                        _onTabChanged(showAll: true, showExpired: false);
                                       },
                                     ),
                                     const SizedBox(width: 10),
                                     FilterTab(
                                       label: 'Còn hiệu lực',
-                                      isSelected: !widget.showExpired && !widget.showAll,
+                                      isSelected: !_showExpired && !_showAll,
                                       onTap: () {
-                                        widget.onTabChanged(showAll: false, showExpired: false);
-                                        setState(() {
-                                          _currentPage = 1;
-                                        });
-                                        _fetchContracts(status: 'ACTIVE');
+                                        _onTabChanged(showAll: false, showExpired: false);
                                       },
                                     ),
                                     const SizedBox(width: 10),
                                     FilterTab(
                                       label: 'Sắp đáo hạn',
-                                      isSelected: widget.showExpired,
+                                      isSelected: _showExpired,
                                       onTap: () {
-                                        widget.onTabChanged(showAll: false, showExpired: true);
-                                        setState(() {
-                                          _currentPage = 1;
-                                        });
-                                        _fetchContracts();
+                                        _onTabChanged(showAll: false, showExpired: true);
                                       },
                                     ),
                                   ],
@@ -316,7 +307,7 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
                               }
 
                               List<Contract> displayContracts = _contracts;
-                              if (widget.showExpired) {
+                              if (_showExpired) {
                                 displayContracts = _contracts.where((contract) => _isExpiringSoon(contract.endDate)).toList();
                               }
 
@@ -329,7 +320,7 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
                               return isLoading && _isInitialLoad
                                   ? const Center(child: CircularProgressIndicator())
                                   : errorMessage != null
-                                      ? const SizedBox() // Do not show error in the center
+                                      ? const SizedBox()
                                       : filteredContracts.isEmpty
                                           ? const Center(child: Text('Không có hợp đồng nào'))
                                           : Column(
@@ -428,7 +419,7 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
                                                       _currentPage = page;
                                                       _saveLocalData();
                                                     });
-                                                    _fetchContracts(status: widget.showAll ? null : widget.showExpired ? null : 'ACTIVE');
+                                                    _fetchContracts(status: _showAll ? null : _showExpired ? null : 'ACTIVE');
                                                   },
                                                 ),
                                               ],
