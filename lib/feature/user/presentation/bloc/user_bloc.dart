@@ -40,6 +40,7 @@ class UserBloc extends Bloc<UserEvent, UserState> {
       final result = await getAllUsers(
         page: event.page,
         limit: event.limit,
+        keyword: event.keyword, // Thêm dòng này
         email: event.email,
         fullname: event.fullname,
         phone: event.phone,

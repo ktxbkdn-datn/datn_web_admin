@@ -10,6 +10,7 @@ abstract class UserEvent extends Equatable {
 class FetchUsersEvent extends UserEvent {
   final int page;
   final int limit;
+  final String? keyword; // Thêm dòng này
   final String? email;
   final String? fullname;
   final String? phone;
@@ -18,6 +19,7 @@ class FetchUsersEvent extends UserEvent {
   const FetchUsersEvent({
     required this.page,
     required this.limit,
+    this.keyword, // Thêm dòng này
     this.email,
     this.fullname,
     this.phone,
@@ -25,7 +27,7 @@ class FetchUsersEvent extends UserEvent {
   });
 
   @override
-  List<Object?> get props => [page, limit, email, fullname, phone, className];
+  List<Object?> get props => [page, limit, keyword, email, fullname, phone, className];
 }
 
 class CreateUserEvent extends UserEvent {

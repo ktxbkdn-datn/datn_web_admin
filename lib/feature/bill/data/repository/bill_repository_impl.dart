@@ -1,4 +1,5 @@
 import 'package:dartz/dartz.dart';
+import 'package:datn_web_admin/feature/bill/data/models/monthly_bill_model.dart';
 import 'package:datn_web_admin/src/core/error/failures.dart';
 import 'package:datn_web_admin/feature/bill/domain/entities/bill_detail_entity.dart';
 import 'package:datn_web_admin/feature/bill/domain/entities/monthly_bill_entity.dart';
@@ -33,35 +34,57 @@ class BillRepositoryImpl implements BillRepository {
   }
 
   @override
-  Future<Either<Failure, List<BillDetail>>> getAllBillDetails() async {
-    try {
-      final result = await remoteDataSource.getAllBillDetails();
-      return result.map((models) => models.map((model) => model.toEntity()).toList());
-    } catch (e) {
-      if (e is ServerFailure) {
-        return Left(ServerFailure(e.message));
-      } else if (e is NetworkFailure) {
-        return Left(NetworkFailure(e.message));
-      } else {
-        return Left(ServerFailure('Không thể lấy danh sách chi tiết hóa đơn'));
-      }
-    }
+  Future<Either<Failure, Map<String, dynamic>>> getAllBillDetails({
+    int page = 1,
+    int limit = 20,
+    String? area,
+    String? service,
+    String? billStatus,
+    String? paymentStatus,
+    String? search,
+    String? month,
+    String? submissionStatus,
+  }) async {
+    final result = await remoteDataSource.getAllBillDetails(
+      page: page,
+      limit: limit,
+      area: area,
+      service: service,
+      billStatus: billStatus,
+      paymentStatus: paymentStatus,
+      search: search,
+      month: month,
+      submissionStatus: submissionStatus,
+    );
+    return result;
   }
 
   @override
-  Future<Either<Failure, (List<MonthlyBill>, int)>> getAllMonthlyBills({required int page, required int limit}) async {
-    try {
-      final result = await remoteDataSource.getAllMonthlyBills(page: page, limit: limit);
-      return result.map((data) => (data.$1.map((model) => model.toEntity()).toList(), data.$2));
-    } catch (e) {
-      if (e is ServerFailure) {
-        return Left(ServerFailure(e.message));
-      } else if (e is NetworkFailure) {
-        return Left(NetworkFailure(e.message));
-      } else {
-        return Left(ServerFailure('Không thể lấy danh sách hóa đơn hàng tháng'));
-      }
-    }
+  Future<Either<Failure, (List<MonthlyBill>, int)>> getAllMonthlyBills({
+    required int page,
+    required int limit,
+    String? area,
+    String? paymentStatus,
+    String? service,
+    String? month,
+    String? billStatus,
+    String? search,
+  }) async {
+    final result = await remoteDataSource.getAllMonthlyBills(
+      page: page,
+      limit: limit,
+      area: area,
+      paymentStatus: paymentStatus,
+      service: service,
+      month: month,
+      billStatus: billStatus,
+      search: search,
+    );
+    // Chuyển model thành entity trước khi trả về
+    return result.map((data) => (
+      data.$1.map((model) => model.toEntity()).toList(),
+      data.$2
+    ));
   }
 
   @override

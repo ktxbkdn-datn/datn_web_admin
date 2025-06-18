@@ -101,7 +101,10 @@ class _BillDetailDialogState extends State<BillDetailDialog> {
                                 onPressed: () {
                                   showDialog(
                                     context: context,
-                                    builder: (context) => BillDetailsDialog(billId: widget.bill.billId),
+                                    builder: (context) => BillDetailsDialog(
+                                      billId: widget.bill.billId,
+                                      month: widget.bill.billMonth, // Truyền đúng tháng của hóa đơn
+                                    ),
                                   );
                                 },
                                 tooltip: 'Xem chi tiết hóa đơn',

@@ -21,6 +21,7 @@ import 'package:datn_web_admin/src/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
+import 'package:month_year_picker/month_year_picker.dart';
 import 'feature/admin/presentation/bloc/admin_bloc.dart';
 import 'feature/auth/presentation/bloc/auth_bloc.dart';
 import 'feature/auth/presentation/pages/forgot_password_page.dart';
@@ -75,6 +76,10 @@ class App extends StatelessWidget {
             '/reset-password': (_) => const ResetPasswordPage(),
             '/home': (_) => const HomePage(),
           },
+          localizationsDelegates: const [
+            // Các delegate khác nếu có...
+            MonthYearPickerLocalizations.delegate,
+          ],
         ),
       ),
     );

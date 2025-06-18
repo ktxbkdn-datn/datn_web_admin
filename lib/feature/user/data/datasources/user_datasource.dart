@@ -11,6 +11,7 @@ class UserDataSource {
   Future<(List<UserModel>, int)> getAllUsers({
     int page = 1,
     int limit = 10,
+    String? keyword, 
     String? email,
     String? fullname,
     String? phone,
@@ -22,6 +23,7 @@ class UserDataSource {
         queryParams: {
           'page': page.toString(),
           'limit': limit.toString(),
+          if (keyword != null && keyword.isNotEmpty) 'keyword': keyword, 
           if (email != null) 'email': email,
           if (fullname != null) 'fullname': fullname,
           if (phone != null) 'phone': phone,

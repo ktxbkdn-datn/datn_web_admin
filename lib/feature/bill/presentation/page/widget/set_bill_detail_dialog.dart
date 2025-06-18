@@ -75,7 +75,7 @@ class _SetBillDetailDialogState extends State<SetBillDetailDialog> {
     });
 
     // Gọi sự kiện tạo hóa đơn mới (backend sẽ xử lý chi tiết hóa đơn)
-    context.read<BillBloc>().add(FetchAllBillDetails());
+    context.read<BillBloc>().add(FetchAllBillDetails(page: 1, limit: 10));
   }
 
   @override

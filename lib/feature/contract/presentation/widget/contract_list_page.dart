@@ -70,7 +70,7 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
     context.read<ContractBloc>().add(FetchAllContractsEvent(
       page: _currentPage,
       limit: _limit,
-      email: _searchQuery.isNotEmpty ? _searchQuery : null,
+      keyword: _searchQuery.isNotEmpty ? _searchQuery : null, // Sử dụng keyword thay vì email
       status: status,
     ));
   }
@@ -236,7 +236,7 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
                                         });
                                         _fetchContracts();
                                       },
-                                      hintText: 'Tìm kiếm theo email người dùng',
+                                      hintText: 'Tìm kiếm theo, tên email người dùng',
                                       initialValue: _searchQuery,
                                     ),
                                   ),
@@ -312,9 +312,16 @@ class _ContractListPageState extends State<ContractListPage> with AutomaticKeepA
                               }
 
                               List<Contract> filteredContracts = displayContracts.where((contract) {
-                                bool matchesSearch = _searchQuery.isEmpty ||
-                                    (contract.userEmail?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
-                                return matchesSearch;
+                                final query = _searchQuery.toLowerCase().trim();
+                                final fullname = (contract.fullname ?? '').toLowerCase();
+                                final email = (contract.userEmail ?? '').toLowerCase();
+                                final roomName = (contract.roomName ?? '').toLowerCase();
+
+                                // Cho phép tìm kiếm ở bất kỳ vị trí nào trong các trường
+                                return query.isEmpty ||
+                                    fullname.contains(query) ||
+                                    email.contains(query) ||
+                                    roomName.contains(query);
                               }).toList();
 
                               return isLoading && _isInitialLoad

@@ -42,6 +42,7 @@ class ContractBloc extends Bloc<ContractEvent, ContractState> {
       final result = await getAllContracts(
         page: event.page,
         limit: event.limit,
+        keyword: event.keyword, // Thêm dòng này
         email: event.email,
         status: event.status,
         startDate: event.startDate,

@@ -6,6 +6,7 @@ abstract class ContractRepository {
   Future<Either<Failure, (List<Contract>, int)>> getAllContracts({ // Trả về tuple
     int page = 1,
     int limit = 10,
+    String? keyword, 
     String? email,
     String? status,
     String? startDate,

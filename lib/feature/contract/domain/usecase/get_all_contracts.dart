@@ -11,6 +11,7 @@ class GetAllContracts {
   Future<Either<Failure, (List<Contract>, int)>> call({
     int page = 1,
     int limit = 10,
+    String? keyword, 
     String? email,
     String? status,
     String? startDate,
@@ -20,6 +21,7 @@ class GetAllContracts {
     return await repository.getAllContracts(
       page: page,
       limit: limit,
+      keyword: keyword, 
       email: email,
       status: status,
       startDate: startDate,

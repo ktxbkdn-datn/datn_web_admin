@@ -1,4 +1,5 @@
 import 'package:datn_web_admin/common/constants/colors.dart';
+import 'package:datn_web_admin/common/constants/image_string.dart';
 import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_event.dart';
 import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_state.dart';
 import 'package:flutter/material.dart';
@@ -42,6 +43,7 @@ class _HomePageState extends State<HomePage> {
   final SideMenuController _sideMenuController = SideMenuController();
   int _selectedIndex = 0;
   bool _isLoading = false; // Thêm biến loading
+  bool _sessionExpired = false;
 
   // Danh sách các tab con, thứ tự phải khớp với menu bên dưới!
   final List<Widget> _tabs = [
@@ -50,7 +52,7 @@ class _HomePageState extends State<HomePage> {
     const AdminListPage(),                // 2
     CreateAdminTab(),                     // 3
     const ChangePasswordTab(),            // 4
-    const UserListTab(),                  // 5
+    UserListTab(),                        // 5
     const CreateUserTab(),                // 6
     const RoomListPage(),                 // 7
     const AreaListTab(),                  // 8
@@ -67,25 +69,34 @@ class _HomePageState extends State<HomePage> {
     const ReportStatsPage(),              // 19
   ];
 
-  void _updateIndex(int index) async {
+  void _updateIndex(int index) {
+  setState(() {
+    _isLoading = true;
+    _selectedIndex = index;
+  });
+  
+  Future.delayed(const Duration(milliseconds: 800), () {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  });
+}
+
+void _onTabLoaded() {
+  if (mounted) {
     setState(() {
-      _isLoading = true;
-    });
-    // Giả lập loading, bạn có thể thay bằng await cho các tác vụ async thực tế
-    await Future.delayed(const Duration(milliseconds: 1500));
-    setState(() {
-      _selectedIndex = index;
       _isLoading = false;
     });
   }
+}
 
   List<SideMenuItemType> get _menuItems => [
     SideMenuItem(
       title: 'Trang chủ',
       icon: const Icon(Iconsax.home),
-      onTap: (index, _) {
-        _sideMenuController.changePage(index);
-      },
+      onTap: (index, _) => _updateIndex(0), // Sử dụng _updateIndex như các tab khác
     ),
     SideMenuExpansionItem(
       title: 'Quản lý Admin',
@@ -247,64 +258,116 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
-        if (state.auth == null && state.successMessage == "Đăng xuất thành công") {
-          Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+        // Lắng nghe khi hết phiên đăng nhập
+        if (state.auth == null &&
+            (state.successMessage == "Vui lòng đăng nhập lại" ||
+             state.error == "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.")) {
+          setState(() {
+            _sessionExpired = true;
+          });
         }
       },
-      child: Scaffold(
-        body: Row(
-          children: [
-            SideMenu(
-              controller: _sideMenuController,
-              style: SideMenuStyle(
-                displayMode: SideMenuDisplayMode.auto,
-                showHamburger: true,
-                hoverColor: Colors.blueGrey[700],
-                selectedColor: Colors.transparent,
-                selectedTitleTextStyle: const TextStyle(color: Colors.white),
-                selectedIconColor: Colors.white,
-                backgroundColor: Colors.black87,
-                unselectedIconColor: Colors.white,
-                unselectedTitleTextStyle: const TextStyle(color: Colors.white),
-                openSideMenuWidth: 220,
-                compactSideMenuWidth: 60,
-                toggleColor: Colors.black,
-              ),
-              title: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16.0),
-                child: Center(
-                  child: Text(
-                    'Quản lý Ký túc xá',
-                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
+      child: _sessionExpired
+          ? Center(
+              child: Container(
+                color: Colors.white,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.lock_outline, size: 64, color: Colors.redAccent),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Phiên đăng nhập đã hết hạn.\nVui lòng đăng nhập lại!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 20, color: Colors.black87),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                      },
+                      child: const Text('Đến trang đăng nhập'),
+                    ),
+                  ],
                 ),
               ),
-              items: _menuItems,
-            ),
-            const VerticalDivider(thickness: 1, width: 2, color: Colors.white,),
-            Expanded(
-              child: _isLoading
-                  ? Container(
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [AppColors.glassmorphismStart, AppColors.glassmorphismEnd],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
+            )
+          : Scaffold(
+              body: Row(
+                children: [
+                  SideMenu(
+                    controller: _sideMenuController,
+                    style: SideMenuStyle(
+                      displayMode: SideMenuDisplayMode.auto,
+                      showHamburger: true,
+                      hoverColor: Colors.blueGrey[700],
+                      selectedColor: Colors.transparent,
+                      selectedTitleTextStyle: const TextStyle(color: Colors.white),
+                      selectedIconColor: Colors.white,
+                      backgroundColor: Colors.black87,
+                      unselectedIconColor: Colors.white,
+                      unselectedTitleTextStyle: const TextStyle(color: Colors.white),
+                      openSideMenuWidth: 220,
+                      compactSideMenuWidth: 60,
+                      toggleColor: Colors.black,
+                    ),
+                    title: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16.0),
                       child: Center(
-                        child: LoadingAnimationWidget.staggeredDotsWave(
-                          color: Colors.white,
-                          size: 200,
+                        child: Text(
+                          'Quản lý Ký túc xá',
+                          style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
                         ),
                       ),
-                    )
-                  : _tabs[_selectedIndex],
+                    ),
+                    items: _menuItems,
+                  ),
+                  const VerticalDivider(thickness: 1, width: 2, color: Colors.white,),
+                  Expanded(
+                    child: _isLoading
+                        ? Container(
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [AppColors.glassmorphismStart, AppColors.glassmorphismEnd],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Image.asset(
+                                        ktxLogo, // Đường dẫn tới ảnh của bạn
+                                        width: 360,
+                                        height: 360,
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 32),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      LoadingAnimationWidget.staggeredDotsWave(
+                                        color: Colors.white,
+                                        size: 180,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : _tabs[_selectedIndex],
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-      ),
     );
   }
 }

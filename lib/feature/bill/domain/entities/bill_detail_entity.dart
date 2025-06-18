@@ -1,27 +1,29 @@
 import 'package:equatable/equatable.dart';
 
 class BillDetail extends Equatable {
-  final int detailId;
-  final int rateId;
-  final double previousReading;
-  final double currentReading;
-  final double price;
-  final int roomId;
-  final String? roomName; // Added roomName field
+  final int? detailId;
+  final int? rateId;
+  final double? previousReading;
+  final double? currentReading;
+  final double? price;
+  final int? roomId;
+  final String? roomName;
   final DateTime billMonth;
   final int? submittedBy;
   final DateTime? submittedAt;
   final RateDetails? rateDetails;
   final SubmitterDetails? submitterDetails;
   final int? monthlyBillId;
+  final bool? submitted;
+  final String? paymentStatus;
 
   const BillDetail({
-    required this.detailId,
-    required this.rateId,
-    required this.previousReading,
-    required this.currentReading,
-    required this.price,
-    required this.roomId,
+    this.detailId,
+    this.rateId,
+    this.previousReading,
+    this.currentReading,
+    this.price,
+    this.roomId,
     this.roomName,
     required this.billMonth,
     this.submittedBy,
@@ -29,6 +31,8 @@ class BillDetail extends Equatable {
     this.rateDetails,
     this.submitterDetails,
     this.monthlyBillId,
+    this.submitted,
+    this.paymentStatus,
   });
 
   factory BillDetail.fromJson(Map<String, dynamic> json) {
@@ -51,6 +55,8 @@ class BillDetail extends Equatable {
           ? SubmitterDetails.fromJson(json['submitter_details'] as Map<String, dynamic>)
           : null;
       final monthlyBillId = json['monthly_bill_id'] as int?;
+      final submitted = json['submitted'] as bool?;
+      final paymentStatus = json['payment_status'] as String?;
 
       return BillDetail(
         detailId: detailId,
@@ -66,6 +72,8 @@ class BillDetail extends Equatable {
         rateDetails: rateDetails,
         submitterDetails: submitterDetails,
         monthlyBillId: monthlyBillId,
+        submitted: submitted,
+        paymentStatus: paymentStatus,
       );
     } catch (e) {
       print('Error parsing BillDetail: $e');
@@ -88,6 +96,8 @@ class BillDetail extends Equatable {
       'rate_details': rateDetails?.toJson(),
       'submitter_details': submitterDetails?.toJson(),
       'monthly_bill_id': monthlyBillId,
+      'submitted': submitted,
+      'payment_status': paymentStatus,
     };
   }
 
@@ -106,6 +116,8 @@ class BillDetail extends Equatable {
     rateDetails,
     submitterDetails,
     monthlyBillId,
+    submitted,
+    paymentStatus,
   ];
 }
 

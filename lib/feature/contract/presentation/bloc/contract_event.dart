@@ -12,6 +12,7 @@ abstract class ContractEvent extends Equatable {
 class FetchAllContractsEvent extends ContractEvent {
   final int page;
   final int limit;
+  final String? keyword; 
   final String? email;
   final String? status;
   final String? startDate;
@@ -21,6 +22,7 @@ class FetchAllContractsEvent extends ContractEvent {
   const FetchAllContractsEvent({
     this.page = 1,
     this.limit = 10,
+    this.keyword, 
     this.email,
     this.status,
     this.startDate,
@@ -29,7 +31,7 @@ class FetchAllContractsEvent extends ContractEvent {
   });
 
   @override
-  List<Object?> get props => [page, limit, email, status, startDate, endDate, contractType];
+  List<Object?> get props => [page, limit, keyword, email, status, startDate, endDate, contractType];
 }
 
 class FetchContractByIdEvent extends ContractEvent {

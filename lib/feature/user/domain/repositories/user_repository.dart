@@ -6,6 +6,7 @@ abstract class UserRepository {
   Future<Either<Failure, (List<UserEntity>, int)>> getAllUsers({
     int page,
     int limit,
+    String? keyword, 
     String? email,
     String? fullname,
     String? phone,

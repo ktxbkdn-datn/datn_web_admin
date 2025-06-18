@@ -13,6 +13,7 @@ class UserRepositoryImpl implements UserRepository {
   Future<Either<Failure, (List<UserEntity>, int)>> getAllUsers({
     int page = 1,
     int limit = 10,
+    String? keyword, 
     String? email,
     String? fullname,
     String? phone,
@@ -22,6 +23,7 @@ class UserRepositoryImpl implements UserRepository {
       final (users, total) = await dataSource.getAllUsers(
         page: page,
         limit: limit,
+        keyword: keyword, 
         email: email,
         fullname: fullname,
         phone: phone,

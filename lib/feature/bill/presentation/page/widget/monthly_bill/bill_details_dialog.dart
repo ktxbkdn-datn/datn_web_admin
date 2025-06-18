@@ -8,8 +8,9 @@ import 'package:intl/intl.dart';
 
 class BillDetailsDialog extends StatefulWidget {
   final int billId;
+  final DateTime month; // Thêm dòng này
 
-  const BillDetailsDialog({Key? key, required this.billId}) : super(key: key);
+  const BillDetailsDialog({Key? key, required this.billId, required this.month}) : super(key: key);
 
   @override
   _BillDetailsDialogState createState() => _BillDetailsDialogState();
@@ -28,7 +29,12 @@ class _BillDetailsDialogState extends State<BillDetailsDialog> {
   @override
   void initState() {
     super.initState();
-    context.read<BillBloc>().add(const FetchAllBillDetails());
+    final monthStr = DateFormat('yyyy-MM').format(widget.month);
+    context.read<BillBloc>().add(FetchAllBillDetails(
+      page: 1,
+      limit: 20,
+      month: monthStr, // Truyền đúng tháng của hóa đơn
+    ));
   }
 
   // Hàm lấy tên dịch vụ từ serviceId
@@ -58,9 +64,25 @@ class _BillDetailsDialogState extends State<BillDetailsDialog> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Chi tiết hóa đơn', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.refresh),
+                        tooltip: 'Tải lại',
+                        onPressed: () {
+                          final monthStr = DateFormat('yyyy-MM').format(widget.month);
+                          context.read<BillBloc>().add(FetchAllBillDetails(
+                            page: 1,
+                            limit: 20,
+                            month: monthStr,
+                          ));
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -71,33 +93,36 @@ class _BillDetailsDialogState extends State<BillDetailsDialog> {
                     if (state is BillLoading) {
                       return const Center(child: CircularProgressIndicator());
                     } else if (state is BillDetailsLoaded) {
-                      _billDetails = state.billDetails
+                      final billDetails = state.billDetails
                           .where((detail) => detail.monthlyBillId == widget.billId)
                           .toList();
-                    }
-                    return _billDetails.isEmpty
-                        ? const Center(child: Text('Không có chi tiết hóa đơn nào.'))
-                        : ListView.builder(
-                      itemCount: _billDetails.length,
-                      itemBuilder: (context, index) {
-                        final detail = _billDetails[index];
-                        return Card(
-                          child: ListTile(
-                            title: Text('Giá: ${detail.price.toStringAsFixed(2)} VNĐ'),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Phòng: ${detail.roomId}'),
-                                Text('Tháng hóa đơn: ${DateFormat('MM/yyyy').format(detail.billMonth)}'),
-                                Text('Người gửi: ${detail.submitterDetails?.fullname ?? 'N/A'}'),
-                                Text('Dịch vụ: ${_getServiceName(detail.rateDetails?.serviceId)}'), // Hiển thị tên dịch vụ
-                                Text('Đơn giá 1 đơn vị: ${detail.rateDetails?.unitPrice.toStringAsFixed(2) ?? 'N/A'} VNĐ'), // Hiển thị đơn giá 1 đơn vị
-                              ],
+                      if (billDetails.isEmpty) {
+                        return const Center(child: Text('Không có chi tiết hóa đơn nào.'));
+                      }
+                      return ListView.builder(
+                        itemCount: billDetails.length,
+                        itemBuilder: (context, index) {
+                          final detail = billDetails[index];
+                          return Card(
+                            child: ListTile(
+                              title: Text('Giá: ${detail.price?.toStringAsFixed(2)} VNĐ'),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Phòng: ${detail.roomId}'),
+                                  Text('Tháng hóa đơn: ${DateFormat('MM/yyyy').format(detail.billMonth)}'),
+                                  Text('Người gửi: ${detail.submitterDetails?.fullname ?? 'N/A'}'),
+                                  Text('Dịch vụ: ${_getServiceName(detail.rateDetails?.serviceId)}'),
+                                  Text('Đơn giá 1 đơn vị: ${detail.rateDetails?.unitPrice.toStringAsFixed(2) ?? 'N/A'} VNĐ'),
+                                ],
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    );
+                          );
+                        },
+                      );
+                    }
+                    // Khi chưa load xong hoặc đang ở state khác, chỉ hiển thị loading
+                    return const Center(child: CircularProgressIndicator());
                   },
                 ),
               ),

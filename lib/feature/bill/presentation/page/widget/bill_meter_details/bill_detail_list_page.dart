@@ -14,7 +14,7 @@ import 'package:datn_web_admin/feature/service/presentation/bloc/service_state.d
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
-
+import 'package:month_year_picker/month_year_picker.dart';
 import '../../../../../../common/constants/colors.dart';
 import '../../../../../../common/widget/custom_data_table.dart';
 import '../../../../../../common/widget/filterbox.dart';
@@ -38,12 +38,10 @@ class _BillDetailListPageState extends State<BillDetailListPage>
   int _currentPage = 1;
   static const int _limit = 12;
   String _searchQuery = '';
-  List<BillDetail> _allBillDetails = [];
-  List<BillDetail> _billDetails = [];
+  List<BillDetail> _billDetails = []; // Chỉ dùng 1 biến này
   List<BillDetail> _selectedBillDetails = [];
   List<MonthlyBill> _allMonthlyBills = [];
   bool _isInitialLoad = true;
-  bool _isFiltering = false;
   bool _selectAll = false;
   String _filterArea = 'All';
   String _filterSubmissionStatus = 'All';
@@ -62,12 +60,18 @@ class _BillDetailListPageState extends State<BillDetailListPage>
   void initState() {
     super.initState();
     _selectedMonthYear = DateTime.now();
-    _loadLocalData();
-    _fetchBillDetails();
-    _fetchMonthlyBills();
-    _loadAreasFromLocal();
-    _loadRoomsFromLocal();
-    _loadServicesFromLocal();
+    _loadAllLocalData();
+    _fetchBillDetails(); 
+  }
+
+  Future<void> _loadAllLocalData() async {
+    await Future.wait([
+      _loadLocalData(),
+      _loadAreasFromLocal(),
+      _loadRoomsFromLocal(),
+      _loadServicesFromLocal(),
+    ]);
+    // Không gọi _applyFilters() nữa
   }
 
   List<double> _getColumnWidths(double screenWidth) {
@@ -96,24 +100,8 @@ class _BillDetailListPageState extends State<BillDetailListPage>
       _filterBillStatus = prefs.getString('billDetailFilterBillStatus') ?? 'All';
       _filterPaymentStatus =
           prefs.getString('billDetailFilterPaymentStatus') ?? 'All';
-      String? billDetailsJson = prefs.getString('billDetails');
+      // Không load billDetails từ local nữa, luôn fetch từ BE
       String? monthlyBillsJson = prefs.getString('monthlyBills');
-      if (billDetailsJson != null) {
-        try {
-          List<dynamic> billDetailsList = jsonDecode(billDetailsJson);
-          setState(() {
-            _allBillDetails =
-                billDetailsList.map((json) => BillDetail.fromJson(json)).toList();
-            _billDetails = _allBillDetails;
-            _applyFilters();
-          });
-          print('Loaded bill details from local: ${_allBillDetails.length}');
-        } catch (e) {
-          print('Error loading local bill details: $e');
-          await prefs.remove('billDetails');
-          _fetchBillDetails();
-        }
-      }
       if (monthlyBillsJson != null) {
         try {
           List<dynamic> monthlyBillsList = jsonDecode(monthlyBillsJson);
@@ -121,9 +109,7 @@ class _BillDetailListPageState extends State<BillDetailListPage>
             _allMonthlyBills =
                 monthlyBillsList.map((json) => MonthlyBill.fromJson(json)).toList();
           });
-          print('Loaded monthly bills from local: ${_allMonthlyBills.length}');
         } catch (e) {
-          print('Error loading local monthly bills: $e');
           await prefs.remove('monthlyBills');
           _fetchMonthlyBills();
         }
@@ -213,20 +199,24 @@ class _BillDetailListPageState extends State<BillDetailListPage>
       await prefs.setString('billDetailFilterBillStatus', _filterBillStatus);
       await prefs.setString('billDetailFilterPaymentStatus', _filterPaymentStatus);
       await prefs.setString(
-          'billDetails',
-          jsonEncode(_allBillDetails.map((detail) => detail.toJson()).toList()));
-      await prefs.setString(
           'monthlyBills',
           jsonEncode(_allMonthlyBills.map((bill) => bill.toJson()).toList()));
-      print('Saved local data successfully');
     } catch (e) {
       print('Error saving local data: $e');
     }
   }
 
   void _fetchBillDetails() {
-    print('Fetching bill details...');
-    context.read<BillBloc>().add(const FetchAllBillDetails(page: 1, limit: 1000));
+    context.read<BillBloc>().add(FetchAllBillDetails(
+      page: _currentPage,
+      limit: _limit,
+      area: _filterArea == 'All' ? null : _filterArea,
+      service: _filterService == 'All' ? null : _filterService,
+      search: _searchQuery.isEmpty ? null : _searchQuery,
+      month: _selectedMonthYear != null ? DateFormat('yyyy-MM').format(_selectedMonthYear!) : null,
+      submissionStatus: _filterSubmissionStatus == 'All' ? null : _filterSubmissionStatus,
+      paymentStatus: _filterPaymentStatus == 'All' ? null : _filterPaymentStatus,
+    ));
   }
 
   void _fetchMonthlyBills() {
@@ -249,245 +239,6 @@ class _BillDetailListPageState extends State<BillDetailListPage>
   void _fetchRooms() {
     print('Fetching rooms...');
     context.read<RoomBloc>().add(GetAllRoomsEvent(page: 1, limit: 1000));
-  }
-
-  void _applyFilters() {
-    print('Applying filters...');
-    print('Total bill details before filtering: ${_allBillDetails.length}');
-    setState(() {
-      _isFiltering = true;
-    });
-
-    Future.delayed(const Duration(milliseconds: 300), () {
-      try {
-        if (!mounted) return;
-
-        setState(() {
-          _billDetails = _allBillDetails.where((detail) {
-            bool matchesArea = true;
-            if (_filterArea != 'All') {
-              RoomEntity? room;
-              for (var r in _rooms) {
-                if (r.roomId == detail.roomId) {
-                  room = r;
-                  break;
-                }
-              }
-              if (room != null) {
-                for (var area in _areas) {
-                  if (area.areaId == room.areaId && area.name == _filterArea) {
-                    matchesArea = true;
-                    break;
-                  }
-                  matchesArea = false;
-                }
-              } else {
-                matchesArea = false;
-              }
-            }
-
-            bool matchesService = true;
-            if (_filterService != 'All') {
-              String serviceName = 'N/A';
-              if (detail.rateDetails != null) {
-                for (var service in _services) {
-                  if (service.serviceId == detail.rateDetails!.serviceId) {
-                    serviceName = service.name;
-                    break;
-                  }
-                }
-              }
-              matchesService = serviceName == _filterService;
-            }
-
-            bool matchesMonthYear = true;
-            if (_selectedMonthYear != null) {
-              final monthYear = DateFormat('MM/yyyy').format(detail.billMonth);
-              final selectedMonthYear =
-                  DateFormat('MM/yyyy').format(_selectedMonthYear!);
-              matchesMonthYear = monthYear == selectedMonthYear;
-            }
-
-            bool matchesSearch = _searchQuery.isEmpty ||
-                (detail.roomName ?? '')
-                    .toLowerCase()
-                    .contains(_searchQuery.toLowerCase());
-
-            bool matchesBillStatus = true;
-            if (_filterBillStatus != 'All') {
-              bool isCreated =
-                  detail.monthlyBillId != null && detail.monthlyBillId != -1;
-              if (_filterBillStatus == 'CREATED') {
-                matchesBillStatus = isCreated;
-              } else if (_filterBillStatus == 'NOT_CREATED') {
-                matchesBillStatus = !isCreated;
-              }
-            }
-
-            bool matchesPaymentStatus = true;
-            if (_filterPaymentStatus != 'All') {
-              bool isCreated =
-                  detail.monthlyBillId != null && detail.monthlyBillId != -1;
-              if (isCreated) {
-                MonthlyBill? monthlyBill = _allMonthlyBills.firstWhere(
-                  (bill) => bill.detailId == detail.detailId,
-                  orElse: () => MonthlyBill(
-                    billId: -1,
-                    userId: -1,
-                    detailId: -1,
-                    roomId: -1,
-                    billMonth: DateTime.now(),
-                    totalAmount: 0.0,
-                    paymentStatus: 'PENDING',
-                    createdAt: DateTime.now(),
-                    paymentMethodAllowed: '',
-                    paidAt: null,
-                    transactionReference: null,
-                    userDetails: null,
-                    roomDetails: null,
-                    billDetailId: -1,
-                  ),
-                );
-                bool isPaid = monthlyBill.paymentStatus == 'PAID';
-                if (_filterPaymentStatus == 'PAID') {
-                  matchesPaymentStatus = isCreated && isPaid;
-                } else if (_filterPaymentStatus == 'NOT_PAID') {
-                  matchesPaymentStatus = isCreated && !isPaid;
-                }
-              } else {
-                matchesPaymentStatus = _filterPaymentStatus == 'NOT_PAID';
-              }
-            }
-
-            return matchesArea &&
-                matchesService &&
-                matchesMonthYear &&
-                matchesSearch &&
-                matchesBillStatus &&
-                matchesPaymentStatus;
-          }).toList();
-
-          print('Bill details after filtering: ${_billDetails.length}');
-
-          Set<int> submittedRoomIds =
-              _billDetails.map((detail) => detail.roomId).toSet();
-          List<RoomEntity> notSubmittedRooms =
-              _rooms.where((room) => !submittedRoomIds.contains(room.roomId)).toList();
-
-          List<BillDetail> notSubmittedDetails = notSubmittedRooms.map((room) {
-            return BillDetail(
-              detailId: -1,
-              roomId: room.roomId,
-              roomName: room.name,
-              billMonth: _selectedMonthYear ?? DateTime.now(),
-              price: 0.0,
-              submittedBy: null,
-              submittedAt: null,
-              submitterDetails: null,
-              rateDetails: null,
-              rateId: -1,
-              monthlyBillId: null,
-              previousReading: 0.0,
-              currentReading: 0.0,
-            );
-          }).toList();
-
-          notSubmittedDetails = notSubmittedDetails.where((detail) {
-            bool matchesArea = true;
-            if (_filterArea != 'All') {
-              RoomEntity? room;
-              for (var r in _rooms) {
-                if (r.roomId == detail.roomId) {
-                  room = r;
-                  break;
-                }
-              }
-              if (room != null) {
-                for (var area in _areas) {
-                  if (area.areaId == room.areaId && area.name == _filterArea) {
-                    matchesArea = true;
-                    break;
-                  }
-                  matchesArea = false;
-                }
-              } else {
-                matchesArea = false;
-              }
-            }
-
-            bool matchesSearch = _searchQuery.isEmpty ||
-                (detail.roomName ?? '')
-                    .toLowerCase()
-                    .contains(_searchQuery.toLowerCase());
-
-            bool matchesPaymentStatus = true;
-            if (_filterPaymentStatus != 'All') {
-              matchesPaymentStatus = _filterPaymentStatus == 'NOT_PAID';
-            }
-
-            return matchesArea && matchesSearch && matchesPaymentStatus;
-          }).toList();
-
-          if (_filterSubmissionStatus == 'All') {
-            _billDetails = [..._billDetails, ...notSubmittedDetails];
-          } else if (_filterSubmissionStatus == 'SUBMITTED') {
-            _billDetails =
-                _billDetails.where((billDetail) => billDetail.submittedBy != null).toList();
-          } else if (_filterSubmissionStatus == 'NOT_SUBMITTED') {
-            _billDetails = notSubmittedDetails;
-          }
-
-          _billDetails.sort((a, b) {
-            String areaNameA = 'N/A';
-            String areaNameB = 'N/A';
-            RoomEntity? roomA;
-            RoomEntity? roomB;
-
-            for (var r in _rooms) {
-              if (r.roomId == a.roomId) roomA = r;
-              if (r.roomId == b.roomId) roomB = r;
-            }
-
-            if (roomA != null) {
-              for (var area in _areas) {
-                if (area.areaId == roomA.areaId) {
-                  areaNameA = area.name;
-                  break;
-                }
-              }
-            }
-
-            if (roomB != null) {
-              for (var area in _areas) {
-                if (area.areaId == roomB.areaId) {
-                  areaNameB = area.name;
-                  break;
-                }
-              }
-            }
-
-            int areaComparison = areaNameA.compareTo(areaNameB);
-            if (areaComparison != 0) {
-              return areaComparison;
-            }
-
-            String roomNameA = a.roomName ?? 'N/A';
-            String roomNameB = b.roomName ?? 'N/A';
-            return roomNameA.compareTo(roomNameB);
-          });
-
-          print('Final bill details after sorting: ${_billDetails.length}');
-          _isFiltering = false;
-        });
-      } catch (e) {
-        print('Error in _applyFilters: $e');
-        if (!mounted) return;
-        setState(() {
-          _isFiltering = false;
-          _billDetails = [];
-        });
-      }
-    });
   }
 
   void _toggleSelection(BillDetail detail) {
@@ -538,8 +289,11 @@ class _BillDetailListPageState extends State<BillDetailListPage>
       return;
     }
 
-    List<int> roomIds =
-        _selectedBillDetails.map((detail) => detail.roomId).toSet().toList();
+    List<int> roomIds = _selectedBillDetails
+        .map((detail) => detail.roomId)
+        .whereType<int>()
+        .toSet()
+        .toList();
 
     context.read<BillBloc>().add(CreateMonthlyBillsBulk(
           billMonth: _selectedMonthYear!,
@@ -623,24 +377,28 @@ class _BillDetailListPageState extends State<BillDetailListPage>
             print('BillBloc state: $state');
             if (state is BillError) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: AppColors.buttonError,
-                  duration: const Duration(seconds: 3),
-                ),
+                SnackBar(content: Text('Lỗi: ${state.message}')),
               );
             } else if (state is BillDetailsLoaded) {
               setState(() {
-                _allBillDetails = state.billDetails;
                 _isInitialLoad = false;
-                _applyFilters();
+                _billDetails = state.billDetails;
+
+                // Lọc theo trạng thái hóa đơn ở FE
+                if (_filterBillStatus == 'CREATED') {
+                  _billDetails = _billDetails
+                      .where((d) => d.monthlyBillId != null && d.monthlyBillId != -1)
+                      .toList();
+                } else if (_filterBillStatus == 'NOT_CREATED') {
+                  _billDetails = _billDetails
+                      .where((d) => d.monthlyBillId == null || d.monthlyBillId == -1)
+                      .toList();
+                }
               });
               _saveLocalData();
-              print('Bill details loaded: ${_allBillDetails.length}');
             } else if (state is MonthlyBillsLoaded) {
               setState(() {
                 _allMonthlyBills = state.monthlyBills;
-                _applyFilters();
               });
               _saveLocalData();
               print('Monthly bills loaded: ${_allMonthlyBills.length}');
@@ -689,7 +447,6 @@ class _BillDetailListPageState extends State<BillDetailListPage>
             } else {
               setState(() {
                 _areas = state.areas;
-                _applyFilters();
               });
               _saveLocalData();
               print('Areas loaded: ${_areas.length}');
@@ -708,7 +465,6 @@ class _BillDetailListPageState extends State<BillDetailListPage>
             } else if (state is RoomLoaded) {
               setState(() {
                 _rooms = state.rooms;
-                _applyFilters();
               });
               _saveLocalData();
               print('Rooms loaded: ${_rooms.length}');
@@ -728,7 +484,6 @@ class _BillDetailListPageState extends State<BillDetailListPage>
             } else if (state is ServicesLoaded) {
               setState(() {
                 _services = state.services;
-                _applyFilters();
               });
               _saveLocalData();
               print('Services loaded: ${_services.length}');
@@ -809,8 +564,8 @@ class _BillDetailListPageState extends State<BillDetailListPage>
                                                   _filterArea = value ?? 'All';
                                                   _currentPage = 1;
                                                   _saveLocalData();
-                                                  _applyFilters();
                                                 });
+                                                _fetchBillDetails(); // Gọi lại BE
                                               },
                                             ),
                                           ),
@@ -861,8 +616,8 @@ class _BillDetailListPageState extends State<BillDetailListPage>
                                                       value ?? 'All';
                                                   _currentPage = 1;
                                                   _saveLocalData();
-                                                  _applyFilters();
                                                 });
+                                                _fetchBillDetails(); // Gọi lại BE
                                               },
                                             ),
                                           ),
@@ -909,8 +664,8 @@ class _BillDetailListPageState extends State<BillDetailListPage>
                                                   _filterService = value ?? 'All';
                                                   _currentPage = 1;
                                                   _saveLocalData();
-                                                  _applyFilters();
                                                 });
+                                                _fetchBillDetails(); // Gọi lại BE
                                               },
                                             ),
                                           ),
@@ -930,23 +685,19 @@ class _BillDetailListPageState extends State<BillDetailListPage>
                                         Expanded(
                                           child: GestureDetector(
                                             onTap: () async {
-                                              DateTime? pickedDate =
-                                                  await showDatePicker(
+                                              DateTime? pickedDate = await showMonthYearPicker(
                                                 context: context,
-                                                initialDate: _selectedMonthYear ??
-                                                    DateTime.now(),
+                                                initialDate: _selectedMonthYear ?? DateTime.now(),
                                                 firstDate: DateTime(2000),
                                                 lastDate: DateTime(2100),
-                                                initialDatePickerMode:
-                                                    DatePickerMode.year,
                                               );
                                               if (pickedDate != null) {
                                                 setState(() {
                                                   _selectedMonthYear = pickedDate;
                                                   _currentPage = 1;
                                                   _saveLocalData();
-                                                  _applyFilters();
                                                 });
+                                                _fetchBillDetails();
                                               }
                                             },
                                             child: Container(
@@ -1018,8 +769,8 @@ class _BillDetailListPageState extends State<BillDetailListPage>
                                                   _filterBillStatus = value ?? 'All';
                                                   _currentPage = 1;
                                                   _saveLocalData();
-                                                  _applyFilters();
                                                 });
+                                                _fetchBillDetails(); // Gọi lại BE
                                               },
                                             ),
                                           ),
@@ -1070,8 +821,8 @@ class _BillDetailListPageState extends State<BillDetailListPage>
                                                       value ?? 'All';
                                                   _currentPage = 1;
                                                   _saveLocalData();
-                                                  _applyFilters();
                                                 });
+                                                _fetchBillDetails(); // Gọi lại BE
                                               },
                                             ),
                                           ),
@@ -1093,8 +844,8 @@ class _BillDetailListPageState extends State<BillDetailListPage>
                                               _searchQuery = value;
                                               _currentPage = 1;
                                               _saveLocalData();
-                                              _applyFilters();
                                             });
+                                            _fetchBillDetails(); // Gọi lại BE
                                           },
                                           hintText: 'Tìm kiếm theo tên phòng...',
                                           initialValue: _searchQuery,
@@ -1152,215 +903,182 @@ class _BillDetailListPageState extends State<BillDetailListPage>
                               child: BlocBuilder<BillBloc, BillState>(
                                 builder: (context, state) {
                                   print('Rendering table with state: $state');
-                                  bool isLoading = state is BillLoading;
-
-                                  int startIndex = (_currentPage - 1) * _limit;
-                                  int endIndex = startIndex + _limit;
-                                  if (endIndex > _billDetails.length) {
-                                    endIndex = _billDetails.length;
-                                  }
-                                  List<BillDetail> paginatedDetails =
-                                      startIndex < _billDetails.length
-                                          ? _billDetails.sublist(
-                                              startIndex, endIndex)
-                                          : [];
-                                  print(
-                                      'Paginated details count: ${paginatedDetails.length}');
-
-                                  if (isLoading && _isInitialLoad) {
+                                  if (state is BillLoading && _isInitialLoad) {
                                     return const Center(
-                                        child: CircularProgressIndicator(
-                                            color: AppColors.primaryColor));
+                                      child: CircularProgressIndicator(color: AppColors.primaryColor),
+                                    );
                                   }
 
-                                  if (_isFiltering) {
-                                    return const Center(
-                                        child: CircularProgressIndicator(
-                                            color: AppColors.primaryColor));
-                                  }
-
-                                  return Column(
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Checkbox(
-                                            value: _selectAll,
-                                            onChanged: (value) {
-                                              _toggleSelectAll();
-                                            },
-                                          ),
-                                          const Text(
-                                              'Chọn tất cả (Đã gửi về, chưa tạo hóa đơn)',
-                                              style: TextStyle(
-                                                  color: AppColors.textPrimary)),
-                                        ],
+                                  if (state is BillError) {
+                                    return Center(
+                                      child: Text(
+                                        'Lỗi: ${state.message}',
+                                        style: const TextStyle(color: AppColors.buttonError, fontSize: 18),
                                       ),
-                                      GenericDataTable<BillDetail>(
-                                        headers: const [
-                                          '',
-                                          'Khu',
-                                          'Phòng',
-                                          'Người gửi',
-                                          'Chỉ số hiện tại',
-                                          'Tháng hóa đơn',
-                                          'Ngày gửi',
-                                          '',
-                                        ],
-                                        data: paginatedDetails,
-                                        columnWidths: _getColumnWidths(
-                                            MediaQuery.of(context).size.width),
-                                        cellBuilder: (detail, index) {
-                                          bool isCreatedAndPaid = false;
-                                          if (detail.monthlyBillId != null &&
-                                              detail.monthlyBillId != -1) {
-                                            MonthlyBill? monthlyBill =
-                                                _allMonthlyBills.firstWhere(
-                                              (bill) =>
-                                                  bill.detailId == detail.detailId,
-                                              orElse: () => MonthlyBill(
-                                                billId: -1,
-                                                userId: -1,
-                                                detailId: -1,
-                                                roomId: -1,
-                                                billMonth: DateTime.now(),
-                                                totalAmount: 0.0,
-                                                paymentStatus: 'PENDING',
-                                                createdAt: DateTime.now(),
-                                                paymentMethodAllowed: '',
-                                                paidAt: null,
-                                                transactionReference: null,
-                                                userDetails: null,
-                                                roomDetails: null,
-                                                billDetailId: -1,
-                                              ),
-                                            );
-                                            isCreatedAndPaid =
-                                                monthlyBill.paymentStatus == 'PAID';
-                                          }
+                                    );
+                                  }
 
-                                          switch (index) {
-                                            case 0:
-                                              return Checkbox(
-                                                value: _selectedBillDetails
-                                                    .contains(detail),
-                                                onChanged: detail.submittedBy !=
-                                                            null &&
-                                                        (detail.monthlyBillId ==
-                                                                null ||
-                                                            detail.monthlyBillId ==
-                                                                -1)
-                                                    ? (value) {
-                                                        _toggleSelection(detail);
-                                                      }
-                                                    : null,
-                                              );
-                                            case 1:
-                                              String areaName = 'N/A';
-                                              RoomEntity? room;
-                                              for (var r in _rooms) {
-                                                if (r.roomId == detail.roomId) {
-                                                  room = r;
+                                  if (state is BillDetailsLoaded) {
+                                    // _billDetails đã được cập nhật ở BlocListener, chỉ cần render
+                                    return GenericDataTable<BillDetail>(
+                                      data: _billDetails,
+                                      headers: const [
+                                        '',
+                                        'Khu',
+                                        'Phòng',
+                                        'Người gửi',
+                                        'Chỉ số hiện tại',
+                                        'Tháng hóa đơn',
+                                        'Ngày gửi',
+                                        '',
+                                      ],
+                                      columnWidths: _getColumnWidths(MediaQuery.of(context).size.width),
+                                      cellBuilder: (detail, index) {
+                                        bool isCreatedAndPaid = false;
+                                        if (detail.monthlyBillId != null &&
+                                            detail.monthlyBillId != -1) {
+                                          MonthlyBill? monthlyBill =
+                                              _allMonthlyBills.firstWhere(
+                                            (bill) =>
+                                                bill.detailId == detail.detailId,
+                                            orElse: () => MonthlyBill(
+                                              billId: -1,
+                                              userId: -1,
+                                              detailId: -1,
+                                              roomId: -1,
+                                              billMonth: DateTime.now(),
+                                              totalAmount: 0.0,
+                                              paymentStatus: 'PENDING',
+                                              createdAt: DateTime.now(),
+                                              paymentMethodAllowed: '',
+                                              paidAt: null,
+                                              transactionReference: null,
+                                              userDetails: null,
+                                              roomDetails: null,
+                                              billDetailId: -1,
+                                            ),
+                                          );
+                                          isCreatedAndPaid =
+                                              monthlyBill.paymentStatus == 'PAID';
+                                        }
+
+                                        switch (index) {
+                                          case 0:
+                                            return Checkbox(
+                                              value: _selectedBillDetails
+                                                  .contains(detail),
+                                              onChanged: detail.submittedBy !=
+                                                          null &&
+                                                      (detail.monthlyBillId ==
+                                                              null ||
+                                                          detail.monthlyBillId ==
+                                                              -1)
+                                                  ? (value) {
+                                                      _toggleSelection(detail);
+                                                    }
+                                                  : null,
+                                            );
+                                          case 1:
+                                            String areaName = 'N/A';
+                                            RoomEntity? room;
+                                            for (var r in _rooms) {
+                                              if (r.roomId == detail.roomId) {
+                                                room = r;
+                                                break;
+                                              }
+                                            }
+                                            if (room != null) {
+                                              for (var area in _areas) {
+                                                if (area.areaId == room.areaId) {
+                                                  areaName = area.name;
                                                   break;
                                                 }
                                               }
-                                              if (room != null) {
-                                                for (var area in _areas) {
-                                                  if (area.areaId == room.areaId) {
-                                                    areaName = area.name;
-                                                    break;
-                                                  }
-                                                }
-                                              }
-                                              return Text(
-                                                areaName,
-                                                overflow: TextOverflow.ellipsis,
-                                                textAlign: TextAlign.center,
-                                                style: const TextStyle(
-                                                    color: AppColors.textPrimary),
-                                              );
-                                            case 2:
-                                              return Text(
-                                                detail.roomName ?? 'N/A',
-                                                overflow: TextOverflow.ellipsis,
-                                                textAlign: TextAlign.center,
-                                                style: const TextStyle(
-                                                    color: AppColors.textPrimary),
-                                              );
-                                            case 3:
-                                              return Text(
-                                                detail.submittedBy != null
-                                                    ? (detail.submitterDetails
-                                                            ?.fullname ??
-                                                        'N/A')
-                                                    : 'N/A',
-                                                overflow: TextOverflow.ellipsis,
-                                                textAlign: TextAlign.center,
-                                                style: const TextStyle(
-                                                    color: AppColors.textPrimary),
-                                              );
-                                            case 4:
-                                              return Text(
-                                                detail.submittedBy != null
-                                                    ? detail.currentReading
-                                                        .toStringAsFixed(2)
-                                                    : 'N/A',
-                                                overflow: TextOverflow.ellipsis,
-                                                textAlign: TextAlign.center,
-                                                style: const TextStyle(
-                                                    color: AppColors.textPrimary),
-                                              );
-                                            case 5:
-                                              return Text(
-                                                DateFormat('MM/yyyy')
-                                                    .format(detail.billMonth),
-                                                overflow: TextOverflow.ellipsis,
-                                                textAlign: TextAlign.center,
-                                                style: const TextStyle(
-                                                    color: AppColors.textPrimary),
-                                              );
-                                            case 6:
-                                              return Text(
-                                                detail.submittedAt != null
-                                                    ? DateFormat('dd-MM-yyyy')
-                                                        .format(detail.submittedAt!)
-                                                    : 'Chưa gửi',
-                                                overflow: TextOverflow.ellipsis,
-                                                textAlign: TextAlign.center,
-                                                style: const TextStyle(
-                                                    color: AppColors.textPrimary),
-                                              );
-                                            case 7:
-                                              return detail.detailId != -1 &&
-                                                      !isCreatedAndPaid
-                                                  ? IconButton(
-                                                      icon: const Icon(
-                                                          Icons.delete,
-                                                          color:
-                                                              AppColors.buttonError),
-                                                      onPressed: () {
+                                            }
+                                            return Text(
+                                              areaName,
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                  color: AppColors.textPrimary),
+                                            );
+                                          case 2:
+                                            return Text(
+                                              detail.roomName ?? 'N/A',
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                  color: AppColors.textPrimary),
+                                            );
+                                          case 3:
+                                            return Text(
+                                              detail.submittedBy != null
+                                                  ? (detail.submitterDetails
+                                                          ?.fullname ??
+                                                      'N/A')
+                                                  : 'N/A',
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                  color: AppColors.textPrimary),
+                                            );
+                                          case 4:
+                                            return Text(
+                                              detail.submittedBy != null
+                                                  ? detail.currentReading
+                                                      ?.toStringAsFixed(2) ?? 'N/A'
+                                                  : 'N/A',
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                  color: AppColors.textPrimary),
+                                            );
+                                          case 5:
+                                            return Text(
+                                              DateFormat('MM/yyyy')
+                                                  .format(detail.billMonth),
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                  color: AppColors.textPrimary),
+                                            );
+                                          case 6:
+                                            return Text(
+                                              detail.submittedAt != null
+                                                  ? DateFormat('dd-MM-yyyy')
+                                                      .format(detail.submittedAt!)
+                                                  : 'Chưa gửi',
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                  color: AppColors.textPrimary),
+                                            );
+                                          case 7:
+                                            return detail.detailId != -1 &&
+                                                    !isCreatedAndPaid
+                                                ? IconButton(
+                                                    icon: const Icon(
+                                                        Icons.delete,
+                                                        color:
+                                                            AppColors.buttonError),
+                                                    onPressed: () {
+                                                      if (detail.detailId != null) {
                                                         _deleteBillDetail(
-                                                            detail.detailId);
-                                                      },
-                                                    )
-                                                  : const SizedBox();
-                                            default:
-                                              return const SizedBox();
-                                          }
-                                        },
-                                      ),
-                                      const SizedBox(height: 16),
-                                      PaginationControls(
-                                        currentPage: _currentPage,
-                                        totalItems: _billDetails.length,
-                                        limit: _limit,
-                                        onPageChanged: (page) {
-                                          setState(() {
-                                            _currentPage = page;
-                                            _saveLocalData();
-                                          });
-                                        },
-                                      ),
-                                    ],
+                                                            detail.detailId!);
+                                                      }
+                                                    },
+                                                  )
+                                                : const SizedBox();
+                                          default:
+                                            return const SizedBox();
+                                        }
+                                      },
+                                    );
+                                  }
+
+                                  // Trường hợp chưa có dữ liệu hoặc state khác
+                                  return const Center(
+                                    child: Text('Không có dữ liệu', style: TextStyle(color: AppColors.textSecondary)),
                                   );
                                 },
                               ),

@@ -8,6 +8,7 @@ abstract class ContractRemoteDataSource {
   Future<(List<ContractModel>, int)> getAllContracts({ // Trả về tuple
     int page,
     int limit,
+    String? keyword, 
     String? email,
     String? status,
     String? startDate,
@@ -31,6 +32,7 @@ class ContractRemoteDataSourceImpl implements ContractRemoteDataSource {
   Future<(List<ContractModel>, int)> getAllContracts({
     int page = 1,
     int limit = 10,
+    String? keyword, 
     String? email,
     String? status,
     String? startDate,
@@ -43,6 +45,7 @@ class ContractRemoteDataSourceImpl implements ContractRemoteDataSource {
         queryParams: {
           'page': page.toString(),
           'limit': limit.toString(),
+          if (keyword != null && keyword.isNotEmpty) 'keyword': keyword, // Thêm dòng này
           if (email != null) 'email': email,
           if (status != null) 'status': status,
           if (startDate != null) 'start_date': startDate,

@@ -17,6 +17,7 @@ class _CreateUserTabState extends State<CreateUserTab> {
   final _emailController = TextEditingController();
   final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
+  bool _isSubmitting = false; // Thêm biến này
 
   @override
   void dispose() {
@@ -28,6 +29,9 @@ class _CreateUserTabState extends State<CreateUserTab> {
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isSubmitting = true; // Bắt đầu gửi form
+      });
       context.read<UserBloc>().add(CreateUserEvent(
         email: _emailController.text,
         fullname: _fullNameController.text,
@@ -62,14 +66,23 @@ class _CreateUserTabState extends State<CreateUserTab> {
                 BlocListener<UserBloc, UserState>(
                   listener: (context, state) {
                     if (state is UserCreated) {
-                      _clearFields(); // Clear các TextField khi tạo thành công
+                      _clearFields();
+                      setState(() {
+                        _isSubmitting = false; // Kết thúc gửi form
+                      });
+                    }
+                    if (state is UserError) {
+                      setState(() {
+                        _isSubmitting = false; // Kết thúc gửi form nếu lỗi
+                      });
                     }
                   },
                 ),
               ],
               child: BlocBuilder<UserBloc, UserState>(
                 builder: (context, state) {
-                  bool isLoading = state is UserLoading;
+                  // Chỉ loading khi đang submit
+                  bool isLoading = _isSubmitting && state is UserLoading;
 
                   return Dialog(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

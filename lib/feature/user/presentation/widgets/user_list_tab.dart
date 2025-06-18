@@ -15,7 +15,8 @@ import '../widgets/edit_user_dialog.dart';
 import '../widgets/filter_dialog.dart';
 
 class UserListTab extends StatefulWidget {
-  const UserListTab({Key? key}) : super(key: key);
+
+  const UserListTab({Key? key, }) : super(key: key);
 
   @override
   _UserListTabState createState() => _UserListTabState();
@@ -32,6 +33,7 @@ class _UserListTabState extends State<UserListTab> {
   List<UserEntity> _users = [];
   int _totalItems = 0;
   final List<double> _columnWidths = [200.0, 200.0, 100.0];
+  bool _firstLoad = true; 
 
   @override
   void initState() {
@@ -83,6 +85,7 @@ class _UserListTabState extends State<UserListTab> {
     context.read<UserBloc>().add(FetchUsersEvent(
       page: _currentPage,
       limit: _limit,
+      keyword: _searchQuery, // Thêm dòng này
       email: _emailFilter,
       fullname: _fullnameFilter,
       phone: _phoneFilter,
@@ -167,6 +170,7 @@ class _UserListTabState extends State<UserListTab> {
                           _totalItems = state.totalItems;
                         });
                         _saveLocalData();
+
                       }
                     },
                   ),
@@ -283,6 +287,15 @@ class _UserListTabState extends State<UserListTab> {
 
                             if (state is UserError) {
                               errorMessage = state.message;
+                            }
+                            // Khi lần đầu load, không hiển thị loading
+                            if (_firstLoad && isLoading) {
+                              return const SizedBox(); // Không hiển thị gì cả
+                            }
+
+                            // Khi đã có dữ liệu, tắt cờ _firstLoad
+                            if (state is UserLoaded && _firstLoad) {
+                              _firstLoad = false;
                             }
 
                             return isLoading

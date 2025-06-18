@@ -11,6 +11,7 @@ class GetAllUsers {
   Future<Either<Failure, (List<UserEntity>, int)>> call({
     int page = 1,
     int limit = 10,
+    String? keyword, 
     String? email,
     String? fullname,
     String? phone,
@@ -21,6 +22,7 @@ class GetAllUsers {
       final result = await repository.getAllUsers(
         page: page,
         limit: limit,
+        keyword: keyword, 
         email: email,
         fullname: fullname,
         phone: phone,

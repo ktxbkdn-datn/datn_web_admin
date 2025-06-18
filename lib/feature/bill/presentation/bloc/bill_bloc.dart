@@ -1,3 +1,5 @@
+import 'package:datn_web_admin/feature/bill/data/models/bill_detail_model.dart' as model;
+import 'package:datn_web_admin/feature/bill/domain/entities/bill_detail_entity.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dartz/dartz.dart';
 import 'package:datn_web_admin/src/core/error/failures.dart';
@@ -31,8 +33,62 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     required this.deleteMonthlyBill,
   }) : super(BillInitial()) {
     on<CreateMonthlyBillsBulk>(_onCreateMonthlyBillsBulk);
-    on<FetchAllBillDetails>(_onFetchAllBillDetails);
-    on<FetchAllMonthlyBills>(_onFetchAllMonthlyBills);
+    on<FetchAllBillDetails>((event, emit) async {
+      emit(BillLoading());
+      final result = await getAllBillDetails(
+        page: event.page,
+        limit: event.limit,
+        area: event.area,
+        service: event.service,
+        billStatus: event.billStatus,
+        paymentStatus: event.paymentStatus,
+        search: event.search,
+        month: event.month,
+        submissionStatus: event.submissionStatus,
+      );
+      result.fold(
+        (failure) => emit(BillError(failure.message)),
+        (data) {
+          final billDetailsRaw = data['billDetails'] as List;
+          final billDetails = billDetailsRaw
+              .map((e) => (e as model.BillDetailModel).toEntity())
+              .toList();
+          emit(BillDetailsLoaded(
+            billDetails: billDetails,
+            total: data['total'] as int,
+            pages: data['pages'] as int,
+            currentPage: data['currentPage'] as int,
+          ));
+        },
+      );
+    });
+    on<FetchAllMonthlyBills>((event, emit) async {
+      emit(BillLoading());
+      final result = await getAllMonthlyBills(
+        page: event.page,
+        limit: event.limit,
+        area: event.area,
+        paymentStatus: event.paymentStatus,
+        service: event.service,
+        month: event.month,
+        billStatus: event.billStatus,
+        search: event.search,
+      );
+      result.fold(
+            (failure) => emit(BillError(failure.message)),
+            (data) {
+          final monthlyBills = data.$1;
+          final total = data.$2;
+          _cachePage(event.page, monthlyBills, total);
+          emit(MonthlyBillsLoaded(
+            monthlyBills: monthlyBills,
+            total: total,
+            pages: (total / event.limit).ceil(),
+            currentPage: event.page,
+          ));
+        },
+      );
+    });
     on<DeletePaidBillsEvent>(_onDeletePaidBills);
     on<DeleteBillDetailEvent>(_onDeleteBillDetail);
     on<DeleteMonthlyBillEvent>(_onDeleteMonthlyBill);
@@ -66,20 +122,6 @@ class BillBloc extends Bloc<BillEvent, BillState> {
           message: response['message'] ?? 'Tạo hóa đơn hàng tháng hoàn tất',
         ));
       },
-    );
-  }
-
-  Future<void> _onFetchAllBillDetails(FetchAllBillDetails event, Emitter<BillState> emit) async {
-    emit(BillLoading());
-    final result = await getAllBillDetails();
-    result.fold(
-          (failure) => emit(BillError(failure.message)),
-          (billDetails) => emit(BillDetailsLoaded(
-        billDetails: billDetails,
-        total: billDetails.length,
-        pages: (billDetails.length / event.limit).ceil(),
-        currentPage: event.page,
-      )),
     );
   }
 

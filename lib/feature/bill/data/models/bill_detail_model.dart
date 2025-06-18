@@ -2,12 +2,12 @@ import 'package:equatable/equatable.dart';
 import '../../domain/entities/bill_detail_entity.dart';
 
 class BillDetailModel extends Equatable {
-  final int detailId;
-  final int rateId;
+  final int? detailId;
+  final int? rateId;
   final double previousReading;
   final double currentReading;
   final double price;
-  final int roomId;
+  final int? roomId;
   final String? roomName; // Added roomName field
   final DateTime billMonth;
   final int? submittedBy;
@@ -15,14 +15,16 @@ class BillDetailModel extends Equatable {
   final RateDetailsModel? rateDetails;
   final SubmitterDetailsModel? submitterDetails;
   final int? monthlyBillId;
+  final bool? submitted;
+  final String? paymentStatus;
 
   const BillDetailModel({
-    required this.detailId,
-    required this.rateId,
+    this.detailId,
+    this.rateId,
     required this.previousReading,
     required this.currentReading,
     required this.price,
-    required this.roomId,
+    this.roomId,
     this.roomName, // Added to constructor
     required this.billMonth,
     this.submittedBy,
@@ -30,48 +32,40 @@ class BillDetailModel extends Equatable {
     this.rateDetails,
     this.submitterDetails,
     this.monthlyBillId,
+    this.submitted,
+    this.paymentStatus,
   });
 
   factory BillDetailModel.fromJson(Map<String, dynamic> json) {
-    print('Parsing BillDetailModel: $json');
-    try {
-      final detailId = json['detail_id'] as int;
-      final rateId = json['rate_id'] as int;
-      final previousReading = double.parse(json['previous_reading'] as String? ?? '0.00');
-      final currentReading = double.parse(json['current_reading'] as String? ?? '0.00');
-      final price = double.parse(json['price'] as String? ?? '0.00');
-      final roomId = json['room_id'] as int;
-      final roomName = json['room_name'] as String?; // Parse room_name
-      final billMonth = DateTime.parse(json['bill_month'] as String);
-      final submittedBy = json['submitted_by'] as int?;
-      final submittedAt = json['submitted_at'] != null ? DateTime.parse(json['submitted_at'] as String) : null;
-      final rateDetails = json['rate_details'] != null
+    return BillDetailModel(
+      detailId: json['detail_id'] as int?, // Có thể null
+      rateId: json['rate_id'] as int?,     // Có thể null
+      previousReading: json['previous_reading'] != null
+          ? double.tryParse(json['previous_reading'].toString()) ?? 0.0
+          : 0.0,
+      currentReading: json['current_reading'] != null
+          ? double.tryParse(json['current_reading'].toString()) ?? 0.0
+          : 0.0,
+      price: json['price'] != null
+          ? double.tryParse(json['price'].toString()) ?? 0.0
+          : 0.0,
+      roomId: json['room_id'] as int?, // Có thể null
+      roomName: json['room_name'] as String?,
+      billMonth: DateTime.parse(json['bill_month'] as String),
+      submittedBy: json['submitted_by'] as int?,
+      submittedAt: json['submitted_at'] != null
+          ? DateTime.tryParse(json['submitted_at'].toString())
+          : null,
+      rateDetails: json['rate_details'] != null
           ? RateDetailsModel.fromJson(json['rate_details'] as Map<String, dynamic>)
-          : null;
-      final submitterDetails = json['submitter_details'] != null
+          : null,
+      submitterDetails: json['submitter_details'] != null
           ? SubmitterDetailsModel.fromJson(json['submitter_details'] as Map<String, dynamic>)
-          : null;
-      final monthlyBillId = json['monthly_bill_id'] as int?;
-
-      return BillDetailModel(
-        detailId: detailId,
-        rateId: rateId,
-        previousReading: previousReading,
-        currentReading: currentReading,
-        price: price,
-        roomId: roomId,
-        roomName: roomName,
-        billMonth: billMonth,
-        submittedBy: submittedBy,
-        submittedAt: submittedAt,
-        rateDetails: rateDetails,
-        submitterDetails: submitterDetails,
-        monthlyBillId: monthlyBillId,
-      );
-    } catch (e) {
-      print('Error parsing BillDetailModel: $e');
-      rethrow;
-    }
+          : null,
+      monthlyBillId: json['monthly_bill_id'] as int?,
+      submitted: json['submitted'] as bool?,
+      paymentStatus: json['payment_status'] as String?,
+    );
   }
 
   Map<String, dynamic> toJson() {
@@ -100,13 +94,15 @@ class BillDetailModel extends Equatable {
       currentReading: currentReading,
       price: price,
       roomId: roomId,
-      roomName: roomName, // Pass roomName to entity
+      roomName: roomName,
       billMonth: billMonth,
       submittedBy: submittedBy,
       submittedAt: submittedAt,
       rateDetails: rateDetails?.toEntity(),
       submitterDetails: submitterDetails?.toEntity(),
       monthlyBillId: monthlyBillId,
+      submitted: submitted,
+      paymentStatus: paymentStatus,
     );
   }
 
@@ -125,6 +121,8 @@ class BillDetailModel extends Equatable {
     rateDetails,
     submitterDetails,
     monthlyBillId,
+    submitted,
+    paymentStatus,
   ];
 }
 

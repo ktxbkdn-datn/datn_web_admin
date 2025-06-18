@@ -23,6 +23,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'dart:ui';
+import 'package:month_year_picker/month_year_picker.dart';
 
 import '../../../../../../common/constants/colors.dart';
 import '../../../../../../common/widget/custom_data_table.dart';
@@ -49,10 +50,13 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
   String _filterStatus = 'All';
   String _filterArea = 'All';
   String _filterService = 'All';
-  String _filterMonthYear = 'All';
-  String _filterBillStatus = 'All';
+
+ 
   DateTime? _selectedMonthYear;
   final List<double> _columnWidths = [150.0, 120.0, 120.0, 120.0, 120.0, 40.0, 40.0];
+
+  // Thêm biến:
+  List<ServiceModel> _usedServices = [];
 
   @override
   bool get wantKeepAlive => true;
@@ -60,7 +64,7 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
   @override
   void initState() {
     super.initState();
-    _selectedMonthYear = DateTime.now();
+    _selectedMonthYear = DateTime.now(); 
     _loadLocalData();
     _fetchBills();
     _fetchBillDetails();
@@ -76,8 +80,8 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
     _filterStatus = prefs.getString('billFilterStatus') ?? 'All';
     _filterArea = prefs.getString('billFilterArea') ?? 'All';
     _filterService = prefs.getString('billFilterService') ?? 'All';
-    _filterMonthYear = prefs.getString('billFilterMonthYear') ?? 'All';
-    _filterBillStatus = prefs.getString('billFilterBillStatus') ?? 'All';
+
+
     String? billsJson = prefs.getString('bills');
     String? billDetailsJson = prefs.getString('billDetails');
     String? servicesJson = prefs.getString('services');
@@ -154,8 +158,7 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
     await prefs.setString('billFilterStatus', _filterStatus);
     await prefs.setString('billFilterArea', _filterArea);
     await prefs.setString('billFilterService', _filterService);
-    await prefs.setString('billFilterMonthYear', _filterMonthYear);
-    await prefs.setString('billFilterBillStatus', _filterBillStatus);
+ 
     await prefs.setString('bills', jsonEncode(_allBillModels.map((billModel) => billModel.toJson()).toList()));
     await prefs.setString('billDetails', jsonEncode(_allBillDetails.map((detail) => detail.toJson()).toList()));
     await prefs.setString('services', jsonEncode(_services.map((service) => service.toJson()).toList()));
@@ -164,11 +167,30 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
   }
 
   void _fetchBills() {
-    context.read<BillBloc>().add(const FetchAllMonthlyBills(page: 1, limit: 1000));
+    // Đảm bảo _selectedMonthYear luôn có giá trị
+    if (_selectedMonthYear == null) {
+      setState(() {
+        _selectedMonthYear = DateTime.now();
+      });
+    }
+    context.read<BillBloc>().add(FetchAllMonthlyBills(
+      page: _currentPage,
+      limit: _limit,
+      area: _filterArea == 'All' ? null : _filterArea,
+      paymentStatus: _filterStatus == 'All' ? null : _filterStatus,
+      service: _filterService == 'All' ? null : _filterService,
+      month: DateFormat('yyyy-MM').format(_selectedMonthYear!),
+      search: _searchQuery.isEmpty ? null : _searchQuery,
+    ));
   }
 
   void _fetchBillDetails() {
-    context.read<BillBloc>().add(const FetchAllBillDetails(page: 1, limit: 1000));
+    final monthStr = DateFormat('yyyy-MM').format(_selectedMonthYear ?? DateTime.now());
+    context.read<BillBloc>().add(FetchAllBillDetails(
+      page: 1,
+      limit: 1000,
+      month: monthStr,
+    ));
   }
 
   void _fetchServices() {
@@ -213,14 +235,14 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
         String serviceName = 'N/A';
         if (serviceId != null) {
           var service = _services.firstWhere(
-                (s) => s.serviceId == serviceId,
+            (s) => s.serviceId == serviceId,
             orElse: () => ServiceModel(
               serviceId: -1,
               name: 'Không xác định',
               unit: '',
             ),
           );
-          serviceName = service.name;
+          serviceName = service.serviceId == -1 ? 'Không xác định' : service.name;
         }
 
         bool matchesArea = true;
@@ -256,25 +278,16 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
         }
 
         bool matchesMonthYear = true;
-        if (_filterMonthYear != 'All' && _selectedMonthYear != null) {
+        if (_selectedMonthYear != null) {
           final monthYear = DateFormat('MM/yyyy').format(bill.billMonth);
           final selectedMonthYear = DateFormat('MM/yyyy').format(_selectedMonthYear!);
           matchesMonthYear = monthYear == selectedMonthYear;
         }
 
-        bool matchesBillStatus = true;
-        if (_filterBillStatus != 'All') {
-          bool isCreated = billDetail?.monthlyBillId != null && billDetail?.monthlyBillId != -1;
-          if (_filterBillStatus == 'CREATED') {
-            matchesBillStatus = isCreated;
-          } else if (_filterBillStatus == 'NOT_CREATED') {
-            matchesBillStatus = !isCreated;
-          }
-        }
 
         bool matchesSearch = _searchQuery.isEmpty ||
             (bill.roomDetails?.name.toLowerCase() ?? '').contains(_searchQuery.toLowerCase());
-        return matchesStatus && matchesArea && matchesService && matchesMonthYear && matchesBillStatus && matchesSearch;
+        return matchesStatus && matchesArea && matchesService && matchesMonthYear && matchesSearch;
       }).map((model) => model.toEntity()).toList();
 
       // Sort bills: PENDING first when _filterStatus is 'All', then by createdAt descending
@@ -290,6 +303,12 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
       });
     });
   }
+
+  void _tryApplyFilters() {
+  if (_allBillModels.isNotEmpty && _allBillDetails.isNotEmpty && _services.isNotEmpty && _areas.isNotEmpty && _rooms.isNotEmpty) {
+    _applyFilters();
+  }
+}
 
   void _deleteMonthlyBill(int billId) {
     showDialog(
@@ -312,6 +331,16 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
         ],
       ),
     );
+  }
+
+  void _updateUsedServices() {
+    final usedServiceIds = _allBillDetails
+        .where((detail) => detail.rateDetails?.serviceId != null)
+        .map((detail) => detail.rateDetails!.serviceId)
+        .toSet();
+    setState(() {
+      _usedServices = _services.where((s) => usedServiceIds.contains(s.serviceId)).toList();
+    });
   }
 
   @override
@@ -340,42 +369,13 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
     uniqueAreas.sort();
 
     Set<String> seenServices = {};
-    for (var billModel in _allBillModels) {
-      if (billModel.detailId != null) {
-        var billDetail = _allBillDetails.firstWhere(
-              (detail) => detail.detailId == billModel.detailId,
-          orElse: () => BillDetail(
-            detailId: -1,
-            roomId: billModel.roomId,
-            billMonth: billModel.billMonth,
-            price: 0.0,
-            submittedBy: null,
-            submittedAt: null,
-            submitterDetails: null,
-            rateDetails: null,
-            rateId: -1,
-            monthlyBillId: -1,
-            previousReading: 0.0,
-            currentReading: 0.0,
-          ),
-        );
-        int? serviceId = billDetail.rateDetails?.serviceId;
-        if (serviceId != null) {
-          var service = _services.firstWhere(
-                (s) => s.serviceId == serviceId,
-            orElse: () => ServiceModel(
-              serviceId: -1,
-              name: 'Không xác định',
-              unit: '',
-            ),
-          );
-          if (!seenServices.contains(service.name) && service.name != 'Không xác định') {
-            seenServices.add(service.name);
-            uniqueServices.add(service.name);
-          }
-        }
+    for (var service in _services) { // Dùng _services thay vì _usedServices
+      if (!seenServices.contains(service.name)) {
+        seenServices.add(service.name);
+        uniqueServices.add(service.name);
       }
     }
+    uniqueServices = uniqueServices.toSet().toList();
     uniqueServices.sort();
 
     if (_filterStatus != 'All' && !uniqueStatuses.contains(_filterStatus)) {
@@ -386,9 +386,6 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
     }
     if (_filterService != 'All' && !uniqueServices.contains(_filterService)) {
       _filterService = 'All';
-    }
-    if (_filterBillStatus != 'All' && !billStatuses.contains(_filterBillStatus)) {
-      _filterBillStatus = 'All';
     }
 
     return Scaffold(
@@ -418,43 +415,17 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                     );
                   } else if (state is MonthlyBillsLoaded) {
                     setState(() {
-                      _allBillModels = state.monthlyBills.map((bill) => MonthlyBillModel(
-                        billId: bill.billId,
-                        userId: bill.userId,
-                        detailId: bill.detailId,
-                        roomId: bill.roomId,
-                        billMonth: bill.billMonth,
-                        totalAmount: bill.totalAmount,
-                        paymentStatus: bill.paymentStatus,
-                        createdAt: bill.createdAt,
-                        paymentMethodAllowed: bill.paymentMethodAllowed,
-                        paidAt: bill.paidAt,
-                        transactionReference: bill.transactionReference,
-                        userDetails: bill.userDetails != null
-                            ? UserDetailsModel(
-                          userId: bill.userDetails!.userId,
-                          fullname: bill.userDetails!.fullname,
-                          email: bill.userDetails!.email,
-                        )
-                            : null,
-                        roomDetails: bill.roomDetails != null
-                            ? RoomDetailsModel(
-                          roomId: bill.roomDetails!.roomId,
-                          name: bill.roomDetails!.name,
-                        )
-                            : null,
-                        billDetailId: bill.billDetailId,
-                      )).toList();
+                      _bills = state.monthlyBills;
                       _isInitialLoad = false;
-                      _applyFilters();
                     });
                     _saveLocalData();
                   } else if (state is BillDetailsLoaded) {
                     setState(() {
                       _allBillDetails = state.billDetails;
-                      _applyFilters();
                     });
+                    _updateUsedServices();
                     _saveLocalData();
+                    _tryApplyFilters(); // Gọi sau khi load xong
                   } else if (state is MonthlyBillDeleted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -476,6 +447,36 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                   }
                 },
               ),
+              BlocListener<AreaBloc, AreaState>(
+                listener: (context, state) {
+                  if (state.error != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Lỗi khi lấy danh sách khu vực: ${state.error!}')),
+                    );
+                  } else {
+                    setState(() {
+                      _areas = state.areas;
+                    });
+                    _saveLocalData();
+                    _tryApplyFilters(); // Thay vì _applyFilters()
+                  }
+                },
+              ),
+              BlocListener<RoomBloc, RoomState>(
+                listener: (context, state) {
+                  if (state is RoomError) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Lỗi khi lấy danh sách phòng: ${state.message}')),
+                    );
+                  } else if (state is RoomLoaded) {
+                    setState(() {
+                      _rooms = state.rooms;
+                    });
+                    _saveLocalData();
+                    _tryApplyFilters(); // Thay vì _applyFilters()
+                  }
+                },
+              ),
               BlocListener<ServiceBloc, ServiceState>(
                 listener: (context, state) {
                   if (state is ServiceError) {
@@ -489,39 +490,10 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                         name: service.name,
                         unit: service.unit,
                       )).toList();
-                      _applyFilters();
                     });
+                    _updateUsedServices();
                     _saveLocalData();
-                  }
-                },
-              ),
-              BlocListener<AreaBloc, AreaState>(
-                listener: (context, state) {
-                  if (state.error != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Lỗi khi lấy danh sách khu vực: ${state.error!}')),
-                    );
-                  } else {
-                    setState(() {
-                      _areas = state.areas;
-                      _applyFilters();
-                    });
-                    _saveLocalData();
-                  }
-                },
-              ),
-              BlocListener<RoomBloc, RoomState>(
-                listener: (context, state) {
-                  if (state is RoomError) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Lỗi khi lấy danh sách phòng: ${state.message}')),
-                    );
-                  } else if (state is RoomLoaded) {
-                    setState(() {
-                      _rooms = state.rooms;
-                      _applyFilters();
-                    });
-                    _saveLocalData();
+                    _tryApplyFilters(); // Thay vì _fetchBills()
                   }
                 },
               ),
@@ -586,8 +558,8 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                                                       _filterArea = value ?? 'All';
                                                       _currentPage = 1;
                                                       _saveLocalData();
-                                                      _applyFilters();
                                                     });
+                                                    _fetchBills();
                                                   },
                                                 ),
                                               ),
@@ -696,21 +668,19 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                                             Expanded(
                                               child: GestureDetector(
                                                 onTap: () async {
-                                                  DateTime? pickedDate = await showDatePicker(
+                                                  DateTime? pickedDate = await showMonthYearPicker(
                                                     context: context,
                                                     initialDate: _selectedMonthYear ?? DateTime.now(),
                                                     firstDate: DateTime(2000),
                                                     lastDate: DateTime(2100),
-                                                    initialDatePickerMode: DatePickerMode.year,
                                                   );
                                                   if (pickedDate != null) {
                                                     setState(() {
                                                       _selectedMonthYear = pickedDate;
-                                                      _filterMonthYear = DateFormat('MM/yyyy').format(pickedDate);
                                                       _currentPage = 1;
-                                                      _saveLocalData();
-                                                      _applyFilters();
                                                     });
+                                                    _saveLocalData();
+                                                    _fetchBills();
                                                   }
                                                 },
                                                 child: Container(
@@ -724,7 +694,9 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                                                         ? DateFormat('MM/yyyy').format(_selectedMonthYear!)
                                                         : 'Chọn tháng',
                                                     style: TextStyle(
-                                                      color: _selectedMonthYear != null ? AppColors.textPrimary : AppColors.textSecondary,
+                                                      color: _selectedMonthYear != null
+                                                          ? AppColors.textPrimary
+                                                          : AppColors.textSecondary,
                                                     ),
                                                   ),
                                                 ),
@@ -734,51 +706,7 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                                         ),
                                       ),
                                       const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Row(
-                                          children: [
-                                            const Text(
-                                              'Trạng thái hóa đơn:',
-                                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                                                decoration: BoxDecoration(
-                                                  border: Border.all(color: Colors.grey),
-                                                  borderRadius: BorderRadius.circular(8.0),
-                                                ),
-                                                child: DropdownButton<String>(
-                                                  hint: const Text('Tất cả trạng thái'),
-                                                  value: _filterBillStatus,
-                                                  isExpanded: true,
-                                                  underline: const SizedBox(),
-                                                  items: billStatuses.map((status) => DropdownMenuItem<String>(
-                                                    value: status,
-                                                    child: Text(
-                                                      status == 'CREATED'
-                                                          ? 'Đã tạo hóa đơn'
-                                                          : status == 'NOT_CREATED'
-                                                          ? 'Chưa tạo hóa đơn'
-                                                          : 'Tất cả',
-                                                    ),
-                                                  )).toList(),
-                                                  onChanged: (value) {
-                                                    setState(() {
-                                                      _filterBillStatus = value ?? 'All';
-                                                      _currentPage = 1;
-                                                      _saveLocalData();
-                                                      _applyFilters();
-                                                    });
-                                                  },
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
+                                    
                                       const Expanded(child: SizedBox()),
                                     ],
                                   ),
@@ -830,6 +758,11 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                           child: BlocBuilder<BillBloc, BillState>(
                             builder: (context, state) {
                               bool isLoading = state is BillLoading;
+
+                              // Nếu chưa có service, hiển thị loading
+                              if (_services.isEmpty) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
 
                               int startIndex = (_currentPage - 1) * _limit;
                               int endIndex = startIndex + _limit;
@@ -887,14 +820,14 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                                         String serviceName = 'N/A';
                                         if (serviceId != null) {
                                           var service = _services.firstWhere(
-                                                (s) => s.serviceId == serviceId,
+                                            (s) => s.serviceId == serviceId,
                                             orElse: () => ServiceModel(
                                               serviceId: -1,
                                               name: 'Không xác định',
                                               unit: '',
                                             ),
                                           );
-                                          serviceName = service.name;
+                                          serviceName = service.serviceId == -1 ? 'Không xác định' : service.name;
                                         }
 
                                         switch (index) {

@@ -23,21 +23,53 @@ class CreateMonthlyBillsBulk extends BillEvent {
 class FetchAllBillDetails extends BillEvent {
   final int page;
   final int limit;
+  final String? area;
+  final String? service;
+  final String? billStatus; // <-- Add this
+  final String? paymentStatus;
+  final String? search;
+  final String? month;
+  final String? submissionStatus;
 
-  const FetchAllBillDetails({this.page = 1, this.limit = 10});
+  const FetchAllBillDetails({
+    required this.page,
+    required this.limit,
+    this.area,
+    this.service,
+    this.billStatus, // <-- Add this
+    this.paymentStatus,
+    this.search,
+    this.month,
+    this.submissionStatus,
+  });
 
   @override
-  List<Object?> get props => [page, limit];
+  List<Object?> get props => [page, limit, area, service, billStatus, paymentStatus, search, month, submissionStatus];
 }
 
 class FetchAllMonthlyBills extends BillEvent {
   final int page;
   final int limit;
+  final String? area;
+  final String? paymentStatus;
+  final String? service;
+  final String? month;
+  final String? billStatus;
+  final String? search;
 
-  const FetchAllMonthlyBills({required this.page, required this.limit});
+  const FetchAllMonthlyBills({
+    required this.page,
+    required this.limit,
+    this.area,
+    this.paymentStatus,
+    this.service,
+    this.month,
+    this.billStatus,
+    this.search,
+  });
 
   @override
-  List<Object?> get props => [page, limit];
+  List<Object?> get props => [page, limit, area, paymentStatus, service, month, billStatus, search];
 }
 
 class DeletePaidBillsEvent extends BillEvent {
@@ -65,4 +97,24 @@ class DeleteMonthlyBillEvent extends BillEvent {
 
   @override
   List<Object?> get props => [billId];
+}
+
+class BillDetailModel {
+  // ...existing fields...
+  final bool? submitted;
+  final String? paymentStatus;
+
+  BillDetailModel({
+    // ...existing parameters...
+    this.submitted,
+    this.paymentStatus,
+  });
+
+  factory BillDetailModel.fromJson(Map<String, dynamic> json) {
+    return BillDetailModel(
+      // ...existing fields...
+      submitted: json['submitted'] as bool?,
+      paymentStatus: json['payment_status'] as String?,
+    );
+  }
 }

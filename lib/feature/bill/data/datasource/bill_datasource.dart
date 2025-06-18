@@ -10,8 +10,18 @@ abstract class BillRemoteDataSource {
     required DateTime billMonth,
     List<int>? roomIds,
   });
-  Future<Either<Failure, List<BillDetailModel>>> getAllBillDetails();
-  Future<Either<Failure, (List<MonthlyBillModel>, int)>> getAllMonthlyBills({required int page, required int limit});
+  Future<Either<Failure, Map<String, dynamic>>> getAllBillDetails({
+    int page = 1,
+    int limit = 20,
+    String? area,
+    String? service,
+    String? billStatus,
+    String? paymentStatus,
+    String? search,
+    String? month,
+    String? submissionStatus, // Thêm tham số mới
+  });
+  Future<Either<Failure, (List<MonthlyBillModel>, int)>> getAllMonthlyBills({required int page, required int limit, String? paymentStatus, String? area, String? service, String? month, String? billStatus, String? search});
   Future<Either<Failure, Map<String, List<int>>>> deletePaidBills(List<int> billIds);
   Future<Either<Failure, void>> deleteBillDetail(int detailId);
   Future<Either<Failure, void>> deleteMonthlyBill(int billId);
@@ -48,28 +58,79 @@ class BillRemoteDataSourceImpl implements BillRemoteDataSource {
   }
 
   @override
-  Future<Either<Failure, List<BillDetailModel>>> getAllBillDetails() async {
+  Future<Either<Failure, Map<String, dynamic>>> getAllBillDetails({
+    int page = 1,
+    int limit = 20,
+    String? area,
+    String? service,
+    String? billStatus,
+    String? paymentStatus,
+    String? search,
+    String? month,
+    String? submissionStatus,
+  }) async {
     try {
-      final response = await apiService.get('/admin/bill-details');
-      final billDetails = (response as List)
+      final queryParams = {
+        'page': page.toString(),
+        'limit': limit.toString(),
+        if (area != null && area != 'All') 'area': area,
+        if (service != null && service != 'All') 'service': service,
+        if (billStatus != null && billStatus != 'All') 'billStatus': billStatus,
+        if (paymentStatus != null && paymentStatus != 'All') 'paymentStatus': paymentStatus,
+        if (search != null && search.isNotEmpty) 'search': search,
+        if (month != null) 'month': month,
+        if (submissionStatus != null && submissionStatus != 'All') 'submissionStatus': submissionStatus,
+      };
+      final response = await apiService.get('/admin/bill-details', queryParams: queryParams);
+
+      final billDetails = (response['bill_details'] as List)
           .map((json) => BillDetailModel.fromJson(json))
           .toList();
-      return Right(billDetails);
+      final total = response['total'] as int? ?? 0;
+      final pages = response['pages'] as int? ?? 1;
+      final currentPage = response['current_page'] as int? ?? 1;
+
+      return Right({
+        'billDetails': billDetails,
+        'total': total,
+        'pages': pages,
+        'currentPage': currentPage,
+      });
     } catch (e) {
-      return Left(_handleError(e));
+      return Left(ServerFailure(e.toString()));
     }
   }
 
   @override
-  Future<Either<Failure, (List<MonthlyBillModel>, int)>> getAllMonthlyBills({required int page, required int limit}) async {
+  Future<Either<Failure, (List<MonthlyBillModel>, int)>> getAllMonthlyBills({
+    required int page,
+    required int limit,
+    String? area,
+    String? paymentStatus,
+    String? service,
+    String? month,
+    String? billStatus,
+    String? search,
+  }) async {
     try {
-      final response = await apiService.get('/admin/monthly-bills?page=$page&limit=$limit');
-      final monthlyBills = (response as List)
+      print('[DEBUG] Truyền month lên API: $month');
+      final queryParams = {
+        'page': page.toString(),
+        'limit': limit.toString(),
+        if (area != null) 'area': area,
+        if (paymentStatus != null) 'payment_status': paymentStatus,
+        if (service != null) 'service': service,
+        if (month != null) 'month': month,
+        if (billStatus != null) 'bill_status': billStatus,
+        if (search != null) 'search': search,
+      };
+      final response = await apiService.get('/admin/monthly-bills', queryParams: queryParams);
+
+      final billModels = ((response['bills'] ?? []) as List)
           .map((json) => MonthlyBillModel.fromJson(json))
           .toList();
-      // Estimate total: if response length equals limit, assume more pages exist
-      final total = monthlyBills.length == limit ? (page * limit + 1) : (page - 1) * limit + monthlyBills.length;
-      return Right((monthlyBills, total));
+      final total = response['total'] as int? ?? 0;
+      return Right((billModels, total));
     } catch (e) {
       return Left(_handleError(e));
     }
@@ -122,3 +183,4 @@ class BillRemoteDataSourceImpl implements BillRemoteDataSource {
     }
   }
 }
+

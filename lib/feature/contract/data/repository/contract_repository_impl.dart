@@ -14,6 +14,7 @@ class ContractRepositoryImpl implements ContractRepository {
   Future<Either<Failure, (List<Contract>, int)>> getAllContracts({
     int page = 1,
     int limit = 10,
+    String? keyword, 
     String? email,
     String? status,
     String? startDate,
@@ -24,6 +25,7 @@ class ContractRepositoryImpl implements ContractRepository {
       final (models, totalItems) = await remoteDataSource.getAllContracts(
         page: page,
         limit: limit,
+        keyword: keyword, 
         email: email,
         status: status,
         startDate: startDate,
