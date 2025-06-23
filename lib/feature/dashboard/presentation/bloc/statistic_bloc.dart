@@ -95,13 +95,6 @@ class StatisticsBloc extends Bloc<StatisticsEvent, StatisticsState> {
   }
 
   Future<void> _onFetchMonthlyConsumption(FetchMonthlyConsumption event, Emitter<StatisticsState> emit) async {
-    if (event.year == null) {
-      emit(StatisticsError(
-        message: 'Year is required for consumption stats',
-        errorType: ErrorType.validation,
-      ));
-      return;
-    }
     await _handleRequest(
       () => getMonthlyConsumption(
         year: event.year!,
@@ -137,11 +130,10 @@ class StatisticsBloc extends Bloc<StatisticsEvent, StatisticsState> {
         roomId: event.roomId,
       ),
       emit,
-      (data) => RoomStatusLoaded(roomStatusData: data as List<RoomStatus>),
+      (data) => RoomStatusLoaded(roomStatusData: data),
       'room_status',
     );
   }
-
   Future<void> _onFetchRoomStatusSummary(FetchRoomStatusSummary event, Emitter<StatisticsState> emit) async {
     await _handleRequest(
       () => getRoomStatusSummary(
@@ -237,9 +229,25 @@ class StatisticsBloc extends Bloc<StatisticsEvent, StatisticsState> {
       (data) => OccupancyRateLoaded(occupancyRateData: data),
       'occupancy_rate',
     );
-  }
+  }  Future<void> _onFetchReportStats(FetchReportStats event, Emitter<StatisticsState> emit) async {
+    // Nếu không yêu cầu cập nhật mới và có dữ liệu cache, sử dụng cache
+    if (!event.forceRefresh) {
+      try {
+        final cachedReports = await loadCachedReportStats();
+        if (cachedReports.isRight()) {
+          // Kiểm tra nếu có dữ liệu cache
+          final reports = cachedReports.getOrElse(() => []);
+          if (reports.isNotEmpty) {
+            emit(ReportStatsLoaded(reportStatsData: reports, trends: []));
+            return;
+          }
+        }
+      } catch (_) {
+        // Xử lý lỗi khi truy cập cache, tiếp tục lấy từ server
+      }
+    }
 
-  Future<void> _onFetchReportStats(FetchReportStats event, Emitter<StatisticsState> emit) async {
+    // Lấy dữ liệu mới từ server
     await _handleRequest(
       () => getReportStats(
         year: event.year,

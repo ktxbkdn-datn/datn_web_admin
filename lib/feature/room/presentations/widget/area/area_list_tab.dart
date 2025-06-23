@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:file_saver/file_saver.dart';
+
 import '../../../../../common/widget/search_bar.dart';
 import '../../../../../common/widget/filter_tab.dart';
 import '../../../../../common/widget/pagination_controls.dart';
@@ -30,6 +32,7 @@ class _AreaListTabState extends State<AreaListTab> with AutomaticKeepAliveClient
   List<AreaEntity> _areas = [];
   bool _isInitialLoad = true;
   final List<double> _columnWidths = [200.0, 80.0]; // Tên khu vực, Hành động
+  bool _showingStudentList = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -131,6 +134,28 @@ class _AreaListTabState extends State<AreaListTab> with AutomaticKeepAliveClient
                       _isInitialLoad = false;
                     });
                     _saveLocalData();
+                  } else if (state.exportFile != null && state.successMessage != null) {
+                    try {
+                      FileSaver.instance.saveFile(
+                        name: 'danh_sach_sinh_vien.xlsx',
+                        bytes: state.exportFile!,
+                        ext: 'xlsx',
+                        mimeType: MimeType.microsoftExcel,
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Đã tải xuống file Excel thành công!'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Lỗi khi tải file: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
                   }
                 },
                 child: SingleChildScrollView(
@@ -202,6 +227,39 @@ class _AreaListTabState extends State<AreaListTab> with AutomaticKeepAliveClient
                                         ),
                                         icon: const Icon(Icons.refresh),
                                         label: const Text('Làm mới'),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      ElevatedButton.icon(
+                                        onPressed: () {
+                                          setState(() {
+                                            _showingStudentList = !_showingStudentList;
+                                          });
+                                          if (_showingStudentList) {
+                                            context.read<AreaBloc>().add(GetAllUsersInAllAreasEvent());
+                                          }
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.orange,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                        icon: Icon(_showingStudentList ? Icons.visibility_off : Icons.people),
+                                        label: Text(_showingStudentList ? 'Ẩn danh sách' : 'Xem sinh viên'),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      ElevatedButton.icon(
+                                        onPressed: () {
+                                          context.read<AreaBloc>().add(ExportAllUsersInAllAreasEvent());
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.purple,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                        icon: const Icon(Icons.download),
+                                        label: const Text('Tải Excel'),
                                       ),
                                       const SizedBox(width: 10),
                                       ElevatedButton.icon(
@@ -320,6 +378,98 @@ class _AreaListTabState extends State<AreaListTab> with AutomaticKeepAliveClient
                           ),
                         ),
                       ),
+                      if (_showingStudentList) ...[
+                        const SizedBox(height: 20),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 10,
+                                offset: Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'Danh sách sinh viên trong tất cả khu vực',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  ElevatedButton.icon(
+                                    onPressed: () {
+                                      context.read<AreaBloc>().add(ExportAllUsersInAllAreasEvent());
+                                    },
+                                    icon: const Icon(Icons.download),
+                                    label: const Text('Tải Excel'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              BlocBuilder<AreaBloc, AreaState>(
+                                builder: (context, state) {
+                                  if (state.isLoading) {
+                                    return const Center(child: CircularProgressIndicator());
+                                  }
+                                  
+                                  if (state.error != null) {
+                                    return Center(child: Text('Lỗi: ${state.error}'));
+                                  }
+                                  
+                                  if (state.allUsersInAllAreas == null || state.allUsersInAllAreas!.isEmpty) {
+                                    return const Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(20.0),
+                                        child: Text('Không có sinh viên nào'),
+                                      ),
+                                    );
+                                  }
+                                  
+                                  return SizedBox(
+                                    height: 400, 
+                                    child: SingleChildScrollView(
+                                      child: DataTable(
+                                        columns: const [
+                                          DataColumn(label: Text('Họ tên')),
+                                          DataColumn(label: Text('MSSV')),
+                                          DataColumn(label: Text('Email')),
+                                          DataColumn(label: Text('SĐT')),
+                                          DataColumn(label: Text('Quê quán')),
+                                        ],
+                                        rows: state.allUsersInAllAreas!.map((user) {
+                                          return DataRow(
+                                            cells: [
+                                              DataCell(Text(user['fullname'] ?? 'N/A')),
+                                              DataCell(Text(user['student_code'] ?? 'N/A')),
+                                              DataCell(Text(user['email'] ?? 'N/A')),
+                                              DataCell(Text(user['phone'] ?? 'N/A')),
+                                              DataCell(Text(user['hometown'] ?? 'N/A')),
+                                            ],
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+                                  );
+                                  
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

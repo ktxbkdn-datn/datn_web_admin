@@ -138,9 +138,13 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
       altTexts: event.altTexts,
     );
     result.fold(
-      (failure) => emit(NotificationError(message: failure.message)),
+      (failure) {
+        print('Update failed: ${failure.message}');
+        emit(NotificationError(message: failure.message));
+      },
       (notification) {
-        _clearCache(); // Clear cache on update
+        print('Update success: $notification');
+        _clearCache();
         emit(NotificationUpdated(notification: notification));
       },
     );

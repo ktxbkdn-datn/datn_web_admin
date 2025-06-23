@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -553,6 +554,68 @@ class ApiService {
           return {};
         }
         return await _parseResponseBody(response);
+      },
+      (response) => response.statusCode >= 200 && response.statusCode < 300,
+    );
+  }
+
+  Future<Uint8List> getFile(
+    String endpoint, {
+    Map<String, String>? headers,
+    Map<String, String>? queryParams,
+  }) async {
+    print('Starting GET FILE request to $endpoint');
+    _checkToken();
+    final requestHeaders = {
+      'Authorization': 'Bearer $_token',
+      if (headers != null) ...headers,
+    };
+    final uri = Uri.parse('$baseUrl$endpoint').replace(queryParameters: queryParams);
+
+    final response = await http.get(uri, headers: requestHeaders);
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return response.bodyBytes;
+    } else if (response.statusCode == 401) {
+      // Thử refresh token nếu cần
+      await refreshAccessToken();
+      final retryResponse = await http.get(uri, headers: requestHeaders);
+      if (retryResponse.statusCode >= 200 && retryResponse.statusCode < 300) {
+        return retryResponse.bodyBytes;
+      }
+    }
+    throw ServerFailure('Lỗi tải file: ${response.statusCode}');
+  }
+
+  // Phương thức để tải file binary (như PDF) mà không parse JSON
+  Future<Uint8List> getRaw(
+    String endpoint, {
+    Map<String, String>? headers,
+    Map<String, String>? queryParams,
+  }) async {
+    print('Starting GET RAW request to $endpoint');
+    return await _performRequestWithRefresh(
+      () async {
+        _checkToken();
+        final requestHeaders = {
+          'Authorization': 'Bearer $_token',
+          'Accept': 'application/pdf,application/octet-stream',
+          if (headers != null) ...headers,
+        };
+        print('GET RAW request headers: $requestHeaders');
+
+        final uri = Uri.parse('$baseUrl$endpoint').replace(queryParameters: queryParams);
+
+        print('Sending GET RAW request...');
+        return await http.get(
+          uri,
+          headers: requestHeaders,
+        );
+      },
+      endpoint,
+      (response) async {
+        // Trả về binary data thay vì parse JSON
+        return response.bodyBytes;
       },
       (response) => response.statusCode >= 200 && response.statusCode < 300,
     );

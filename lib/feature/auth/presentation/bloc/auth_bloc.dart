@@ -160,31 +160,39 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       ));
     }
   }
-
   Future<void> _onLogoutSubmitted(LogoutSubmitted event, Emitter<AuthState> emit) async {
     emit(state.copyWith(isLoading: true, error: null, successMessage: null));
     try {
+      // Print debug information
+      print('Logout submitted. Current auth state: ${state.auth != null ? 'Authenticated' : 'Not authenticated'}');
+      
       final token = state.auth?.accessToken ?? apiService.token ?? '';
-      final result = await logout(token);
-      result.fold(
-        (failure) {
-          // Nếu thất bại (ví dụ, token bị mất), vẫn cho phép đăng xuất
-          apiService.clearToken(force: true);
-          emit(const AuthState(
-            successMessage: "Đăng xuất thành công",
-            auth: null,
-          ));
-        },
-        (_) {
-          apiService.clearToken(force: true); // Xóa token khi đăng xuất
-          emit(const AuthState(
-            successMessage: "Đăng xuất thành công",
-            auth: null,
-          ));
-        },
-      );
+
+      // First clear local state to ensure clean navigation
+      apiService.clearToken(force: true);
+      
+      // Emit unauthenticated state right away to trigger navigation
+      emit(const AuthState(
+        successMessage: "Đăng xuất thành công",
+        auth: null,
+      ));
+      
+      // Then attempt API logout (fire and forget)
+      logout(token).then((result) {
+        result.fold(
+          (failure) {
+            print('Logout API call failed with: ${failure.message}, but local logout already completed');
+          },
+          (_) {
+            print('Logout API call successful after local logout');
+          },
+        );
+      }).catchError((e) {
+        print('Error during API logout: $e, but local logout already completed');
+      });
     } catch (e) {
-      // Nếu có lỗi bất ngờ, vẫn cho phép đăng xuất
+      // If there's an unexpected error, still allow logout
+      print('Unexpected error during logout: $e, but proceeding with local logout');
       apiService.clearToken(force: true);
       emit(const AuthState(
         successMessage: "Đăng xuất thành công",

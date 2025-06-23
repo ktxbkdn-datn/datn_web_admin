@@ -1,14 +1,10 @@
+import 'package:datn_web_admin/feature/bill/domain/usecase/bill_usecase.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../feature/bill/data/datasource/bill_datasource.dart';
 import '../../../../feature/bill/data/repository/bill_repository_impl.dart';
 import '../../../../feature/bill/domain/repository/bill_repository.dart';
-import '../../../../feature/bill/domain/usecase/create_monthly_bill_bulk.dart';
-import '../../../../feature/bill/domain/usecase/delete_paid_bills.dart';
-import '../../../../feature/bill/domain/usecase/get_all_bill_details.dart';
-import '../../../../feature/bill/domain/usecase/get_all_monthly_bills.dart';
-import '../../../../feature/bill/domain/usecase/delete_bill_detail.dart';
-import '../../../../feature/bill/domain/usecase/delete_monthly_bill.dart'; // Thêm import
+
 import '../../../../feature/bill/presentation/bloc/bill_bloc.dart';
 import '../../network/api_client.dart';
 
@@ -41,8 +37,15 @@ void registerBillDependencies() {
   );
   getIt.registerSingleton<DeleteMonthlyBill>(
     DeleteMonthlyBill(getIt<BillRepository>()), // Đăng ký DeleteMonthlyBill
+  );  getIt.registerSingleton<NotifyRemindBillDetail>(
+    NotifyRemindBillDetail(getIt<BillRepository>()),
   );
-
+  getIt.registerSingleton<NotifyRemindPayment>(
+    NotifyRemindPayment(getIt<BillRepository>()),
+  );
+  getIt.registerSingleton<GetRoomBillDetails>(
+    GetRoomBillDetails(getIt<BillRepository>()),
+  );
   // Đăng ký Bloc
   getIt.registerFactory<BillBloc>(() => BillBloc(
     createMonthlyBillsBulk: getIt<CreateMonthlyBillsBulk>(),
@@ -51,5 +54,8 @@ void registerBillDependencies() {
     deletePaidBills: getIt<DeletePaidBills>(),
     deleteBillDetail: getIt<DeleteBillDetail>(), // Cung cấp deleteBillDetail
     deleteMonthlyBill: getIt<DeleteMonthlyBill>(), // Cung cấp deleteMonthlyBill
+    notifyRemindBillDetail: getIt<NotifyRemindBillDetail>(),
+    notifyRemindPayment: getIt<NotifyRemindPayment>(),
+    getRoomBillDetails: getIt<GetRoomBillDetails>(),
   ));
 }

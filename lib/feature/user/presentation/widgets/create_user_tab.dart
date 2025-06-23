@@ -16,14 +16,15 @@ class _CreateUserTabState extends State<CreateUserTab> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _fullNameController = TextEditingController();
-  final _phoneController = TextEditingController();
+  final _studentCodeController = TextEditingController();
+  final _hometownController = TextEditingController(); // Thêm controller cho quê quán
   bool _isSubmitting = false; // Thêm biến này
 
   @override
   void dispose() {
     _emailController.dispose();
     _fullNameController.dispose();
-    _phoneController.dispose();
+    _studentCodeController.dispose();
     super.dispose();
   }
 
@@ -35,7 +36,8 @@ class _CreateUserTabState extends State<CreateUserTab> {
       context.read<UserBloc>().add(CreateUserEvent(
         email: _emailController.text,
         fullname: _fullNameController.text,
-        phone: _phoneController.text.isEmpty ? null : _phoneController.text,
+        studentCode: _studentCodeController.text,
+        hometown: _hometownController.text, 
       ));
     }
   }
@@ -43,7 +45,8 @@ class _CreateUserTabState extends State<CreateUserTab> {
   void _clearFields() {
     _emailController.clear();
     _fullNameController.clear();
-    _phoneController.clear();
+    _studentCodeController.clear();
+    _hometownController.clear(); 
   }
 
   @override
@@ -208,9 +211,9 @@ class _CreateUserTabState extends State<CreateUserTab> {
                                         ),
                                         const SizedBox(height: 16),
                                         TextFormField(
-                                          controller: _phoneController,
+                                          controller: _studentCodeController,
                                           decoration: InputDecoration(
-                                            labelText: 'Số điện thoại (Tùy chọn)',
+                                            labelText: 'Mã số sinh viên',
                                             labelStyle: const TextStyle(color: Colors.grey),
                                             border: OutlineInputBorder(
                                               borderRadius: BorderRadius.circular(8),
@@ -228,23 +231,40 @@ class _CreateUserTabState extends State<CreateUserTab> {
                                               vertical: 10,
                                             ),
                                           ),
-                                          keyboardType: TextInputType.phone,
                                           validator: (value) {
-                                            if (value != null && value.isNotEmpty) {
-                                              if (!RegExp(r'^(0|\+84)\d{9}$').hasMatch(value)) {
-                                                return 'Số điện thoại phải bắt đầu bằng 0 hoặc +84 và có 10 chữ số (ví dụ: 0901234567 hoặc +84901234567)';
-                                              }
+                                            if (value == null || value.isEmpty) {
+                                              return 'Mã số sinh viên là bắt buộc';
                                             }
                                             return null;
                                           },
-                                          onSaved: (value) {
-                                            if (value != null && value.isNotEmpty) {
-                                              String cleanedValue = value.replaceAll(RegExp(r'[^0-9\+]'), '');
-                                              if (cleanedValue.startsWith('0')) {
-                                                cleanedValue = '+84${cleanedValue.substring(1)}';
-                                              }
-                                              _phoneController.text = cleanedValue;
+                                        ),
+                                        const SizedBox(height: 16),
+                                        TextFormField(
+                                          controller: _hometownController,
+                                          decoration: InputDecoration(
+                                            labelText: 'Quê quán',
+                                            labelStyle: const TextStyle(color: Colors.grey),
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: const BorderSide(color: Colors.grey),
+                                            ),
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: const BorderSide(color: Colors.blue),
+                                            ),
+                                            contentPadding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 10,
+                                            ),
+                                          ),
+                                          validator: (value) {
+                                            if (value == null || value.isEmpty) {
+                                              return 'Quê quán là bắt buộc';
                                             }
+                                            return null;
                                           },
                                         ),
                                       ],
@@ -257,7 +277,7 @@ class _CreateUserTabState extends State<CreateUserTab> {
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   ElevatedButton(
-                                    onPressed: isLoading ? null : () => Navigator.of(context).pop(),
+                                    onPressed: isLoading ? null : _clearFields,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.grey,
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

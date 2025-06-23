@@ -7,6 +7,8 @@ class UserEntity {
   final DateTime? dateOfBirth;
   final String? cccd;
   final String? className;
+  final String? hometown;       // thêm
+  final String? studentCode;    // thêm
   final DateTime createdAt;
   final bool isDeleted;
   final DateTime? deletedAt;
@@ -20,6 +22,8 @@ class UserEntity {
     this.dateOfBirth,
     this.cccd,
     this.className,
+    this.hometown,        // thêm
+    this.studentCode,     // thêm
     required this.createdAt,
     required this.isDeleted,
     this.deletedAt,

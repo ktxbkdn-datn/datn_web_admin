@@ -19,9 +19,9 @@ class EditContractDialog extends StatefulWidget {
 class _EditContractDialogState extends State<EditContractDialog> {
   final _formKey = GlobalKey<FormState>();
   final _roomNameController = TextEditingController();
-  final _userEmailController = TextEditingController();
   final _startDateController = TextEditingController();
   final _endDateController = TextEditingController();
+  final _studentCodeController = TextEditingController();
   int? _areaId;
   String? _contractType;
   bool _hasShownSuccessMessage = false;
@@ -31,17 +31,17 @@ class _EditContractDialogState extends State<EditContractDialog> {
   void initState() {
     super.initState();
     _roomNameController.text = widget.contract.roomName;
-    _userEmailController.text = widget.contract.userEmail;
     _startDateController.text = widget.contract.startDate;
     _endDateController.text = widget.contract.endDate;
     _contractType = widget.contract.contractType;
-    _areaId = null; // Sẽ được chọn lại từ dropdown trong form
+    _areaId = null;
+    _studentCodeController.text = widget.contract.studentCode ?? '';
   }
 
   @override
   void dispose() {
     _roomNameController.dispose();
-    _userEmailController.dispose();
+    _studentCodeController.dispose();
     _startDateController.dispose();
     _endDateController.dispose();
     super.dispose();
@@ -49,15 +49,6 @@ class _EditContractDialogState extends State<EditContractDialog> {
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
-      print('Submitting UpdateContractEvent:');
-      print('Contract ID: ${widget.contract.contractId}');
-      print('Room Name: ${_roomNameController.text}');
-      print('User Email: ${_userEmailController.text}');
-      print('Start Date: ${_startDateController.text}');
-      print('End Date: ${_endDateController.text}');
-      print('Contract Type: $_contractType');
-      print('Area ID: $_areaId');
-
       context.read<ContractBloc>().add(UpdateContractEvent(
         contractId: widget.contract.contractId,
         contract: Contract(
@@ -70,9 +61,10 @@ class _EditContractDialogState extends State<EditContractDialog> {
           startDate: _startDateController.text,
           endDate: _endDateController.text,
           roomName: _roomNameController.text,
-          userEmail: _userEmailController.text,
+          studentCode: _studentCodeController.text,
         ),
         areaId: _areaId!,
+        studentCode: _studentCodeController.text,
       ));
     }
   }
@@ -155,7 +147,6 @@ class _EditContractDialogState extends State<EditContractDialog> {
                       child: ContractFormWidget(
                         formKey: _formKey,
                         roomNameController: _roomNameController,
-                        userEmailController: _userEmailController,
                         startDateController: _startDateController,
                         endDateController: _endDateController,
                         areaId: _areaId,
@@ -171,6 +162,7 @@ class _EditContractDialogState extends State<EditContractDialog> {
                           });
                         },
                         showContractTypeField: true,
+                        studentCodeController: _studentCodeController,
                       ),
                     ),
                   ),

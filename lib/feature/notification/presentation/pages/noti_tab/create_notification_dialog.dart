@@ -24,10 +24,30 @@ class TitleField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         labelText: 'Tiêu đề',
-        border: OutlineInputBorder(),
+        labelStyle: TextStyle(
+          color: Colors.grey.shade700,
+          fontWeight: FontWeight.w600,
+        ),
+        prefixIcon: Icon(Icons.title, color: Colors.grey.shade400),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.shade600, width: 2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
       ),
+      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
       validator: (value) {
         if (value == null || value.isEmpty) {
           return 'Vui lòng nhập tiêu đề';
@@ -71,9 +91,35 @@ class RecipientSelector extends StatelessWidget {
       children: [
         DropdownButtonFormField<String>(
           value: recipientType,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Đối tượng nhận',
-            border: OutlineInputBorder(),
+            labelStyle: TextStyle(
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w600,
+            ),
+            prefixIcon: Icon(Icons.group, color: Colors.grey.shade400),
+            filled: true,
+            fillColor: Colors.grey.shade50,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: Colors.grey.shade600, width: 2),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+          ),
+          dropdownColor: Colors.grey.shade50,
+          iconEnabledColor: Colors.grey.shade600,
+          style: TextStyle(
+            color: Colors.grey.shade800,
+            fontWeight: FontWeight.w500,
+            fontSize: 15,
           ),
           items: const [
             DropdownMenuItem(value: 'ALL', child: Text('Tất cả người dùng')),
@@ -92,11 +138,31 @@ class RecipientSelector extends StatelessWidget {
         if (recipientType == 'USER')
           TextFormField(
             controller: emailController,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Email người dùng',
-              border: OutlineInputBorder(),
+              labelStyle: TextStyle(
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w600,
+              ),
+              prefixIcon: Icon(Icons.email, color: Colors.grey.shade400),
+              filled: true,
+              fillColor: Colors.grey.shade50,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.grey.shade600, width: 2),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
             ),
             keyboardType: TextInputType.emailAddress,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Vui lòng nhập email';
@@ -121,9 +187,35 @@ class RecipientSelector extends StatelessWidget {
               }
               return DropdownButtonFormField<int>(
                 value: areaId,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Khu vực',
-                  border: OutlineInputBorder(),
+                  labelStyle: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  prefixIcon: Icon(Icons.location_on, color: Colors.grey.shade400),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: Colors.grey.shade600, width: 2),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+                ),
+                dropdownColor: Colors.grey.shade50,
+                iconEnabledColor: Colors.grey.shade600,
+                style: TextStyle(
+                  color: Colors.grey.shade800,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 15,
                 ),
                 items: areaState.areas.map((area) {
                   return DropdownMenuItem<int>(
@@ -144,10 +236,30 @@ class RecipientSelector extends StatelessWidget {
           const SizedBox(height: 16),
           TextFormField(
             controller: roomNameController,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Tên phòng',
-              border: OutlineInputBorder(),
+              labelStyle: TextStyle(
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w600,
+              ),
+              prefixIcon: Icon(Icons.meeting_room, color: Colors.grey.shade400),
+              filled: true,
+              fillColor: Colors.grey.shade50,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.grey.shade600, width: 2),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
             ),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Vui lòng nhập tên phòng';
@@ -300,26 +412,39 @@ class _CreateNotificationDialogState extends State<CreateNotificationDialog> {
     return Stack(
       children: [
         Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: Colors.transparent,
           child: LayoutBuilder(
             builder: (context, constraints) {
               double screenWidth = MediaQuery.of(context).size.width;
               double screenHeight = MediaQuery.of(context).size.height;
-
               double dialogWidth = screenWidth < 600
-                  ? screenWidth * 0.9
+                  ? screenWidth * 0.98
                   : screenWidth < 1200
-                  ? screenWidth * 0.7
-                  : 800;
+                  ? screenWidth * 0.75
+                  : 900;
               double dialogHeight = screenHeight < 600
-                  ? screenHeight * 0.9
+                  ? screenHeight * 0.98
                   : screenHeight < 900
-                  ? screenHeight * 0.8
-                  : 700;
-
+                  ? screenHeight * 0.85
+                  : 750;
               return Container(
                 width: dialogWidth,
                 height: dialogHeight,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.white, Colors.blue.shade50],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(32),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.25),
+                      blurRadius: 32,
+                      offset: const Offset(0, 16),
+                    ),
+                  ],
+                ),
                 padding: const EdgeInsets.all(24),
                 child: BlocListener<NotificationBloc, NotificationState>(
                   listener: (context, state) {
@@ -377,7 +502,7 @@ class _CreateNotificationDialogState extends State<CreateNotificationDialog> {
                               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.close),
+                              icon: const Icon(Icons.close, size: 28),
                               onPressed: () {
                                 _clearAllFields();
                                 Navigator.of(context).pop();
@@ -395,11 +520,31 @@ class _CreateNotificationDialogState extends State<CreateNotificationDialog> {
                                 const SizedBox(height: 16),
                                 TextFormField(
                                   controller: _messageController,
-                                  decoration: const InputDecoration(
+                                  decoration: InputDecoration(
                                     labelText: 'Nội dung',
-                                    border: OutlineInputBorder(),
+                                    labelStyle: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    prefixIcon: Icon(Icons.message, color: Colors.grey.shade400),
+                                    filled: true,
+                                    fillColor: Colors.grey.shade50,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(color: Colors.grey.shade600, width: 2),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
                                   ),
-                                  maxLines: 5,
+                                  maxLines: 10,
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
                                       return 'Vui lòng nhập nội dung';
@@ -461,38 +606,53 @@ class _CreateNotificationDialogState extends State<CreateNotificationDialog> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            TextButton(
+                            // Cancel Button
+                            ElevatedButton(
                               onPressed: () {
                                 _clearAllFields();
                                 Navigator.of(context).pop();
                               },
-                              child: const Text(
-                                'Hủy',
-                                style: TextStyle(color: Colors.black),
+                              style: ElevatedButton.styleFrom(
+                                elevation: 0,
+                                backgroundColor: Colors.grey.shade100,
+                                foregroundColor: Colors.grey.shade700,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                                textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                               ),
+                              child: const Text('Hủy'),
                             ),
                             const SizedBox(width: 16),
+                            // Create Button
                             ElevatedButton(
                               onPressed: (_isProcessing || _exceedsFileLimit || _exceedsVideoLimit || _exceedsImageLimit || _exceedsDocumentLimit || _isSubmitting)
                                   ? null
                                   : _createNotification,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                elevation: 2,
+                                backgroundColor: (_isProcessing || _exceedsFileLimit || _exceedsVideoLimit || _exceedsImageLimit || _exceedsDocumentLimit || _isSubmitting)
+                                    ? Colors.grey.shade300
+                                    : Colors.blue.shade600,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                                textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                shadowColor: Colors.blue.shade100,
                               ),
                               child: _isProcessing
                                   ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
+                                      width: 22,
+                                      height: 22,
                                       child: CircularProgressIndicator(
                                         color: Colors.white,
-                                        strokeWidth: 2,
+                                        strokeWidth: 2.5,
                                       ),
                                     )
-                                  : const Text(
-                                      'Tạo',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
+                                  : const Text('Tạo'),
                             ),
                           ],
                         ),

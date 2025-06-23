@@ -1,4 +1,5 @@
 // lib/src/features/user/data/models/user_model.dart
+import 'package:intl/intl.dart';
 import '../../domain/entities/user_entity.dart';
 
 class UserModel {
@@ -13,6 +14,8 @@ class UserModel {
   final bool isDeleted;
   final DateTime? deletedAt;
   final int version;
+  final String? hometown;
+  final String? studentCode;
 
   UserModel({
     required this.userId,
@@ -26,21 +29,39 @@ class UserModel {
     required this.isDeleted,
     this.deletedAt,
     required this.version,
+    this.hometown,
+    this.studentCode,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDate(String? dateStr) {
+      if (dateStr == null) return null;
+      try {
+        // Try dd-MM-yyyy first
+        return DateFormat('dd-MM-yyyy').parseStrict(dateStr);
+      } catch (_) {
+        try {
+          // Try ISO 8601 fallback
+          return DateTime.parse(dateStr);
+        } catch (_) {
+          return null;
+        }
+      }
+    }
     return UserModel(
       userId: json['user_id'] as int,
       fullname: json['fullname'] as String,
       email: json['email'] as String,
       phone: json['phone'] as String?,
-      dateOfBirth: json['date_of_birth'] != null ? DateTime.parse(json['date_of_birth'] as String) : null,
+      dateOfBirth: parseDate(json['date_of_birth'] as String?),
       cccd: json['CCCD'] as String?,
       className: json['class_name'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: parseDate(json['created_at'] as String) ?? DateTime.now(),
       isDeleted: json['is_deleted'] as bool,
-      deletedAt: json['deleted_at'] != null ? DateTime.parse(json['deleted_at'] as String) : null,
+      deletedAt: parseDate(json['deleted_at'] as String?),
       version: json['version'] as int,
+      hometown: json['hometown'] as String?,
+      studentCode: json['student_code'] as String?,
     );
   }
 
@@ -57,6 +78,8 @@ class UserModel {
       'is_deleted': isDeleted,
       'deleted_at': deletedAt?.toIso8601String(),
       'version': version,
+      'hometown': hometown,
+      'student_code': studentCode,
     };
   }
 
@@ -73,6 +96,8 @@ class UserModel {
       isDeleted: isDeleted,
       deletedAt: deletedAt,
       version: version,
+      hometown: hometown,
+      studentCode: studentCode,
     );
   }
 }

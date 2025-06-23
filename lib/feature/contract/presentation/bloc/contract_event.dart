@@ -46,14 +46,16 @@ class FetchContractByIdEvent extends ContractEvent {
 class CreateContractEvent extends ContractEvent {
   final Contract contract;
   final int areaId;
+  final String studentCode;
 
   const CreateContractEvent({
     required this.contract,
     required this.areaId,
+    required this.studentCode,
   });
 
   @override
-  List<Object?> get props => [contract, areaId];
+  List<Object?> get props => [contract, areaId, studentCode];
 }
 
 class UpdateContractEvent extends ContractEvent {
@@ -64,7 +66,7 @@ class UpdateContractEvent extends ContractEvent {
   const UpdateContractEvent({
     required this.contractId,
     required this.contract,
-    required this.areaId,
+    required this.areaId, required String studentCode,
   });
 
   @override

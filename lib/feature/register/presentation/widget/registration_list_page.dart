@@ -404,7 +404,7 @@ class _RegistrationListPageState extends State<RegistrationListPage> with Automa
                           ),
                           const SizedBox(height: 16),
                           SizedBox(
-                            height: constraints.maxHeight - 300,
+                            height: constraints.maxHeight - 100, // Tăng thêm 200
                             child: BlocConsumer<RegistrationBloc, RegistrationState>(
                               listener: (context, state) {
                                 if (state is RegistrationsLoaded) {

@@ -7,7 +7,7 @@ import '../../../room/presentations/bloc/area_bloc/area_state.dart';
 class ContractFormWidget extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController roomNameController;
-  final TextEditingController userEmailController;
+  final TextEditingController studentCodeController;
   final TextEditingController startDateController;
   final TextEditingController endDateController;
   final int? areaId;
@@ -25,7 +25,7 @@ class ContractFormWidget extends StatelessWidget {
     Key? key,
     required this.formKey,
     required this.roomNameController,
-    required this.userEmailController,
+    required this.studentCodeController,
     required this.startDateController,
     required this.endDateController,
     required this.areaId,
@@ -113,7 +113,6 @@ class ContractFormWidget extends StatelessWidget {
               return DropdownMenuItem<String>(
                 value: room,
                 child: Container(
-                
                   child: Text(
                     room,
                     style: const TextStyle(fontSize: 16),
@@ -124,19 +123,17 @@ class ContractFormWidget extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           TextFormField(
-            controller: userEmailController,
+            controller: studentCodeController,
             decoration: const InputDecoration(
-              labelText: 'Email người dùng',
+              labelText: 'Mã số sinh viên',
               border: OutlineInputBorder(),
             ),
-            keyboardType: TextInputType.emailAddress,
+            keyboardType: TextInputType.text,
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Email không được để trống';
+                return 'Mã số sinh viên không được để trống';
               }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                return 'Email không hợp lệ';
-              }
+              // Có thể thêm validate theo format nếu cần
               return null;
             },
           ),

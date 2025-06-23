@@ -1,4 +1,5 @@
 // lib/src/features/room/data/repositories/area_repository_impl.dart
+import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import '../../../../src/core/error/failures.dart';
 import '../../domain/entities/area_entity.dart';
@@ -75,5 +76,30 @@ class AreaRepositoryImpl implements AreaRepository {
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
+  }
+
+  @override
+  Future<Uint8List> exportUsersInArea(int areaId) async {
+    return await dataSource.exportUsersInArea(areaId);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getAreasWithStudentCount() async {
+    return await dataSource.getAreasWithStudentCount();
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getUsersInArea(int areaId) async {
+    return await dataSource.getUsersInArea(areaId);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getAllUsersInAllAreas() async {
+    return await dataSource.getAllUsersInAllAreas();
+  }
+
+  @override
+  Future<Uint8List> exportAllUsersInAllAreas() async {
+    return await dataSource.exportAllUsersInAllAreas();
   }
 }

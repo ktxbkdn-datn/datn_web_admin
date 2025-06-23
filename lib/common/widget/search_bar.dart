@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 
 class SearchBarTab extends StatefulWidget {
   final Function(String)? onChanged; // Cho phép onChanged là null
+  final Function(String)? onSearch; // Thêm onSearch callback
   final String hintText;
   final String initialValue;
 
   const SearchBarTab({
     Key? key,
     this.onChanged, // onChanged là optional
+    this.onSearch, // onSearch là optional
     required this.hintText,
     this.initialValue = '',
   }) : super(key: key);
@@ -44,17 +46,36 @@ class _SearchBarTabState extends State<SearchBarTab> {
         hintText: widget.hintText,
         border: const OutlineInputBorder(),
         prefixIcon: const Icon(Icons.search),
-        suffixIcon: IconButton(
-          icon: const Icon(Icons.clear),
-          onPressed: widget.onChanged == null
-              ? null // Vô hiệu hóa nếu onChanged là null
-              : () {
-            _controller.clear();
-            widget.onChanged!('');
-          },
+        suffixIcon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Nút tìm kiếm (hiển thị nếu có onSearch)
+            if (widget.onSearch != null)
+              IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: () {
+                  widget.onSearch!(_controller.text);
+                },
+              ),
+            // Nút xóa
+            IconButton(
+              icon: const Icon(Icons.clear),
+              onPressed: widget.onChanged == null
+                  ? null // Vô hiệu hóa nếu onChanged là null
+                  : () {
+                _controller.clear();
+                widget.onChanged!('');
+                // Gọi onSearch với chuỗi rỗng khi xóa
+                if (widget.onSearch != null) {
+                  widget.onSearch!('');
+                }
+              },
+            ),
+          ],
         ),
       ),
       onChanged: widget.onChanged ?? (value) {}, // Cung cấp giá trị mặc định nếu onChanged là null
+      onSubmitted: widget.onSearch, // Gọi onSearch khi nhấn Enter
     );
   }
 }

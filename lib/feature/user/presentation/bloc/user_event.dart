@@ -15,6 +15,8 @@ class FetchUsersEvent extends UserEvent {
   final String? fullname;
   final String? phone;
   final String? className;
+  final String? hometown;        // thêm
+  final String? studentCode;     // thêm
 
   const FetchUsersEvent({
     required this.page,
@@ -24,25 +26,31 @@ class FetchUsersEvent extends UserEvent {
     this.fullname,
     this.phone,
     this.className,
+    this.hometown,        // thêm
+    this.studentCode,     // thêm
   });
 
   @override
-  List<Object?> get props => [page, limit, keyword, email, fullname, phone, className];
+  List<Object?> get props => [page, limit, keyword, email, fullname, phone, className, hometown, studentCode];
 }
 
 class CreateUserEvent extends UserEvent {
   final String email;
   final String fullname;
   final String? phone;
+  final String? hometown;        // thêm
+  final String? studentCode;     // thêm
 
   const CreateUserEvent({
     required this.email,
     required this.fullname,
     this.phone,
+    this.hometown,        // thêm
+    this.studentCode,     // thêm
   });
 
   @override
-  List<Object?> get props => [email, fullname, phone];
+  List<Object?> get props => [email, fullname, phone, hometown, studentCode];
 }
 
 class UpdateUserEvent extends UserEvent {
@@ -53,6 +61,8 @@ class UpdateUserEvent extends UserEvent {
   final String? cccd;
   final DateTime? dateOfBirth;
   final String? className;
+  final String? hometown;        // thêm
+  final String? studentCode;     // thêm
 
   const UpdateUserEvent({
     required this.userId,
@@ -62,10 +72,12 @@ class UpdateUserEvent extends UserEvent {
     this.cccd,
     this.dateOfBirth,
     this.className,
+    this.hometown,        // thêm
+    this.studentCode,     // thêm
   });
 
   @override
-  List<Object?> get props => [userId, fullname, email, phone, cccd, dateOfBirth, className];
+  List<Object?> get props => [userId, fullname, email, phone, cccd, dateOfBirth, className, hometown, studentCode];
 }
 
 class DeleteUserEvent extends UserEvent {

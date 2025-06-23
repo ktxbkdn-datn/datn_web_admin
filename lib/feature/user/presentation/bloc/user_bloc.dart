@@ -40,11 +40,13 @@ class UserBloc extends Bloc<UserEvent, UserState> {
       final result = await getAllUsers(
         page: event.page,
         limit: event.limit,
-        keyword: event.keyword, // Thêm dòng này
+        keyword: event.keyword,
         email: event.email,
         fullname: event.fullname,
         phone: event.phone,
         className: event.className,
+        hometown: event.hometown,        // thêm
+        studentCode: event.studentCode,  // thêm
       );
       result.fold(
         (failure) => emit(UserError(message: failure.message)),
@@ -68,6 +70,8 @@ class UserBloc extends Bloc<UserEvent, UserState> {
         email: event.email,
         fullname: event.fullname,
         phone: event.phone,
+        hometown: event.hometown,        // thêm
+        studentCode: event.studentCode,  // thêm
       );
       result.fold(
         (failure) => emit(UserError(message: failure.message)),
@@ -94,6 +98,8 @@ class UserBloc extends Bloc<UserEvent, UserState> {
         cccd: event.cccd,
         dateOfBirth: event.dateOfBirth,
         className: event.className,
+        hometown: event.hometown,        // thêm
+        studentCode: event.studentCode,  // thêm
       );
       result.fold(
         (failure) => emit(UserError(message: failure.message)),

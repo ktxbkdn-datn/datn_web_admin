@@ -7,10 +7,13 @@ import 'package:datn_web_admin/feature/bill/domain/entities/monthly_bill_entity.
 import 'package:datn_web_admin/feature/bill/presentation/bloc/bill_bloc.dart';
 import 'package:datn_web_admin/feature/bill/presentation/bloc/bill_event.dart';
 import 'package:datn_web_admin/feature/bill/presentation/bloc/bill_state.dart';
+import 'package:datn_web_admin/feature/bill/presentation/page/widget/bill_meter_details/notify_remind_bill_dialog.dart';
+import 'package:datn_web_admin/feature/bill/presentation/page/widget/bill_meter_details/meter_history_dialog.dart';
 import 'package:datn_web_admin/feature/room/domain/entities/room_entity.dart';
 import 'package:datn_web_admin/feature/service/presentation/bloc/service_bloc.dart';
 import 'package:datn_web_admin/feature/service/presentation/bloc/service_event.dart';
 import 'package:datn_web_admin/feature/service/presentation/bloc/service_state.dart';
+import 'package:datn_web_admin/src/core/di/injection.dart'; // Re-added for local BillBloc
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
@@ -25,6 +28,7 @@ import '../../../../../room/presentations/bloc/area_bloc/area_state.dart';
 import '../../../../../room/presentations/bloc/room_bloc/room_bloc.dart';
 import '../../../../../service/data/models/service_model.dart';
 import '../../../../../service/domain/entities/service_entity.dart';
+import 'bill_list_item.dart';
 
 class BillDetailListPage extends StatefulWidget {
   const BillDetailListPage({Key? key}) : super(key: key);
@@ -54,9 +58,7 @@ class _BillDetailListPageState extends State<BillDetailListPage>
   List<Service> _services = [];
 
   @override
-  bool get wantKeepAlive => true;
-
-  @override
+  bool get wantKeepAlive => true;  @override
   void initState() {
     super.initState();
     _selectedMonthYear = DateTime.now();
@@ -75,7 +77,8 @@ class _BillDetailListPageState extends State<BillDetailListPage>
   }
 
   List<double> _getColumnWidths(double screenWidth) {
-    final baseWidths = [40.0, 150.0, 150.0, 150.0, 120.0, 120.0, 150.0, 40.0];
+    // Giảm độ rộng cột 1 (checkbox) và phân bổ lại các cột còn lại
+    final baseWidths = [28.0, 120.0, 120.0, 120.0, 100.0, 100.0, 120.0, 60.0];
     final totalBaseWidth = baseWidths.reduce((a, b) => a + b);
     final availableWidth = screenWidth - 32; // Trừ margin
     if (totalBaseWidth < availableWidth) {
@@ -302,10 +305,23 @@ class _BillDetailListPageState extends State<BillDetailListPage>
 
     setState(() {
       _selectedBillDetails.clear();
-      _selectAll = false;
-    });
+      _selectAll = false;    });
   }
-
+    void _showNotifyRemindBillDetailDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => NotifyRemindBillDetailDialog(
+        title: 'Gửi thông báo nhắc nộp chỉ số',
+        description: 'Chọn tháng cần nhắc nhở nộp chỉ số:',
+        buttonText: 'Gửi thông báo nhắc nộp',
+        onSubmit: (billMonth) {
+          final bloc = BlocProvider.of<BillBloc>(context);
+          bloc.add(NotifyRemindBillDetailEvent(billMonth: billMonth));
+        },
+      ),
+    );
+  }
+  
   void _deleteBillDetail(int detailId) {
     showDialog(
       context: context,
@@ -328,7 +344,15 @@ class _BillDetailListPageState extends State<BillDetailListPage>
       ),
     );
   }
-
+  void _showMeterHistoryDialog(int roomId, String roomName) {
+    showDialog(
+      context: context,
+      builder: (context) => MeterHistoryDialog(
+        roomId: roomId,
+        roomName: roomName,
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -368,9 +392,7 @@ class _BillDetailListPageState extends State<BillDetailListPage>
     if (_filterPaymentStatus != 'All' &&
         !paymentStatuses.contains(_filterPaymentStatus)) {
       _filterPaymentStatus = 'All';
-    }
-
-    return MultiBlocListener(
+    }    return MultiBlocListener(
       listeners: [
         BlocListener<BillBloc, BillState>(
           listener: (context, state) {
@@ -429,9 +451,18 @@ class _BillDetailListPageState extends State<BillDetailListPage>
                   content: Text(state.message),
                   backgroundColor: AppColors.buttonSuccess,
                   duration: const Duration(seconds: 3),
+                ),              );
+              _fetchBillDetails();            } else if (state is NotificationSent) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Gửi thông báo thành công'),
+                  backgroundColor: AppColors.buttonSuccess,
+                  duration: const Duration(seconds: 3),
                 ),
               );
+              // Reload the page after successful notification
               _fetchBillDetails();
+              _fetchMonthlyBills();
             }
           },
         ),
@@ -872,24 +903,25 @@ class _BillDetailListPageState extends State<BillDetailListPage>
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 10),
-                                Row(
+                                const SizedBox(height: 10),                                Row(
                                   mainAxisAlignment: MainAxisAlignment.start,
                                   children: [
-                                    ElevatedButton.icon(
-                                      onPressed: _createMonthlyBills,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.primaryColor,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
+                                    Tooltip(
+                                      message: 'Tạo hóa đơn hàng tháng',
+                                      child: IconButton(
+                                        onPressed: _createMonthlyBills,
+                                        icon: const Icon(Icons.add_circle, size: 32),
+                                        color: AppColors.buttonPrimaryColor,
                                       ),
-                                      icon: const Icon(Icons.add,
-                                          color: AppColors.cardBackground),
-                                      label: const Text('Tạo Hóa Đơn Hàng Tháng',
-                                          style: TextStyle(
-                                              color: AppColors.cardBackground)),
-                                    ),
+                                    ),                                    const SizedBox(width: 16),
+                                    // Tooltip(
+                                    //   message: 'Gửi thông báo nhắc nhở nộp chỉ số',
+                                    //   child: IconButton(
+                                    //     onPressed: _showNotifyRemindBillDetailDialog,
+                                    //     icon: const Icon(Icons.notifications_active, size: 32),
+                                    //     color: AppColors.buttonWarning,
+                                    //   ),
+                                    // ),
                                   ],
                                 ),
                               ],
@@ -903,82 +935,77 @@ class _BillDetailListPageState extends State<BillDetailListPage>
                               child: BlocBuilder<BillBloc, BillState>(
                                 builder: (context, state) {
                                   print('Rendering table with state: $state');
-                                  if (state is BillLoading && _isInitialLoad) {
+                                  bool isLoading = state is BillLoading;
+                                  // Hiển thị loading khi đang tải dữ liệu hoặc chưa có dữ liệu thực tế
+                                  if (isLoading || _services.isEmpty) {
+                                    return Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const CircularProgressIndicator(
+                                            valueColor: AlwaysStoppedAnimation<Color>(AppColors.buttonPrimaryColor),
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            'Đang tải dữ liệu...',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              color: AppColors.textSecondary.withOpacity(0.8),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }
+                                  // Nếu đã có dữ liệu nhưng không có billDetails nào
+                                  if (_billDetails.isEmpty) {
                                     return const Center(
-                                      child: CircularProgressIndicator(color: AppColors.primaryColor),
+                                      child: Text('Không có dữ liệu', style: TextStyle(color: AppColors.textSecondary)),
                                     );
                                   }
 
                                   if (state is BillError) {
-                                    return Center(
-                                      child: Text(
-                                        'Lỗi: ${state.message}',
-                                        style: const TextStyle(color: AppColors.buttonError, fontSize: 18),
-                                      ),
-                                    );
+                                    // Instead of showing error on screen, return an empty widget
+                                    // Error is already shown in the BlocListener via SnackBar
+                                    return const SizedBox.shrink();
                                   }
 
                                   if (state is BillDetailsLoaded) {
                                     // _billDetails đã được cập nhật ở BlocListener, chỉ cần render
-                                    return GenericDataTable<BillDetail>(
-                                      data: _billDetails,
-                                      headers: const [
-                                        '',
-                                        'Khu',
-                                        'Phòng',
-                                        'Người gửi',
-                                        'Chỉ số hiện tại',
-                                        'Tháng hóa đơn',
-                                        'Ngày gửi',
-                                        '',
-                                      ],
-                                      columnWidths: _getColumnWidths(MediaQuery.of(context).size.width),
-                                      cellBuilder: (detail, index) {
-                                        bool isCreatedAndPaid = false;
-                                        if (detail.monthlyBillId != null &&
-                                            detail.monthlyBillId != -1) {
-                                          MonthlyBill? monthlyBill =
-                                              _allMonthlyBills.firstWhere(
-                                            (bill) =>
-                                                bill.detailId == detail.detailId,
-                                            orElse: () => MonthlyBill(
-                                              billId: -1,
-                                              userId: -1,
-                                              detailId: -1,
-                                              roomId: -1,
-                                              billMonth: DateTime.now(),
-                                              totalAmount: 0.0,
-                                              paymentStatus: 'PENDING',
-                                              createdAt: DateTime.now(),
-                                              paymentMethodAllowed: '',
-                                              paidAt: null,
-                                              transactionReference: null,
-                                              userDetails: null,
-                                              roomDetails: null,
-                                              billDetailId: -1,
-                                            ),
-                                          );
-                                          isCreatedAndPaid =
-                                              monthlyBill.paymentStatus == 'PAID';
-                                        }
-
-                                        switch (index) {
-                                          case 0:
-                                            return Checkbox(
-                                              value: _selectedBillDetails
-                                                  .contains(detail),
-                                              onChanged: detail.submittedBy !=
-                                                          null &&
-                                                      (detail.monthlyBillId ==
-                                                              null ||
-                                                          detail.monthlyBillId ==
-                                                              -1)
-                                                  ? (value) {
-                                                      _toggleSelection(detail);
-                                                    }
-                                                  : null,
-                                            );
-                                          case 1:
+                                    return Column(
+                                      children: [
+                                        // Hiển thị list item hiện đại thay cho bảng cũ
+                                        ListView.builder(
+                                          shrinkWrap: true,
+                                          physics: const NeverScrollableScrollPhysics(),
+                                          itemCount: _billDetails.length,
+                                          itemBuilder: (context, idx) {
+                                            final detail = _billDetails[idx];
+                                            bool isCreatedAndPaid = false;
+                                            MonthlyBill? monthlyBill;
+                                            if (detail.monthlyBillId != null && detail.monthlyBillId != -1) {
+                                              monthlyBill = _allMonthlyBills.firstWhere(
+                                                (bill) => bill.detailId == detail.detailId,
+                                                orElse: () => MonthlyBill(
+                                                  billId: -1,
+                                                  userId: -1,
+                                                  detailId: -1,
+                                                  roomId: -1,
+                                                  billMonth: DateTime.now(),
+                                                  totalAmount: 0.0,
+                                                  paymentStatus: 'PENDING',
+                                                  createdAt: DateTime.now(),
+                                                  paymentMethodAllowed: '',
+                                                  paidAt: null,
+                                                  transactionReference: null,
+                                                  userDetails: null,
+                                                  roomDetails: null,
+                                                  billDetailId: -1,
+                                                ),
+                                              );
+                                              isCreatedAndPaid = monthlyBill.paymentStatus == 'PAID';
+                                            }
+                                            // Lấy tên khu vực, phòng, người gửi
                                             String areaName = 'N/A';
                                             RoomEntity? room;
                                             for (var r in _rooms) {
@@ -995,84 +1022,41 @@ class _BillDetailListPageState extends State<BillDetailListPage>
                                                 }
                                               }
                                             }
-                                            return Text(
-                                              areaName,
-                                              overflow: TextOverflow.ellipsis,
-                                              textAlign: TextAlign.center,
-                                              style: const TextStyle(
-                                                  color: AppColors.textPrimary),
+                                            String submitterName = detail.submittedBy != null
+                                                ? (detail.submitterDetails?.fullname ?? 'N/A')
+                                                : 'N/A';
+                                            return BillListItem(
+                                              billDetail: detail,
+                                              isSelected: _selectedBillDetails.contains(detail),
+                                              isCreatedAndPaid: isCreatedAndPaid,
+                                              areaName: areaName,
+                                              roomName: detail.roomName ?? 'N/A',
+                                              submitterName: submitterName,
+                                              monthlyBill: monthlyBill,
+                                              onToggleSelection: detail.submittedBy != null && (detail.monthlyBillId == null || detail.monthlyBillId == -1)
+                                                  ? () => _toggleSelection(detail)
+                                                  : null,
+                                              onViewHistory: detail.roomId != null 
+                                                  ? () => _showMeterHistoryDialog(detail.roomId!, detail.roomName ?? '')
+                                                  : null,
+                                              onDelete: detail.detailId != -1 && !isCreatedAndPaid
+                                                  ? () => _deleteBillDetail(detail.detailId!)
+                                                  : null,
                                             );
-                                          case 2:
-                                            return Text(
-                                              detail.roomName ?? 'N/A',
-                                              overflow: TextOverflow.ellipsis,
-                                              textAlign: TextAlign.center,
-                                              style: const TextStyle(
-                                                  color: AppColors.textPrimary),
-                                            );
-                                          case 3:
-                                            return Text(
-                                              detail.submittedBy != null
-                                                  ? (detail.submitterDetails
-                                                          ?.fullname ??
-                                                      'N/A')
-                                                  : 'N/A',
-                                              overflow: TextOverflow.ellipsis,
-                                              textAlign: TextAlign.center,
-                                              style: const TextStyle(
-                                                  color: AppColors.textPrimary),
-                                            );
-                                          case 4:
-                                            return Text(
-                                              detail.submittedBy != null
-                                                  ? detail.currentReading
-                                                      ?.toStringAsFixed(2) ?? 'N/A'
-                                                  : 'N/A',
-                                              overflow: TextOverflow.ellipsis,
-                                              textAlign: TextAlign.center,
-                                              style: const TextStyle(
-                                                  color: AppColors.textPrimary),
-                                            );
-                                          case 5:
-                                            return Text(
-                                              DateFormat('MM/yyyy')
-                                                  .format(detail.billMonth),
-                                              overflow: TextOverflow.ellipsis,
-                                              textAlign: TextAlign.center,
-                                              style: const TextStyle(
-                                                  color: AppColors.textPrimary),
-                                            );
-                                          case 6:
-                                            return Text(
-                                              detail.submittedAt != null
-                                                  ? DateFormat('dd-MM-yyyy')
-                                                      .format(detail.submittedAt!)
-                                                  : 'Chưa gửi',
-                                              overflow: TextOverflow.ellipsis,
-                                              textAlign: TextAlign.center,
-                                              style: const TextStyle(
-                                                  color: AppColors.textPrimary),
-                                            );
-                                          case 7:
-                                            return detail.detailId != -1 &&
-                                                    !isCreatedAndPaid
-                                                ? IconButton(
-                                                    icon: const Icon(
-                                                        Icons.delete,
-                                                        color:
-                                                            AppColors.buttonError),
-                                                    onPressed: () {
-                                                      if (detail.detailId != null) {
-                                                        _deleteBillDetail(
-                                                            detail.detailId!);
-                                                      }
-                                                    },
-                                                  )
-                                                : const SizedBox();
-                                          default:
-                                            return const SizedBox();
-                                        }
-                                      },
+                                          },
+                                        ),
+                                        PaginationControls(
+                                          currentPage: _currentPage,
+                                          totalItems: state.total,
+                                          limit: _limit,
+                                          onPageChanged: (page) {
+                                            setState(() {
+                                              _currentPage = page;
+                                            });
+                                            _fetchBillDetails();
+                                          },
+                                        ),
+                                      ],
                                     );
                                   }
 

@@ -18,6 +18,8 @@ class UserRepositoryImpl implements UserRepository {
     String? fullname,
     String? phone,
     String? className,
+    String? hometown,        // thêm
+    String? studentCode,     // thêm
   }) async {
     try {
       final (users, total) = await dataSource.getAllUsers(
@@ -28,6 +30,8 @@ class UserRepositoryImpl implements UserRepository {
         fullname: fullname,
         phone: phone,
         className: className,
+        hometown: hometown,        // thêm
+        studentCode: studentCode,  // thêm
       );
       return Right((users.map((model) => model.toEntity()).toList(), total));
     } catch (e) {
@@ -62,12 +66,16 @@ class UserRepositoryImpl implements UserRepository {
     required String email,
     required String fullname,
     String? phone,
+    String? hometown,        // thêm
+    String? studentCode,     // thêm
   }) async {
     try {
       final user = await dataSource.createUser(
         email: email,
         fullname: fullname,
         phone: phone,
+        hometown: hometown,        // thêm
+        studentCode: studentCode,  // thêm
       );
       return Right(user.toEntity());
     } catch (e) {
@@ -90,6 +98,8 @@ class UserRepositoryImpl implements UserRepository {
     String? cccd,
     DateTime? dateOfBirth,
     String? className,
+    String? hometown,        // thêm
+    String? studentCode,     // thêm
   }) async {
     try {
       final user = await dataSource.updateUser(
@@ -100,6 +110,8 @@ class UserRepositoryImpl implements UserRepository {
         cccd: cccd,
         dateOfBirth: dateOfBirth,
         className: className,
+        hometown: hometown,        // thêm
+        studentCode: studentCode,  // thêm
       );
       return Right(user.toEntity());
     } catch (e) {

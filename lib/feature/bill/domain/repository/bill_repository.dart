@@ -31,5 +31,15 @@ abstract class BillRepository {
   });
   Future<Either<Failure, void>> deleteMonthlyBill(int billId);
   Future<Either<Failure, Map<String, List<int>>>> deletePaidBills(List<int> billIds);
-  Future<Either<Failure, void>> deleteBillDetail(int detailId);
+  Future<Either<Failure, void>> deleteBillDetail(int detailId);  Future<Either<Failure, Map<String, dynamic>>> notifyRemindBillDetail({
+    required String billMonth,
+  });
+  Future<Either<Failure, Map<String, dynamic>>> notifyRemindPayment({
+    required String billMonth,
+  });
+  Future<Either<Failure, List<Map<String, dynamic>>>> getRoomBillDetails({
+    required int roomId,
+    required int year,
+    required int serviceId,
+  });
 }

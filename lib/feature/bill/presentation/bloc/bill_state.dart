@@ -111,3 +111,33 @@ class MonthlyBillDeleted extends BillState {
   @override
   List<Object?> get props => [deletedId, message];
 }
+
+class NotificationSent extends BillState {
+  final String message;
+  final List<dynamic> notifiedRooms;
+
+  const NotificationSent({
+    required this.message,
+    this.notifiedRooms = const [],
+  });
+
+  @override
+  List<Object?> get props => [message, notifiedRooms];
+}
+
+class RoomBillDetailsLoaded extends BillState {
+  final List<Map<String, dynamic>> roomBillDetails;
+  final int roomId;
+  final int year;
+  final int serviceId;
+
+  const RoomBillDetailsLoaded({
+    required this.roomBillDetails,
+    required this.roomId,
+    required this.year,
+    required this.serviceId,
+  });
+
+  @override
+  List<Object?> get props => [roomBillDetails, roomId, year, serviceId];
+}

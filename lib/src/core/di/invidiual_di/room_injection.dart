@@ -1,3 +1,4 @@
+import 'package:datn_web_admin/feature/room/domain/usecases/room_image_usecase.dart';
 import 'package:datn_web_admin/feature/room/domain/usecases/room_usecase.dart';
 import 'package:get_it/get_it.dart';
 
@@ -10,19 +11,9 @@ import '../../../../feature/room/data/repository/room_repository_impl.dart';
 import '../../../../feature/room/domain/repositories/area_repository.dart';
 import '../../../../feature/room/domain/repositories/room_image_repository.dart';
 import '../../../../feature/room/domain/repositories/room_repository.dart';
-import '../../../../feature/room/domain/usecases/area/create_area.dart';
-import '../../../../feature/room/domain/usecases/area/delete_area.dart';
-import '../../../../feature/room/domain/usecases/area/get_all_areas.dart';
-import '../../../../feature/room/domain/usecases/area/get_area_by_id.dart';
-import '../../../../feature/room/domain/usecases/area/update_area.dart';
 
-import '../../../../feature/room/domain/usecases/delete_room_image.dart';
-import '../../../../feature/room/domain/usecases/delete_room_more_image.dart';
+import '../../../../feature/room/domain/usecases/area_usecase.dart';
 
-import '../../../../feature/room/domain/usecases/get_room_image.dart';
-import '../../../../feature/room/domain/usecases/reorder_room_images.dart';
-
-import '../../../../feature/room/domain/usecases/upload_room_image.dart';
 import '../../../../feature/room/presentations/bloc/area_bloc/area_bloc.dart';
 import '../../../../feature/room/presentations/bloc/room_bloc/room_bloc.dart';
 import '../../../../feature/room/presentations/bloc/room_image_bloc/room_image_bloc.dart';
@@ -39,12 +30,16 @@ void registerRoomDependencies() {
   getIt.registerSingleton<CreateRoom>(CreateRoom(getIt<RoomRepository>()));
   getIt.registerSingleton<UpdateRoom>(UpdateRoom(getIt<RoomRepository>()));
   getIt.registerSingleton<DeleteRoom>(DeleteRoom(getIt<RoomRepository>()));
+  getIt.registerSingleton<GetUsersInRoom>(GetUsersInRoom(getIt<RoomRepository>()));
+  getIt.registerSingleton<ExportUsersInRoom>(ExportUsersInRoom(getIt<RoomRepository>()));
   getIt.registerFactory<RoomBloc>(() => RoomBloc(
     getAllRooms: getIt<GetAllRooms>(),
     getRoomById: getIt<GetRoomById>(),
     createRoom: getIt<CreateRoom>(),
     updateRoom: getIt<UpdateRoom>(),
     deleteRoom: getIt<DeleteRoom>(),
+    getUsersInRoom: getIt<GetUsersInRoom>(),
+    exportUsersInRoom: getIt<ExportUsersInRoom>(),
   ));
 
   // Room Image
@@ -71,11 +66,21 @@ void registerRoomDependencies() {
   getIt.registerSingleton<CreateArea>(CreateArea(getIt<AreaRepository>()));
   getIt.registerSingleton<UpdateArea>(UpdateArea(getIt<AreaRepository>()));
   getIt.registerSingleton<DeleteArea>(DeleteArea(getIt<AreaRepository>()));
+  getIt.registerSingleton<ExportUsersInArea>(ExportUsersInArea(getIt<AreaRepository>()));
+  getIt.registerSingleton<GetAreasWithStudentCount>(GetAreasWithStudentCount(getIt<AreaRepository>()));
+  getIt.registerSingleton<GetUsersInArea>(GetUsersInArea(getIt<AreaRepository>()));
+  getIt.registerSingleton<GetAllUsersInAllAreas>(GetAllUsersInAllAreas(getIt<AreaRepository>()));
+  getIt.registerSingleton<ExportAllUsersInAllAreas>(ExportAllUsersInAllAreas(getIt<AreaRepository>()));
   getIt.registerFactory<AreaBloc>(() => AreaBloc(
     getAllAreas: getIt<GetAllAreas>(),
     getAreaById: getIt<GetAreaById>(),
     createArea: getIt<CreateArea>(),
     updateArea: getIt<UpdateArea>(),
     deleteArea: getIt<DeleteArea>(),
+    exportUsersInArea: getIt<ExportUsersInArea>(),
+    getAreasWithStudentCount: getIt<GetAreasWithStudentCount>(),
+    getUsersInArea: getIt<GetUsersInArea>(),
+    getAllUsersInAllAreas: getIt<GetAllUsersInAllAreas>(),
+    exportAllUsersInAllAreas: getIt<ExportAllUsersInAllAreas>(),
   ));
 }

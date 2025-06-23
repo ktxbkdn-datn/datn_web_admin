@@ -1,16 +1,9 @@
-import 'package:datn_web_admin/src/core/theme/contract_template.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:universal_html/html.dart' as html;
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'dart:convert';
-import 'dart:io' show File, Platform;
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/contract_entity.dart';
-
+import '../bloc/contract_bloc.dart';
 
 class ContractDetailDialog extends StatelessWidget {
   final Contract contract;
@@ -156,24 +149,7 @@ class ContractDetailDialog extends StatelessWidget {
   String _formatCreatedAt(String createdAt) {
     return createdAt.split('T')[0];
   }
-
   Future<void> _exportContract(BuildContext context) async {
-    // Request storage permission only on mobile platforms
-    if (!kIsWeb) {
-      if (Platform.isAndroid || Platform.isIOS) {
-        final status = await Permission.storage.request();
-        if (!status.isGranted) {
-          print('Permission denied: Storage access');
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Quyền truy cập bộ nhớ bị từ chối')),
-          );
-          return;
-        }
-      }
-    } else {
-      print('Running on web: Skipping storage permission request');
-    }
-
     // Show progress dialog
     showDialog(
       context: context,
@@ -186,126 +162,52 @@ class ContractDetailDialog extends StatelessWidget {
             children: [
               CircularProgressIndicator(),
               SizedBox(width: 16),
-              Text('Đang tạo hợp đồng...'),
+              Text('Đang tải hợp đồng...'),
             ],
           ),
         ),
       ),
     );
-
-    try {
-      // Preload fonts
-      print('Loading fonts');
-      pw.Font regularFont;
-      pw.Font boldFont;
-      try {
-        final regularFontData = await rootBundle.load(kIsWeb ? 'fonts/NotoSerif-Regular.ttf' : 'assets/fonts/NotoSerif-Regular.ttf');
-        final boldFontData = await rootBundle.load(kIsWeb ? 'fonts/NotoSerif-Bold.ttf' : 'assets/fonts/NotoSerif-Bold.ttf');
-        print('Font data loaded: regular=${regularFontData.lengthInBytes} bytes, bold=${boldFontData.lengthInBytes} bytes');
-        regularFont = pw.Font.ttf(regularFontData);
-        boldFont = pw.Font.ttf(boldFontData);
-      } catch (e) {
-        print('Failed to load custom fonts: $e');
-        // Fallback to default fonts
-        regularFont = pw.Font.helvetica();
-        boldFont = pw.Font.helveticaBold();
-        print('Using fallback fonts: Helvetica');
-      }
-      print('Fonts loaded');
-
-      // Generate PDF
-      print('Generating PDF');
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          pageFormat: PdfPageFormat.a4,
-          build: (pw.Context context) {
-            return ContractTemplate.buildContract(
-              contractNumber: 'HD${contract.createdAt.replaceAll('-', '')}',
-              roomName: contract.roomName,
-              areaName: contract.areaName ?? '',
-              fullname: contract.fullname ?? '',
-              userEmail: contract.userEmail,
-              phone: contract.phone,
-              cccd: contract.cccd,
-              className: contract.className,
-              dateOfBirth: contract.dateOfBirth,
-              status: _getStatusText(contract.status),
-              contractType: _getContractTypeText(contract.contractType),
-              startDate: contract.startDate,
-              endDate: contract.endDate,
-              createdAt: _formatCreatedAt(contract.createdAt),
-              regularFont: regularFont,
-              boldFont: boldFont,
-            );
-          },
-        ),
-      );
-      print('PDF generated');
-
-      // Handle saving based on platform
-      final fileName = 'contract_${contract.createdAt.replaceAll('-', '')}.pdf';
-      String? filePath;
-      if (kIsWeb) {
-        // On web: Trigger a browser download
-        print('Saving PDF on web');
-        final bytes = await pdf.save();
-        final base64 = base64Encode(bytes);
-        final uri = 'data:application/pdf;base64,$base64';
-        final anchor = html.AnchorElement(href: uri)
-          ..setAttribute('download', fileName)
-          ..click();
-        print('Browser download triggered');
-      } else {
-        // On mobile/desktop: Use file_picker to choose save location
-        print('Opening file picker');
-        filePath = await FilePicker.platform.saveFile(
-          dialogTitle: 'Chọn nơi lưu hợp đồng',
-          fileName: fileName,
-          allowedExtensions: ['pdf'],
-          type: FileType.custom,
-        );
-
-        if (filePath == null) {
-          print('User cancelled file picker');
-          Navigator.of(context).pop();
+    
+    try {      // Gọi Bloc để export hợp đồng
+      final contractBloc = BlocProvider.of<ContractBloc>(context);
+      final pdfResult = await contractBloc.exportPdf(contract.contractId);
+      
+      // Đóng dialog loading
+      Navigator.of(context).pop();
+      
+      // Xử lý kết quả
+      pdfResult.fold(
+        (failure) {
+          // Hiển thị thông báo lỗi
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Đã hủy lưu hợp đồng')),
+            SnackBar(content: Text('Lỗi khi export hợp đồng: ${failure.message}')),
           );
-          return;
-        }
-
-        print('Saving PDF to: $filePath');
-        final file = File(filePath);
-        await file.writeAsBytes(await pdf.save());
-        print('PDF saved successfully');
-      }
-
-      // Close progress dialog
-      Navigator.of(context).pop();
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            kIsWeb ? 'Hợp đồng đã được tải xuống dưới dạng PDF.' : 'Hợp đồng đã được lưu tại: $filePath',
-          ),
-        ),
+        }, 
+        (pdfBytes) {
+          if (kIsWeb) {
+            // Tạo blob từ dữ liệu PDF
+            final blob = html.Blob([pdfBytes], 'application/pdf');
+            final url = html.Url.createObjectUrlFromBlob(blob);
+            
+            // Mở PDF trong tab mới
+            html.window.open(url, '_blank');
+            
+            // Giải phóng URL để tránh rò rỉ bộ nhớ
+            html.Url.revokeObjectUrl(url);
+          } else {
+            // Trên mobile/desktop thì hiển thị thông báo thành công
+            // Bạn có thể thêm code để lưu file vào bộ nhớ thiết bị ở đây
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Đã xuất hợp đồng thành công')),
+            );
+          }
+        },
       );
-
-      // Open the file using openFilePlus (skip on web)
-      if (!kIsWeb && filePath != null) {
-        print('Opening PDF with openFilePlus');
-        await openFilePlus(filePath);
-      } else {
-        print('Skipping openFilePlus on web');
-      }
-    } catch (e, stackTrace) {
-      print('Error during export: $e');
-      print('Stack trace: $stackTrace');
-      Navigator.of(context).pop();
+    } catch (e) {
+      Navigator.of(context).pop(); // Đóng dialog
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi khi xuất hợp đồng: $e')),
+        SnackBar(content: Text('Lỗi khi export hợp đồng: $e')),
       );
     }
   }

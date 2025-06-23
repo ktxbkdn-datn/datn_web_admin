@@ -12,7 +12,7 @@ class ContractModel extends Equatable {
   final String startDate;
   final String endDate;
   final String roomName;
-  final String userEmail;
+  final String studentCode;
   final String? cccd;
   final String? className;
   final String? dateOfBirth;
@@ -30,7 +30,7 @@ class ContractModel extends Equatable {
     required this.startDate,
     required this.endDate,
     required this.roomName,
-    required this.userEmail,
+    required this.studentCode,
     this.cccd,
     this.className,
     this.dateOfBirth,
@@ -50,7 +50,7 @@ class ContractModel extends Equatable {
       startDate: json['start_date'] as String,
       endDate: json['end_date'] as String,
       roomName: json['room_details']['name'] as String? ?? '',
-      userEmail: json['user_details']['email'] as String? ?? '',
+      studentCode: json['user_details']['student_code'] as String? ?? '',
       cccd: json['user_details']['CCCD'] as String?,
       className: json['user_details']['class_name'] as String?,
       dateOfBirth: json['user_details']['date_of_birth'] as String?,
@@ -62,7 +62,7 @@ class ContractModel extends Equatable {
 
   Map<String, dynamic> toJson() {
     return {
-      'email': userEmail,
+      'student_code': studentCode,
       'room_name': roomName,
       'contract_type': contractType,
       'start_date': startDate,
@@ -81,7 +81,7 @@ class ContractModel extends Equatable {
       startDate: startDate,
       endDate: endDate,
       roomName: roomName,
-      userEmail: userEmail,
+      studentCode: studentCode,
       cccd: cccd,
       className: className,
       dateOfBirth: dateOfBirth,
@@ -102,7 +102,7 @@ class ContractModel extends Equatable {
     startDate,
     endDate,
     roomName,
-    userEmail,
+    studentCode,
     cccd,
     className,
     dateOfBirth,

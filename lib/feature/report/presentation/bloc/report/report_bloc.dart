@@ -58,12 +58,12 @@ class ReportBloc extends Bloc<ReportEvent, ReportState> {
   }
 
   Future<void> _onGetAllReports(GetAllReportsEvent event, Emitter<ReportState> emit) async {
-    print('ReportBloc: Handling GetAllReportsEvent: page=${event.page}, limit=${event.limit}, userId=${event.userId}, roomId=${event.roomId}, status=${event.status}, reportTypeId=${event.reportTypeId}, searchQuery=${event.searchQuery}');
+    print('ReportBloc: Handling GetAllReportsEvent: page=${event.page}, limit=${event.limit}, userId=${event.userId}, roomId=${event.roomId}, status=${event.status}, reportTypeId=${event.reportTypeId}, searchQuery=${event.searchQuery}, forceRefresh=${event.forceRefresh}');
 
     final cacheKey = _generateCacheKey(event);
     
-    // Check cache first
-    if (_pageCache.containsKey(cacheKey)) {
+    // Nếu forceRefresh == false thì mới dùng cache
+    if (!event.forceRefresh && _pageCache.containsKey(cacheKey)) {
       print('ReportBloc: Serving reports from cache for key $cacheKey');
       emit(ReportsLoaded(reports: List.from(_pageCache[cacheKey]!), totalItems: _lastTotalItems));
       return;
@@ -83,18 +83,12 @@ class ReportBloc extends Bloc<ReportEvent, ReportState> {
       result.fold(
         (failure) {
           if (failure.message.contains('Trang không tồn tại')) {
-            print('ReportBloc: Page does not exist, clearing cache and emitting empty list');
-            _clearPageCache();
             emit(ReportsLoaded(reports: [], totalItems: 0));
           } else {
-            print('ReportBloc: Error fetching reports: ${failure.message}');
             emit(ReportError(message: failure.message));
           }
         },
         (data) {
-          print('ReportBloc: Successfully fetched ${data.$1.length} reports, totalItems: ${data.$2}');
-          _managePageCache(cacheKey, data.$1);
-          _lastTotalItems = data.$2; // Cập nhật lại biến này
           emit(ReportsLoaded(reports: List.from(data.$1), totalItems: data.$2));
         },
       );

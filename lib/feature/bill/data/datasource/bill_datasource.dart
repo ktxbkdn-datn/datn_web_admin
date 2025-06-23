@@ -24,7 +24,17 @@ abstract class BillRemoteDataSource {
   Future<Either<Failure, (List<MonthlyBillModel>, int)>> getAllMonthlyBills({required int page, required int limit, String? paymentStatus, String? area, String? service, String? month, String? billStatus, String? search});
   Future<Either<Failure, Map<String, List<int>>>> deletePaidBills(List<int> billIds);
   Future<Either<Failure, void>> deleteBillDetail(int detailId);
-  Future<Either<Failure, void>> deleteMonthlyBill(int billId);
+  Future<Either<Failure, void>> deleteMonthlyBill(int billId);  Future<Either<Failure, Map<String, dynamic>>> notifyRemindBillDetail({
+    required String billMonth,
+  });
+  Future<Either<Failure, Map<String, dynamic>>> notifyRemindPayment({
+    required String billMonth,
+  });
+  Future<Either<Failure, List<Map<String, dynamic>>>> getRoomBillDetails({
+    required int roomId,
+    required int year,
+    required int serviceId,
+  });
 }
 
 class BillRemoteDataSourceImpl implements BillRemoteDataSource {
@@ -170,6 +180,75 @@ class BillRemoteDataSourceImpl implements BillRemoteDataSource {
       return const Right(null);
     } catch (e) {
       return Left(_handleError(e));
+    }
+  }
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> notifyRemindBillDetail({
+    required String billMonth,
+  }) async {
+    try {
+      final body = {
+        'bill_month': billMonth,
+      };
+      final response = await apiService.post('/admin/notify-remind-bill-detail', body);
+      return Right({
+        'message': response['message'] as String,
+        'notified_rooms': response['notified_rooms'] as List<dynamic>,
+      });
+    } catch (e) {
+      return Left(_handleError(e));
+    }
+  }
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> notifyRemindPayment({
+    required String billMonth,
+  }) async {
+    try {
+      final body = {
+        'bill_month': billMonth,
+      };
+      final response = await apiService.post('/admin/notify-remind-payment', body);
+      return Right({
+        'message': response['message'] as String,
+        'notified_rooms': response['notified_rooms'] as List<dynamic>,
+      });
+    } catch (e) {
+      return Left(_handleError(e));
+    }
+  }  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> getRoomBillDetails({
+    required int roomId,
+    required int year,
+    required int serviceId,
+  }) async {
+    try {
+      final queryParams = {
+        'year': year.toString(),
+        'service_id': serviceId.toString(),
+      };
+      
+      // Log the request details for debugging
+      print('Fetching room bill details - roomId: $roomId, year: $year, serviceId: $serviceId');
+      
+      final response = await apiService.get('/bill-details/room/$roomId', queryParams: queryParams);
+        // API trả về một mảng các object tương ứng với từng tháng
+      final List<Map<String, dynamic>> result = (response as List)
+          .map((item) => {
+                'month': item['month'] as int,
+                'current_reading': item['current_reading'],
+                'previous_reading': item['previous_reading'],
+                'consumption': item['consumption'],
+                'price': item['price'],
+                'submitted_at': item['submitted_at'],
+                'payment_status': item['payment_status'],
+              })
+          .toList();
+          
+      return Right(result);
+    } catch (e) {
+      // Hide the verbose error from the UI, just log it
+      print('Error fetching room bill details: $e');
+      return Left(ServerFailure('Không thể kết nối đến máy chủ. Vui lòng thử lại sau.'));
     }
   }
 

@@ -10,11 +10,12 @@ class AppColors {
   static const Color cardBackground = Colors.white;
   static const Color shadowColor = Color(0x1F000000); // Colors.black12
   static const Color textPrimary = Color(0xFF333333); // Dark text color
-  static const Color textSecondary = Color(0xFF666666); // Grey text color
-  static const Color primaryColor = Colors.blue; // Previously buttonPrimary
+  static const Color textSecondary = Color(0xFF666666); // Grey text color  static const Color primaryColor = Colors.blue; // Previously buttonPrimary
   static const Color buttonPrimaryColor = Colors.blue; // Previously buttonPrimary
   static const Color buttonSuccess = Colors.green;
   static const Color buttonError = Colors.red;
+  static const Color buttonWarning = Colors.orange;
+  static const Color disabledButton = Color(0xFFCCCCCC); // Light grey for disabled buttons
   static const Color inputFill = Color(0x1A000000); // Colors.grey.withOpacity(0.1)
   static const Color infoBackground = Color(0xFFEBF5FF); // Colors.blue.shade50
 

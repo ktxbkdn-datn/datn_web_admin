@@ -5,13 +5,13 @@ import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_state.dart';
 import 'package:flutter/material.dart';
 import 'package:easy_sidemenu/easy_sidemenu.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:datn_web_admin/feature/dashboard/presentation/widgets/statistic_overview_page.dart';
 import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_page/room_stat_page.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_page/user_stat_page.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/widgets/stat_page/report_stat_page.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
+import 'dart:async';
 
 // Import các tab con trực tiếp
 import '../../../admin/presentation/pages/widgets/current_admin_tab.dart';
@@ -45,29 +45,12 @@ class _HomePageState extends State<HomePage> {
   bool _isLoading = false; // Thêm biến loading
   bool _sessionExpired = false;
 
-  // Danh sách các tab con, thứ tự phải khớp với menu bên dưới!
-  final List<Widget> _tabs = [
-    const DashboardPage(),                // 0
-    const CurrentAdminTab(),              // 1
-    const AdminListPage(),                // 2
-    CreateAdminTab(),                     // 3
-    const ChangePasswordTab(),            // 4
-    UserListTab(),                        // 5
-    const CreateUserTab(),                // 6
-    const RoomListPage(),                 // 7
-    const AreaListTab(),                  // 8
-    const ContractListPage(),             // 9
-    const RegistrationListPage(),         // 10
-    const ReportListPage(),               // 11
-    const ReportTypeListTab(),            // 12
-    const NotificationListPage(),         // 13
-    const ServiceListPage(),              // 14
-    const BillListPage(),                 // 15
-    const BillDetailListPage(),           // 16
-    const RoomStatsPage(),                // 17
-    const UserStatsPage(),                // 18
-    const ReportStatsPage(),              // 19
-  ];
+  late List<Widget> _tabs;
+
+  // Badge state
+  int _newRegistrationCount = 0;
+  int _newReportCount = 0;
+  Timer? _badgeTimer;
 
   void _updateIndex(int index) {
   setState(() {
@@ -96,11 +79,11 @@ void _onTabLoaded() {
     SideMenuItem(
       title: 'Trang chủ',
       icon: const Icon(Iconsax.home),
-      onTap: (index, _) => _updateIndex(0), // Sử dụng _updateIndex như các tab khác
+      onTap: (index, _) => _updateIndex(0),
     ),
     SideMenuExpansionItem(
       title: 'Quản lý Admin',
-      icon:  Icon(Iconsax.user),
+      icon: const Icon(Iconsax.user),
       children: [
         SideMenuItem(
           title: 'Thông tin Admin',
@@ -187,11 +170,6 @@ void _onTabLoaded() {
       icon: const Icon(Iconsax.notification),
       onTap: (index, _) => _updateIndex(13),
     ),
-    SideMenuItem(
-      title: 'Dịch vụ',
-      icon: const Icon(Iconsax.setting_21),
-      onTap: (index, _) => _updateIndex(14),
-    ),
     SideMenuExpansionItem(
       title: 'Hoá đơn tháng',
       icon: const Icon(Iconsax.receipt_1),
@@ -210,7 +188,7 @@ void _onTabLoaded() {
     ),
     SideMenuExpansionItem(
       title: 'Thống kê',
-      icon:  Icon(Icons.bar_chart),
+      icon: const Icon(Icons.bar_chart),
       children: [
         SideMenuItem(
           title: 'Thống kê phòng',
@@ -233,7 +211,13 @@ void _onTabLoaded() {
       title: 'Đăng xuất',
       icon: const Icon(Iconsax.logout),
       onTap: (index, _) {
-        context.read<AuthBloc>().add(LogoutSubmitted());
+        // Safely handle logout to prevent animation/ticker issues
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          // Use the current BuildContext to ensure we're accessing the AuthBloc from the widget tree
+          final authBloc = context.read<AuthBloc>();
+          print('Logout requested from SideMenu');
+          authBloc.add(LogoutSubmitted());
+        });
       },
     ),
   ];
@@ -241,16 +225,50 @@ void _onTabLoaded() {
   @override
   void dispose() {
     _sideMenuController.dispose();
+    _badgeTimer?.cancel();
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
+    _tabs = [
+    DashboardPage(),                            // 0
+    const CurrentAdminTab(),                    // 1
+    const AdminListPage(),                      // 2
+    CreateAdminTab(),                           // 3
+    const ChangePasswordTab(),                  // 4
+    UserListTab(),                              // 5
+    const CreateUserTab(),                      // 6
+    const RoomListPage(),                       // 7
+    const AreaListTab(),                        // 8
+    const ContractListPage(),                   // 9
+    const RegistrationListPage(),               // 10
+    const ReportListPage(),                     // 11
+    const ReportTypeListTab(),                  // 12
+    const NotificationListPage(),               // 13
+    const ServiceListPage(),                    // 14
+    const BillListPage(),                       // 15
+    const BillDetailListPage(),                 // 16
+    const RoomStatsPage(),                      // 17
+    const UserStatsPage(),                      // 18
+    const ReportStatsPage(),                    // 19
+  ];
     _sideMenuController.addListener((index) {
       setState(() {
         _selectedIndex = index;
       });
+    });
+    _fetchBadgeCounts();
+    _badgeTimer = Timer.periodic(const Duration(minutes: 5), (_) => _fetchBadgeCounts());
+  }
+
+  Future<void> _fetchBadgeCounts() async {
+    // TODO: Replace with your actual API/Bloc calls
+    // Fake fetch for demo, replace with real logic
+    setState(() {
+      _newRegistrationCount = 3; // fetch from RegistrationBloc or API
+      _newReportCount = 5; // fetch from ReportBloc or API
     });
   }
 

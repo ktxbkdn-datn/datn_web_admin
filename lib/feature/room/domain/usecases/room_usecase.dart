@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import 'package:datn_web_admin/feature/room/domain/entities/room_entity.dart';
 import 'package:datn_web_admin/feature/room/domain/repositories/room_repository.dart';
 import 'package:datn_web_admin/src/core/error/failures.dart';
+import 'dart:typed_data';
 
 class GetRoomById {
   final RoomRepository repository;
@@ -45,10 +46,9 @@ class UpdateRoom {
 
 class GetAllRooms {
   final RoomRepository repository;
-
   GetAllRooms(this.repository);
 
-  Future<Either<Failure, List<RoomEntity>>> call({
+  Future<Either<Failure, Map<String, dynamic>>> call({
     required int page,
     required int limit,
     int? minCapacity,
@@ -58,8 +58,9 @@ class GetAllRooms {
     bool? available,
     String? search,
     int? areaId,
-  }) async {
-    return await repository.getAllRooms(
+    String? searchUser,
+  }) {
+    return repository.getAllRooms(
       page: page,
       limit: limit,
       minCapacity: minCapacity,
@@ -69,6 +70,7 @@ class GetAllRooms {
       available: available,
       search: search,
       areaId: areaId,
+      searchUser: searchUser,
     );
   }
 }
@@ -104,5 +106,27 @@ class CreateRoom {
       description: description,
       images: images,
     );
+  }
+}
+
+
+
+// Thêm usecase lấy danh sách user trong phòng
+class GetUsersInRoom {
+  final RoomRepository repository;
+  GetUsersInRoom(this.repository);
+
+  Future<List<Map<String, dynamic>>> call(int roomId) {
+    return repository.getUsersInRoom(roomId);
+  }
+}
+
+// Thêm usecase export file Excel
+class ExportUsersInRoom {
+  final RoomRepository repository;
+  ExportUsersInRoom(this.repository);
+
+  Future<Uint8List> call(int roomId) {
+    return repository.exportUsersInRoom(roomId);
   }
 }

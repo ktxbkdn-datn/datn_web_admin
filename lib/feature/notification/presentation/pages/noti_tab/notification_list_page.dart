@@ -59,6 +59,7 @@ class _NotificationListViewState extends State<_NotificationListView> {
   final Map<int, PageController> _pageControllers = {};
   final Map<int, List<MediaInfo>> _mediaCache = {};
   Timer? _debounce;
+  Notification? _lastUpdatedNotification;
 
   String _getFilterDisplayText(String targetType) {
     switch (targetType.toUpperCase()) {
@@ -331,11 +332,26 @@ class _NotificationListViewState extends State<_NotificationListView> {
                                       _currentPage = 1;
                                     });
                                     _fetchNotifications();
+                                  } else if (state is NotificationUpdated) {
+                                    setState(() {
+                                      _isProcessing = false;
+                                      _lastUpdatedNotification = state.notification;
+                                    });
+                                    // Gọi lại event để lấy danh sách mới (hoặc cập nhật lại UI)
+                                    context.read<NotificationBloc>().add(GetAllNotificationsEvent(
+                                      page: _currentPage,
+                                      limit: 10,
+                                      targetType: _filterTargetType,
+                                      keyword: _searchQuery,
+                                    ));
                                   } else if (state is NotificationsLoaded) {
                                     setState(() {
                                       _isProcessing = false;
                                     });
-                                    _fetchMediaForNotifications(state.notifications);
+                                    // Chỉ fetch media nếu không vừa update
+                                    if (_lastUpdatedNotification == null) {
+                                      _fetchMediaForNotifications(state.notifications);
+                                    }
                                   }
                                 });
                               },
@@ -368,12 +384,21 @@ class _NotificationListViewState extends State<_NotificationListView> {
                                       return const Center(child: CircularProgressIndicator());
                                     }
                                     if (state is NotificationsLoaded) {
-                                      final notifications = state.notifications;
+                                      var notifications = state.notifications;
+                                      // Nếu vừa update, cập nhật notification vào list
+                                      if (_lastUpdatedNotification != null) {
+                                        final idx = notifications.indexWhere((n) => n.notificationId == _lastUpdatedNotification!.notificationId);
+                                        if (idx != -1) {
+                                          notifications = List<Notification>.from(notifications);
+                                          notifications[idx] = _lastUpdatedNotification!;
+                                        }
+                                        _lastUpdatedNotification = null;
+                                      }
                                       final filtered = notifications.where((notification) {
                                         final matchesTargetType = _filterTargetType == 'ALL' || notification.targetType == _filterTargetType;
                                         final matchesSearch = _searchQuery.isEmpty ||
-                                            (notification.title?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-                                            (notification.message?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
+                                            (notification.title.toLowerCase().contains(_searchQuery.toLowerCase())) ||
+                                            (notification.message.toLowerCase().contains(_searchQuery.toLowerCase()));
                                         return matchesTargetType && matchesSearch;
                                       }).toList()
                                         ..sort((a, b) {
@@ -406,45 +431,67 @@ class _NotificationListViewState extends State<_NotificationListView> {
                                       return ListView.builder(
                                         controller: _scrollController,
                                         padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 12),
-                                        itemCount: filtered.length,
+                                        itemCount: filtered.length + 1, // Thêm 1 cho pagination
                                         itemBuilder: (context, index) {
-                                          try {
-                                            final notification = filtered[index];
-                                            final mediaItems = _mediaCache[notification.notificationId] ?? notification.media ?? [];
-                                            return NotificationItem(
-                                              notification: notification,
-                                              pageControllers: _pageControllers,
-                                              chewieControllers: _chewieControllers,
-                                              videoControllers: _videoControllers,
-                                              showFullScreenMedia: (context, _, initialIndex, notificationId) {
-                                                _showFullScreenMedia(context, mediaItems, initialIndex, notificationId);
-                                              },
-                                              formatDateTime: _formatDateTime,
-                                              baseUrl: baseUrl,
-                                              onDelete: _isProcessing
-                                                  ? null
-                                                  : () {
-                                                      setState(() => _isProcessing = true);
-                                                      context.read<NotificationBloc>().add(
-                                                          DeleteNotificationEvent(notificationId: notification.notificationId!));
-                                                    },
-                                              onEdit: _isProcessing
-                                                  ? null
-                                                  : () {
-                                                      setState(() => _isProcessing = true);
-                                                      showDialog(
-                                                        context: context,
-                                                        builder: (context) => UpdateNotificationDialog(
-                                                          notification: notification,
-                                                        ),
-                                                      ).then((_) {
-                                                        setState(() => _isProcessing = false);
-                                                        _fetchNotifications();
-                                                      });
-                                                    },
+                                          if (index < filtered.length) {
+                                            try {
+                                              final notification = filtered[index];
+                                              final mediaItems = _mediaCache[notification.notificationId] ?? notification.media ?? [];
+                                              return NotificationItem(
+                                                notification: notification,
+                                                pageControllers: _pageControllers,
+                                                chewieControllers: _chewieControllers,
+                                                videoControllers: _videoControllers,
+                                                showFullScreenMedia: (context, _, initialIndex, notificationId) {
+                                                  _showFullScreenMedia(context, mediaItems, initialIndex, notificationId);
+                                                },
+                                                formatDateTime: _formatDateTime,
+                                                baseUrl: baseUrl,
+                                                onDelete: _isProcessing
+                                                    ? null
+                                                    : () {
+                                                        setState(() => _isProcessing = true);
+                                                        context.read<NotificationBloc>().add(
+                                                            DeleteNotificationEvent(notificationId: notification.notificationId!));
+                                                      },
+                                                onEdit: _isProcessing
+                                                    ? null
+                                                    : () {
+                                                        setState(() => _isProcessing = true);
+                                                        showDialog(
+                                                          context: context,
+                                                          builder: (context) => UpdateNotificationDialog(
+                                                            notification: notification,
+                                                          ),
+                                                        ).then((_) {
+                                                          setState(() => _isProcessing = false);
+                                                        });
+                                                      },
+                                              );
+                                            } catch (e) {
+                                              return const SizedBox.shrink();
+                                            }
+                                          } else {
+                                            // PaginationControls ở cuối danh sách
+                                            int totalItems = 0;
+                                            if (state is NotificationsLoaded) {
+                                              totalItems = state.totalItems;
+                                            }
+                                            return Padding(
+                                              padding: const EdgeInsets.only(top: 16, bottom: 8),
+                                              child: PaginationControls(
+                                                currentPage: _currentPage,
+                                                totalItems: totalItems,
+                                                limit: 10,
+                                                onPageChanged: (page) {
+                                                  if (_isProcessing) return;
+                                                  setState(() {
+                                                    _currentPage = page;
+                                                    _fetchNotifications();
+                                                  });
+                                                },
+                                              ),
                                             );
-                                          } catch (e) {
-                                            return const SizedBox.shrink();
                                           }
                                         },
                                       );
@@ -457,26 +504,6 @@ class _NotificationListViewState extends State<_NotificationListView> {
                                     return const Center(child: CircularProgressIndicator());
                                   },
                                 ),
-                              ),
-                              BlocBuilder<NotificationBloc, NotificationState>(
-                                builder: (context, state) {
-                                  int totalItems = 0;
-                                  if (state is NotificationsLoaded) {
-                                    totalItems = state.totalItems;
-                                  }
-                                  return PaginationControls(
-                                    currentPage: _currentPage,
-                                    totalItems: totalItems,
-                                    limit: 10,
-                                    onPageChanged: (page) {
-                                      if (_isProcessing) return;
-                                      setState(() {
-                                        _currentPage = page;
-                                        _fetchNotifications();
-                                      });
-                                    },
-                                  );
-                                },
                               ),
                             ],
                           ),

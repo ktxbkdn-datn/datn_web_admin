@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:bloc/bloc.dart';
 import 'package:datn_web_admin/feature/room/domain/usecases/room_usecase.dart';
 import 'package:equatable/equatable.dart';
@@ -14,6 +15,8 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
   final CreateRoom createRoom;
   final UpdateRoom updateRoom;
   final DeleteRoom deleteRoom;
+  final GetUsersInRoom getUsersInRoom; // thêm
+  final ExportUsersInRoom exportUsersInRoom; // thêm
 
   RoomBloc({
     required this.getAllRooms,
@@ -21,14 +24,19 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     required this.createRoom,
     required this.updateRoom,
     required this.deleteRoom,
+    required this.getUsersInRoom, // thêm
+    required this.exportUsersInRoom, // thêm
   }) : super(RoomInitial()) {
     on<GetAllRoomsEvent>(_onGetAllRooms);
     on<GetRoomByIdEvent>(_onGetRoomById);
     on<CreateRoomEvent>(_onCreateRoom);
     on<UpdateRoomEvent>(_onUpdateRoom);
     on<DeleteRoomEvent>(_onDeleteRoom);
+    on<GetUsersInRoomEvent>(_onGetUsersInRoom); // thêm
+    on<ExportUsersInRoomEvent>(_onExportUsersInRoom); // thêm
   }
 
+  // Cập nhật phương thức _onGetAllRooms
   Future<void> _onGetAllRooms(GetAllRoomsEvent event, Emitter<RoomState> emit) async {
     emit(RoomLoading());
     final result = await getAllRooms(
@@ -41,10 +49,15 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
       available: event.available,
       search: event.search,
       areaId: event.areaId,
+      searchUser: event.searchUser,
     );
+    
     emit(result.fold(
-          (failure) => RoomError(message: failure.message),
-          (rooms) => RoomLoaded(rooms: rooms),
+      (failure) => RoomError(message: failure.message),
+      (data) => RoomLoaded(
+        rooms: data['rooms'], 
+        totalItems: data['totalItems']
+      ),
     ));
   }
 
@@ -99,5 +112,30 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
           (failure) => RoomError(message: failure.message),
           (_) => RoomDeleted(roomId: event.roomId), // Truyền roomId vào RoomDeleted
     ));
+  }
+
+  // Thêm handler cho lấy danh sách người dùng trong phòng
+  Future<void> _onGetUsersInRoom(GetUsersInRoomEvent event, Emitter<RoomState> emit) async {
+    emit(RoomLoading());
+    try {
+      final users = await getUsersInRoom(event.roomId);
+      emit(UsersInRoomLoaded(users: users, roomId: event.roomId));
+    } catch (e) {
+      emit(RoomError(message: e.toString()));
+    }
+  }
+
+  // Thêm handler cho export danh sách người dùng trong phòng
+  Future<void> _onExportUsersInRoom(ExportUsersInRoomEvent event, Emitter<RoomState> emit) async {
+    emit(RoomLoading());
+    try {
+      final fileBytes = await exportUsersInRoom(event.roomId);
+      emit(ExportFileReady(
+        fileBytes: fileBytes,
+        filename: 'users_in_room_${event.roomId}.xlsx'
+      ));
+    } catch (e) {
+      emit(RoomError(message: e.toString()));
+    }
   }
 }

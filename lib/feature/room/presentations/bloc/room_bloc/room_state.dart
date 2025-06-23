@@ -13,11 +13,15 @@ class RoomLoading extends RoomState {}
 
 class RoomLoaded extends RoomState {
   final List<RoomEntity> rooms;
+  final int totalItems; // Thêm totalItems
 
-  const RoomLoaded({required this.rooms});
+  const RoomLoaded({
+    required this.rooms,
+    required this.totalItems,
+  });
 
   @override
-  List<Object?> get props => [rooms];
+  List<Object?> get props => [rooms, totalItems];
 }
 
 class RoomDetailLoaded extends RoomState {
@@ -63,4 +67,24 @@ class RoomError extends RoomState {
 
   @override
   List<Object?> get props => [message];
+}
+
+class UsersInRoomLoaded extends RoomState {
+  final List<Map<String, dynamic>> users;
+  final int roomId;
+
+  const UsersInRoomLoaded({required this.users, required this.roomId});
+
+  @override
+  List<Object?> get props => [users, roomId];
+}
+
+class ExportFileReady extends RoomState {
+  final Uint8List fileBytes;
+  final String filename;
+
+  const ExportFileReady({required this.fileBytes, required this.filename});
+
+  @override
+  List<Object?> get props => [fileBytes, filename];
 }

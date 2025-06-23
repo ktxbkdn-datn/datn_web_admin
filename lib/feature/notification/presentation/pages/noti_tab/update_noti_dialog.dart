@@ -53,63 +53,139 @@ class UpdateNotificationDialogState extends State<UpdateNotificationDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Row(
-        children: const [
-          Icon(Icons.edit, color: Colors.blue),
-          SizedBox(width: 8),
-          Text('Chỉnh sửa thông báo', style: TextStyle(fontWeight: FontWeight.bold)),
-        ],
-      ),
-      content: SizedBox(
-        width: 600, // Tăng width lên
-        height: 500, // Tăng height lên
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextFormField(
-                  controller: _messageController,
-                  decoration: InputDecoration(
-                    labelText: 'Nội dung',
-                    prefixIcon: const Icon(Icons.message_outlined),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    filled: true,
-                    fillColor: Colors.grey[100],
-                  ),
-                  validator: (value) =>
-                      value == null || value.isEmpty ? 'Vui lòng nhập nội dung' : null,
-                  maxLines: 20,
-                ),
-                const SizedBox(height: 16),
-              ],
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: 500,
+        padding: const EdgeInsets.all(0),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.white, Colors.grey.shade50],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.18),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
             ),
-          ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade600, Colors.blue.shade400],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Row(
+                children: const [
+                  Icon(Icons.edit, color: Colors.white, size: 28),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Chỉnh sửa thông báo',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextFormField(
+                      controller: _messageController,
+                      decoration: InputDecoration(
+                        labelText: 'Nội dung',
+                        labelStyle: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        prefixIcon: Icon(Icons.message_outlined, color: Colors.grey.shade400),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.grey.shade600, width: 2),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+                      ),
+                      validator: (value) => value == null || value.isEmpty ? 'Vui lòng nhập nội dung' : null,
+                      maxLines: 10,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 28),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          style: ElevatedButton.styleFrom(
+                            elevation: 0,
+                            backgroundColor: Colors.grey.shade100,
+                            foregroundColor: Colors.grey.shade700,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                            textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                          ),
+                          child: const Text('Hủy'),
+                        ),
+                        const SizedBox(width: 16),
+                        ElevatedButton(
+                          onPressed: _submit,
+                          style: ElevatedButton.styleFrom(
+                            elevation: 2,
+                            backgroundColor: Colors.blue.shade600,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                            textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            shadowColor: Colors.blue.shade100,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(Icons.save, size: 20),
+                              SizedBox(width: 8),
+                              Text('Cập nhật'),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
-      actions: [
-        TextButton.icon(
-          onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.close, color: Colors.red),
-          label: const Text('Hủy'),
-          style: TextButton.styleFrom(
-            foregroundColor: Colors.red,
-          ),
-        ),
-        ElevatedButton.icon(
-          onPressed: _submit,
-          icon: const Icon(Icons.save),
-          label: const Text('Cập nhật'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        ),
-      ],
     );
   }
 }

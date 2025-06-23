@@ -1,14 +1,9 @@
+import 'package:datn_web_admin/feature/contract/domain/usecase/contract_usecase.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../feature/contract/data/datasource/contract_data_source.dart';
 import '../../../../feature/contract/data/repository/contract_repository_impl.dart';
 import '../../../../feature/contract/domain/repository/contract_repository.dart';
-import '../../../../feature/contract/domain/usecase/create_contract.dart';
-import '../../../../feature/contract/domain/usecase/delete_contract.dart';
-import '../../../../feature/contract/domain/usecase/get_all_contracts.dart';
-import '../../../../feature/contract/domain/usecase/get_contract_by_id.dart';
-import '../../../../feature/contract/domain/usecase/update_contract.dart';
-import '../../../../feature/contract/domain/usecase/update_contract_status.dart';
 import '../../../../feature/contract/presentation/bloc/contract_bloc.dart';
 import '../../network/api_client.dart';
 
@@ -47,6 +42,10 @@ void registerContractDependencies() {
     UpdateContractStatus(getIt<ContractRepository>()),
   );
 
+  getIt.registerSingleton<ExportContractPdf>(
+    ExportContractPdf(getIt<ContractRepository>()),
+  );
+
   getIt.registerFactory<ContractBloc>(() => ContractBloc(
     getAllContracts: getIt<GetAllContracts>(),
     getContractById: getIt<GetContractById>(),
@@ -54,5 +53,6 @@ void registerContractDependencies() {
     updateContract: getIt<UpdateContract>(),
     deleteContract: getIt<DeleteContract>(),
     updateContractStatus: getIt<UpdateContractStatus>(),
+    exportContractPdf: getIt<ExportContractPdf>(),
   ));
 }

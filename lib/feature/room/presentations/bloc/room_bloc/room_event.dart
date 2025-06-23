@@ -17,6 +17,7 @@ class GetAllRoomsEvent extends RoomEvent {
   final bool? available;
   final String? search;
   final int? areaId;
+  final String? searchUser; // thêm
 
   const GetAllRoomsEvent({
     required this.page,
@@ -28,10 +29,11 @@ class GetAllRoomsEvent extends RoomEvent {
     this.available,
     this.search,
     this.areaId,
+    this.searchUser, // thêm
   });
 
   @override
-  List<Object?> get props => [page, limit, minCapacity, maxCapacity, minPrice, maxPrice, available, search, areaId];
+  List<Object?> get props => [page, limit, minCapacity, maxCapacity, minPrice, maxPrice, available, search, areaId, searchUser];
 }
 
 class GetRoomByIdEvent extends RoomEvent {
@@ -105,6 +107,28 @@ class DeleteRoomEvent extends RoomEvent {
   final int roomId;
 
   const DeleteRoomEvent(this.roomId);
+
+  @override
+  List<Object?> get props => [roomId];
+}
+
+// Thêm các event mới
+
+// Lấy danh sách người dùng trong phòng
+class GetUsersInRoomEvent extends RoomEvent {
+  final int roomId;
+
+  const GetUsersInRoomEvent(this.roomId);
+
+  @override
+  List<Object?> get props => [roomId];
+}
+
+// Export danh sách người dùng trong phòng ra Excel
+class ExportUsersInRoomEvent extends RoomEvent {
+  final int roomId;
+
+  const ExportUsersInRoomEvent(this.roomId);
 
   @override
   List<Object?> get props => [roomId];

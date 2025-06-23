@@ -15,6 +15,7 @@ class GetAllReportsEvent extends ReportEvent {
   final String? status;
   final int? reportTypeId;
   final String? searchQuery;
+  final bool forceRefresh;
 
   const GetAllReportsEvent({
     this.page = 1,
@@ -24,10 +25,11 @@ class GetAllReportsEvent extends ReportEvent {
     this.status,
     this.reportTypeId,
     this.searchQuery,
+    this.forceRefresh = false,
   });
 
   @override
-  List<Object?> get props => [page, limit, userId, roomId, status, reportTypeId, searchQuery];
+  List<Object?> get props => [page, limit, userId, roomId, status, reportTypeId, searchQuery, forceRefresh];
 }
 
 class GetReportByIdEvent extends ReportEvent {

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
+
 import '../../domain/entities/user_entity.dart';
 import '../bloc/user_bloc.dart';
 import '../bloc/user_event.dart';
@@ -22,6 +24,8 @@ class _EditUserDialogState extends State<EditUserDialog> {
   final _cccdController = TextEditingController();
   final _dateOfBirthController = TextEditingController();
   final _classNameController = TextEditingController();
+  final _hometownController = TextEditingController();
+  final _studentCodeController = TextEditingController();
 
   @override
   void initState() {
@@ -31,9 +35,11 @@ class _EditUserDialogState extends State<EditUserDialog> {
     _phoneController.text = widget.user.phone ?? '';
     _cccdController.text = widget.user.cccd ?? '';
     _dateOfBirthController.text = widget.user.dateOfBirth != null
-        ? widget.user.dateOfBirth!.toIso8601String().split('T')[0]
+        ? DateFormat('dd-MM-yyyy').format(widget.user.dateOfBirth!)
         : '';
     _classNameController.text = widget.user.className ?? '';
+    _hometownController.text = widget.user.hometown ?? '';
+    _studentCodeController.text = widget.user.studentCode ?? '';
   }
 
   @override
@@ -44,6 +50,8 @@ class _EditUserDialogState extends State<EditUserDialog> {
     _cccdController.dispose();
     _dateOfBirthController.dispose();
     _classNameController.dispose();
+    _hometownController.dispose();
+    _studentCodeController.dispose();
     super.dispose();
   }
 
@@ -52,11 +60,11 @@ class _EditUserDialogState extends State<EditUserDialog> {
       DateTime? dateOfBirth;
       if (_dateOfBirthController.text.isNotEmpty) {
         try {
-          dateOfBirth = DateTime.parse(_dateOfBirthController.text);
+          dateOfBirth = DateFormat('dd-MM-yyyy').parse(_dateOfBirthController.text);
         } catch (e) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Định dạng ngày sinh không hợp lệ (YYYY-MM-DD)'),
+              content: Text('Định dạng ngày sinh không hợp lệ (dd-MM-yyyy)'),
               backgroundColor: Colors.red,
               duration: Duration(seconds: 3),
             ),
@@ -72,6 +80,8 @@ class _EditUserDialogState extends State<EditUserDialog> {
         cccd: _cccdController.text.isNotEmpty ? _cccdController.text : null,
         dateOfBirth: dateOfBirth,
         className: _classNameController.text.isNotEmpty ? _classNameController.text : null,
+        hometown: _hometownController.text.isNotEmpty ? _hometownController.text : null,
+        studentCode: _studentCodeController.text.isNotEmpty ? _studentCodeController.text : null,
       ));
     }
   }
@@ -187,16 +197,53 @@ class _EditUserDialogState extends State<EditUserDialog> {
                               TextFormField(
                                 controller: _dateOfBirthController,
                                 decoration: const InputDecoration(
-                                  labelText: 'Ngày sinh (YYYY-MM-DD)',
+                                  labelText: 'Ngày sinh (dd-MM-yyyy)',
                                   border: OutlineInputBorder(),
+                                  suffixIcon: Icon(Icons.calendar_today),
                                 ),
                                 keyboardType: TextInputType.datetime,
+                                readOnly: true, // Chỉ cho phép chọn, không cho phép gõ tay
+                                onTap: () async {
+                                  FocusScope.of(context).requestFocus(FocusNode());
+                                  DateTime initialDate = DateTime.now();
+                                  if (_dateOfBirthController.text.isNotEmpty) {
+                                    try {
+                                      initialDate = DateFormat('dd-MM-yyyy').parse(_dateOfBirthController.text);
+                                    } catch (_) {}
+                                  }
+                                  DateTime? picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: initialDate,
+                                    firstDate: DateTime(1900),
+                                    lastDate: DateTime.now(),
+                                    locale: const Locale('vi', 'VN'),
+                                  );
+                                  if (picked != null) {
+                                    _dateOfBirthController.text = DateFormat('dd-MM-yyyy').format(picked);
+                                  }
+                                },
                               ),
                               const SizedBox(height: 16),
                               TextFormField(
                                 controller: _classNameController,
                                 decoration: const InputDecoration(
                                   labelText: 'Lớp',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                controller: _hometownController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Quê quán',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                controller: _studentCodeController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Mã số sinh viên',
                                   border: OutlineInputBorder(),
                                 ),
                               ),

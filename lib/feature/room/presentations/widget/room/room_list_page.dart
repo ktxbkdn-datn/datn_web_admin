@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:file_saver/file_saver.dart';
+import 'package:syncfusion_flutter_sliders/sliders.dart';
+
 import '../../../../../common/widget/search_bar.dart';
 import '../../../../../common/widget/custom_data_table.dart';
 import '../../../../../common/widget/filter_tab.dart';
@@ -11,12 +14,10 @@ import '../../bloc/area_bloc/area_bloc.dart';
 import '../../bloc/area_bloc/area_event.dart';
 import '../../bloc/area_bloc/area_state.dart';
 import '../../bloc/room_bloc/room_bloc.dart';
-import '../../bloc/room_image_bloc/room_image_bloc.dart';
+
 import 'create_room_dialog.dart';
-import 'edit_room_dialog.dart';
-import 'room_detail_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'room_list_item.dart';
 
 class RoomListPage extends StatefulWidget {
   const RoomListPage({Key? key}) : super(key: key);
@@ -26,16 +27,36 @@ class RoomListPage extends StatefulWidget {
 }
 
 class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClientMixin {
+  // Biến trạng thái và bộ lọc
   int _currentPage = 1;
   static const int _limit = 12;
   int? _selectedAreaId;
   String _filterStatus = 'All';
   String _searchQuery = '';
-  List<RoomEntity> _allRooms = [];
+  
+  // Giá và sức chứa cho bộ lọc nâng cao (có thể thêm UI để điều chỉnh)
+  double? _minPrice;
+  double? _maxPrice;
+  int? _minCapacity;
+  int? _maxCapacity;
+  
+  // Danh sách phòng và trạng thái
   List<RoomEntity> _rooms = [];
-  bool _isInitialLoad = true;
+  int _totalRooms = 0;
+  bool _isLoading = false;
   List<int> _selectedRoomIds = [];
   final List<double> _columnWidths = [50.0, 300.0, 200.0, 200.0, 100.0];
+
+  // Thêm biến trạng thái mới cho tìm kiếm người dùng
+  String _searchUserQuery = '';
+
+  // Thêm biến chứa khoảng giá tối đa và sức chứa tối đa
+  final double _maxPriceValue = 5000000; // 5 triệu đồng
+  final int _maxCapacityValue = 10; // 10 người
+
+  // Thêm biến RangeValues để lưu giá trị slider - khởi tạo trong initState
+  late RangeValues _priceRange;
+  late RangeValues _capacityRange;
 
   @override
   bool get wantKeepAlive => true;
@@ -43,57 +64,104 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
   @override
   void initState() {
     super.initState();
+    // Khởi tạo giá trị mặc định cho các slider
+    _priceRange = RangeValues(0, _maxPriceValue);
+    _capacityRange = RangeValues(0, _maxCapacityValue.toDouble());
+    
     _loadLocalData();
     context.read<AreaBloc>().add(FetchAreasEvent(page: 1, limit: 100));
-    _fetchRooms();
+    _fetchRoomsFromBackend();
   }
 
+  // Tải dữ liệu từ local storage
   Future<void> _loadLocalData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    _currentPage = prefs.getInt('roomCurrentPage') ?? 1;
-    _selectedAreaId = prefs.getInt('selectedAreaId');
-    _filterStatus = prefs.getString('roomFilterStatus') ?? 'All';
-    _searchQuery = prefs.getString('roomSearchQuery') ?? '';
-    String? roomsJson = prefs.getString('rooms');
-    if (roomsJson != null) {
-      List<dynamic> roomsList = jsonDecode(roomsJson);
-      setState(() {
-        _allRooms = roomsList.map((json) => RoomEntity.fromJson(json)).toList();
-        _applyFilters();
-      });
-    }
+    setState(() {
+      _currentPage = prefs.getInt('roomCurrentPage') ?? 1;
+      _selectedAreaId = prefs.getInt('selectedAreaId');
+      _searchQuery = prefs.getString('roomSearchQuery') ?? '';
+      _searchUserQuery = prefs.getString('roomSearchUserQuery') ?? '';
+      
+      // Tải các bộ lọc giá và sức chứa
+      _minPrice = prefs.getDouble('roomMinPrice');
+      _maxPrice = prefs.getDouble('roomMaxPrice');
+      _minCapacity = prefs.getInt('roomMinCapacity');
+      _maxCapacity = prefs.getInt('roomMaxCapacity');
+      
+      // Cập nhật giá trị cho slider sau khi đã tải dữ liệu
+      _priceRange = RangeValues(
+        _minPrice ?? 0,
+        _maxPrice ?? _maxPriceValue,
+      );
+      
+      _capacityRange = RangeValues(
+        (_minCapacity ?? 0).toDouble(),
+        (_maxCapacity ?? _maxCapacityValue).toDouble(),
+      );
+    });
   }
 
+  // Lưu trạng thái hiện tại vào local storage
   Future<void> _saveLocalData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setInt('roomCurrentPage', _currentPage);
+    
     if (_selectedAreaId != null) {
       await prefs.setInt('selectedAreaId', _selectedAreaId!);
     } else {
       await prefs.remove('selectedAreaId');
     }
+    
     await prefs.setString('roomFilterStatus', _filterStatus);
     await prefs.setString('roomSearchQuery', _searchQuery);
-    await prefs.setString('rooms', jsonEncode(_allRooms.map((room) => room.toJson()).toList()));
+    await prefs.setString('roomSearchUserQuery', _searchUserQuery); // Thêm mới
+    
+    // Lưu các bộ lọc giá và sức chứa
+    if (_minPrice != null) await prefs.setDouble('roomMinPrice', _minPrice!);
+    else await prefs.remove('roomMinPrice');
+    
+    if (_maxPrice != null) await prefs.setDouble('roomMaxPrice', _maxPrice!);
+    else await prefs.remove('roomMaxPrice');
+    
+    if (_minCapacity != null) await prefs.setInt('roomMinCapacity', _minCapacity!);
+    else await prefs.remove('roomMinCapacity');
+    
+    if (_maxCapacity != null) await prefs.setInt('roomMaxCapacity', _maxCapacity!);
+    else await prefs.remove('roomMaxCapacity');
   }
 
-  void _fetchRooms() {
-    context.read<RoomBloc>().add(const GetAllRoomsEvent(page: 1, limit: 1000, areaId: null));
+  // Chuyển đổi trạng thái filter sang available cho API
+  bool? _getAvailableFromStatus(String status) {
+    switch (status) {
+      case 'AVAILABLE':
+        return true;
+      case 'OCCUPIED':
+        return false;
+      default:
+        return null; // Trạng thái khác không lọc theo available
+    }
   }
 
-  void _applyFilters() {
+  // Lấy dữ liệu từ backend với tất cả tham số lọc
+  void _fetchRoomsFromBackend() {
     setState(() {
-      _rooms = _allRooms.where((room) {
-        bool matchesStatus = _filterStatus == 'All' || room.status == _filterStatus;
-        bool matchesSearch = _searchQuery.isEmpty ||
-            room.name.toLowerCase().contains(_searchQuery.toLowerCase());
-        bool matchesArea = _selectedAreaId == null || room.areaId == _selectedAreaId;
-        return matchesStatus && matchesSearch && matchesArea;
-      }).toList();
-      _selectedRoomIds.removeWhere((id) => !_rooms.any((room) => room.roomId == id));
+      _isLoading = true;
     });
+    
+    context.read<RoomBloc>().add(GetAllRoomsEvent(
+      page: _currentPage,
+      limit: _limit,
+      areaId: _selectedAreaId,
+      search: _searchQuery.isNotEmpty ? _searchQuery : null,
+      minPrice: _minPrice,
+      maxPrice: _maxPrice,
+      minCapacity: _minCapacity,
+      maxCapacity: _maxCapacity,
+      searchUser: _searchUserQuery.isNotEmpty ? _searchUserQuery : null,
+    ));
   }
 
+  // Xử lý khi người dùng chọn/bỏ chọn phòng
   void _toggleSelection(int roomId) {
     setState(() {
       if (_selectedRoomIds.contains(roomId)) {
@@ -104,6 +172,7 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
     });
   }
 
+  // Xóa các phòng đã chọn
   void _deleteSelected() {
     if (_selectedRoomIds.isNotEmpty) {
       for (int roomId in _selectedRoomIds) {
@@ -115,21 +184,34 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
     }
   }
 
-  // Helper method to get translated status text for display
-  String _getStatusDisplayText(String status) {
-    switch (status) {
-      case 'AVAILABLE':
-        return 'Còn trống';
-      case 'OCCUPIED':
-        return 'Hết chỗ';
-      case 'RESERVED':
-        return 'Đã đặt';
-      case 'MAINTENANCE':
-        return 'Bảo trì';
-      case 'DISABLED':
-        return 'Không hoạt động';
-      default:
-        return 'Không xác định';
+  // Reset tất cả bộ lọc
+  void _resetAllFilters() {
+    setState(() {
+      _currentPage = 1;
+      _selectedAreaId = null;
+      _searchQuery = '';
+      _searchUserQuery = '';
+      _minPrice = null;
+      _maxPrice = null;
+      _minCapacity = null;
+      _maxCapacity = null;
+      
+      // Reset giá trị slider
+      _priceRange = RangeValues(0, _maxPriceValue);
+      _capacityRange = RangeValues(0, _maxCapacityValue.toDouble());
+    });
+    _saveLocalData();
+    _fetchRoomsFromBackend();
+  }
+
+  // Thêm phương thức để định dạng giá tiền
+  String _formatCurrency(double value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M';
+    } else if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(0)}K';
+    } else {
+      return value.toStringAsFixed(0);
     }
   }
 
@@ -171,7 +253,7 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                             _selectedAreaId = null;
                           });
                           _saveLocalData();
-                          _applyFilters();
+                          _fetchRoomsFromBackend();
                         }
                       }
                     },
@@ -179,15 +261,15 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                   BlocListener<RoomBloc, RoomState>(
                     listener: (context, state) {
                       if (state is RoomError) {
+                        setState(() {
+                          _isLoading = false;
+                        });
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('${state.message}')),
                         );
                       } else if (state is RoomDeleted) {
-                        setState(() {
-                          _allRooms.removeWhere((room) => room.roomId == state.roomId);
-                          _applyFilters();
-                        });
-                        _saveLocalData();
+                        // Tải lại dữ liệu sau khi xóa
+                        _fetchRoomsFromBackend();
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Xóa phòng thành công!'),
@@ -197,11 +279,33 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                         );
                       } else if (state is RoomLoaded) {
                         setState(() {
-                          _allRooms = state.rooms;
-                          _isInitialLoad = false;
-                          _applyFilters();
+                          _rooms = state.rooms;
+                          _totalRooms = state.totalItems;
+                          _isLoading = false;
                         });
                         _saveLocalData();
+                      } else if (state is ExportFileReady) {
+                        try {
+                          FileSaver.instance.saveFile(
+                            name: state.filename,
+                            bytes: state.fileBytes,
+                            ext: 'xlsx',
+                            mimeType: MimeType.microsoftExcel,
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Đã tải xuống file Excel thành công!'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Lỗi khi tải file: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
                       }
                     },
                   ),
@@ -227,64 +331,6 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                  children: [
-                                    FilterTab(
-                                      label: 'Tất cả phòng (${_allRooms.length})',
-                                      isSelected: _filterStatus == 'All',
-                                      onTap: () {
-                                        setState(() {
-                                          _filterStatus = 'All';
-                                          _currentPage = 1;
-                                          _saveLocalData();
-                                          _applyFilters();
-                                        });
-                                      },
-                                    ),
-                                    const SizedBox(width: 10),
-                                    FilterTab(
-                                      label: 'Phòng còn trống (${_allRooms.where((room) => room.status == 'AVAILABLE').length})',
-                                      isSelected: _filterStatus == 'AVAILABLE',
-                                      onTap: () {
-                                        setState(() {
-                                          _filterStatus = 'AVAILABLE';
-                                          _currentPage = 1;
-                                          _saveLocalData();
-                                          _applyFilters();
-                                        });
-                                      },
-                                    ),
-                                    const SizedBox(width: 10),
-                                    FilterTab(
-                                      label: 'Phòng hết chỗ (${_allRooms.where((room) => room.status == 'OCCUPIED').length})',
-                                      isSelected: _filterStatus == 'OCCUPIED',
-                                      onTap: () {
-                                        setState(() {
-                                          _filterStatus = 'OCCUPIED';
-                                          _currentPage = 1;
-                                          _saveLocalData();
-                                          _applyFilters();
-                                        });
-                                      },
-                                    ),
-                                    const SizedBox(width: 10),
-                                    FilterTab(
-                                      label: 'Phòng đang bảo trì (${_allRooms.where((room) => room.status == 'MAINTENANCE').length})',
-                                      isSelected: _filterStatus == 'MAINTENANCE',
-                                      onTap: () {
-                                        setState(() {
-                                          _filterStatus = 'MAINTENANCE';
-                                          _currentPage = 1;
-                                          _saveLocalData();
-                                          _applyFilters();
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
                               const SizedBox(height: 16),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -334,9 +380,9 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                                                     setState(() {
                                                       _selectedAreaId = value;
                                                       _currentPage = 1;
-                                                      _saveLocalData();
-                                                      _applyFilters();
                                                     });
+                                                    _saveLocalData();
+                                                    _fetchRoomsFromBackend();
                                                   },
                                                 ),
                                               ),
@@ -349,10 +395,15 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                                             onChanged: (value) {
                                               setState(() {
                                                 _searchQuery = value;
-                                                _currentPage = 1;
-                                                _saveLocalData();
-                                                _applyFilters();
                                               });
+                                            },
+                                            onSearch: (value) {
+                                              setState(() {
+                                                _searchQuery = value;
+                                                _currentPage = 1;
+                                              });
+                                              _saveLocalData();
+                                              _fetchRoomsFromBackend();
                                             },
                                             hintText: 'Tìm kiếm phòng...',
                                             initialValue: _searchQuery,
@@ -364,6 +415,18 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                                   const SizedBox(width: 16),
                                   Row(
                                     children: [
+                                      ElevatedButton.icon(
+                                        onPressed: _resetAllFilters,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.purple,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                        icon: const Icon(Icons.filter_alt_off),
+                                        label: const Text('Xóa bộ lọc'),
+                                      ),
+                                      const SizedBox(width: 10),
                                       ElevatedButton.icon(
                                         onPressed: _selectedRoomIds.isEmpty ? null : _deleteSelected,
                                         style: ElevatedButton.styleFrom(
@@ -377,7 +440,7 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                                       ),
                                       const SizedBox(width: 10),
                                       ElevatedButton.icon(
-                                        onPressed: () => context.read<RoomBloc>().add(const GetAllRoomsEvent(page: 1, limit: 1000)),
+                                        onPressed: _fetchRoomsFromBackend,
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.green,
                                           shape: RoundedRectangleBorder(
@@ -393,7 +456,7 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                                           showDialog(
                                             context: context,
                                             builder: (context) => const CreateRoomDialog(),
-                                          );
+                                          ).then((_) => _fetchRoomsFromBackend()); // Tải lại sau khi tạo phòng
                                         },
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.blue,
@@ -408,6 +471,141 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                                   ),
                                 ],
                               ),
+                              // Có thể thêm bộ lọc nâng cao ở đây
+                              ExpansionTile(
+                                title: const Text('Bộ lọc nâng cao', 
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // Tìm kiếm người dùng
+                                        const Text('Tìm kiếm theo người dùng:', 
+                                          style: TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        SearchBarTab(
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _searchUserQuery = value;
+                                            });
+                                          },
+                                          onSearch: (value) {
+                                            setState(() {
+                                              _searchUserQuery = value;
+                                              _currentPage = 1;
+                                            });
+                                            _saveLocalData();
+                                            _fetchRoomsFromBackend();
+                                          },
+                                          hintText: 'Tìm kiếm theo tên, email, mã sinh viên...',
+                                          initialValue: _searchUserQuery,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        
+                                        // Lọc theo khoảng giá
+                                        const Text('Khoảng giá:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                        const SizedBox(height: 8),
+                                        Column(
+                                          children: [
+                                            SfRangeSlider(
+                                              min: 0.0,
+                                              max: _maxPriceValue,
+                                              values: SfRangeValues(_priceRange.start, _priceRange.end),
+                                              interval: 1000000,
+                                              showLabels: true,
+                                              enableTooltip: true,
+                                              activeColor: Colors.deepPurple, // Màu thanh kéo đã chọn
+                                              inactiveColor: Colors.deepPurple.shade100, // Màu nền thanh kéo
+                          
+                                              onChanged: (SfRangeValues values) {
+                                                setState(() {
+                                                  _priceRange = RangeValues(values.start, values.end);
+                                                  _minPrice = values.start == 0 ? null : values.start;
+                                                  _maxPrice = values.end == _maxPriceValue ? null : values.end;
+                                                });
+                                              },
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Text('0 VNĐ', style: TextStyle(color: Colors.grey[600])),
+                                                Text('${_formatCurrency(_priceRange.start)} VNĐ'),
+                                                Text('-'),
+                                                Text('${_formatCurrency(_priceRange.end)} VNĐ'),
+                                                Text('${_formatCurrency(_maxPriceValue)} VNĐ', style: TextStyle(color: Colors.grey[600])),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 24),
+                                        
+                                        // Lọc theo sức chứa
+                                        const Text('Sức chứa:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                        const SizedBox(height: 8),
+                                        Column(
+                                          children: [
+                                            RangeSlider(
+                                              values: _capacityRange,
+                                              min: 0,
+                                              max: _maxCapacityValue.toDouble(),
+                                              divisions: _maxCapacityValue,
+                                              labels: RangeLabels(
+                                                '${_capacityRange.start.toInt()} người',
+                                                '${_capacityRange.end.toInt()} người',
+                                              ),
+                                              activeColor: Colors.teal, // Màu thanh kéo đã chọn
+                                              inactiveColor: Colors.teal.shade100, // Màu nền thanh kéo
+                                              onChanged: (RangeValues values) {
+                                                setState(() {
+                                                  _capacityRange = values;
+                                                  _minCapacity = values.start == 0 ? null : values.start.toInt();
+                                                  _maxCapacity = values.end == _maxCapacityValue ? null : values.end.toInt();
+                                                });
+                                              },
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Text('0 người', style: TextStyle(color: Colors.grey[600])),
+                                                Text('${_capacityRange.start.toInt()} người'),
+                                                Text('-'),
+                                                Text('${_capacityRange.end.toInt()} người'),
+                                                Text('$_maxCapacityValue người', style: TextStyle(color: Colors.grey[600])),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 24),
+                                        
+                                        // Nút áp dụng bộ lọc
+                                        Center(
+                                          child: ElevatedButton.icon(
+                                            onPressed: () {
+                                              setState(() {
+                                                _currentPage = 1;
+                                              });
+                                              _saveLocalData();
+                                              _fetchRoomsFromBackend();
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.blue,
+                                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                            ),
+                                            icon: const Icon(Icons.filter_list),
+                                            label: const Text('Áp dụng bộ lọc'),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
@@ -418,28 +616,33 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                         child: SingleChildScrollView(
                           child: BlocBuilder<RoomBloc, RoomState>(
                             builder: (context, state) {
-                              bool isLoading = state is RoomLoading;
+                              bool isLoading = state is RoomLoading || _isLoading;
                               String? errorMessage;
 
                               if (state is RoomError) {
                                 errorMessage = state.message;
                               }
 
-                              int startIndex = (_currentPage - 1) * _limit;
-                              int endIndex = startIndex + _limit;
-                              if (endIndex > _rooms.length) endIndex = _rooms.length;
-                              List<RoomEntity> paginatedRooms = startIndex < _rooms.length
-                                  ? _rooms.sublist(startIndex, endIndex)
-                                  : [];
-
-                              return isLoading && _isInitialLoad
+                              return isLoading
                                   ? const Center(child: CircularProgressIndicator())
                                   : errorMessage != null
                                       ? Center(child: Text('Lỗi: $errorMessage'))
-                                      : paginatedRooms.isEmpty
-                                          ? const Center(child: Text('Không có phòng nào'))
+                                      : _rooms.isEmpty
+                                          ? const Center(child: Text('Không có phòng nào phù hợp với bộ lọc'))
                                           : Column(
                                               children: [
+                                                Padding(
+                                                  padding: EdgeInsets.symmetric(horizontal: paddingHorizontal),
+                                                  child: Row(
+                                                    children: [
+                                                      Text(
+                                                        'Hiển thị $_limit phòng trên tổng số $_totalRooms phòng',
+                                                        style: const TextStyle(fontStyle: FontStyle.italic),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 10),
                                                 GenericDataTable<RoomEntity>(
                                                   headers: const [
                                                     '',
@@ -448,88 +651,28 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
                                                     'Trạng thái',
                                                     '',
                                                   ],
-                                                  data: paginatedRooms,
+                                                  data: _rooms,
                                                   columnWidths: _columnWidths,
                                                   cellBuilder: (room, index) {
-                                                    switch (index) {
-                                                      case 0:
-                                                        return Checkbox(
-                                                          value: _selectedRoomIds.contains(room.roomId),
-                                                          onChanged: (value) {
-                                                            _toggleSelection(room.roomId);
-                                                          },
-                                                        );
-                                                      case 1:
-                                                        return Text(
-                                                          room.name,
-                                                          style: const TextStyle(fontWeight: FontWeight.bold),
-                                                          textAlign: TextAlign.center,
-                                                          overflow: TextOverflow.ellipsis,
-                                                        );
-                                                      case 2:
-                                                        return Row(
-                                                          mainAxisAlignment: MainAxisAlignment.center,
-                                                          children: [
-                                                            const Icon(Icons.person, size: 16),
-                                                            const SizedBox(width: 4),
-                                                            Text('${room.currentPersonNumber}/${room.capacity}'),
-                                                          ],
-                                                        );
-                                                      case 3:
-                                                        return Container(
-                                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                          decoration: BoxDecoration(
-                                                            color: _getStatusColor(room.status),
-                                                            borderRadius: BorderRadius.circular(12),
-                                                          ),
-                                                          child: Text(
-                                                            _getStatusDisplayText(room.status), // Use translated text
-                                                            style: const TextStyle(color: Colors.white),
-                                                            textAlign: TextAlign.center,
-                                                          ),
-                                                        );
-                                                      case 4:
-                                                        return Row(
-                                                          mainAxisSize: MainAxisSize.min,
-                                                          mainAxisAlignment: MainAxisAlignment.center,
-                                                          children: [
-                                                            IconButton(
-                                                              icon: const Icon(Icons.visibility),
-                                                              onPressed: () {
-                                                                context.read<RoomBloc>().add(GetRoomByIdEvent(room.roomId));
-                                                                context.read<RoomImageBloc>().add(GetRoomImagesEvent(room.roomId));
-                                                                showDialog(
-                                                                  context: context,
-                                                                  barrierDismissible: false,
-                                                                  builder: (dialogContext) => RoomDetailDialog(room: room),
-                                                                );
-                                                              },
-                                                            ),
-                                                            IconButton(
-                                                              icon: const Icon(Icons.edit),
-                                                              onPressed: () {
-                                                                showDialog(
-                                                                  context: context,
-                                                                  builder: (context) => EditRoomDialog(room: room),
-                                                                );
-                                                              },
-                                                            ),
-                                                          ],
-                                                        );
-                                                      default:
-                                                        return const SizedBox();
-                                                    }
+                                                    return RoomListItem(
+                                                      room: room,
+                                                      isSelected: _selectedRoomIds.contains(room.roomId),
+                                                      onToggleSelection: _toggleSelection,
+                                                      columnIndex: index,
+                                                      columnWidth: _columnWidths[index],
+                                                    );
                                                   },
                                                 ),
                                                 PaginationControls(
                                                   currentPage: _currentPage,
-                                                  totalItems: _rooms.length,
+                                                  totalItems: _totalRooms,
                                                   limit: _limit,
                                                   onPageChanged: (page) {
                                                     setState(() {
                                                       _currentPage = page;
-                                                      _saveLocalData();
                                                     });
+                                                    _saveLocalData();
+                                                    _fetchRoomsFromBackend();
                                                   },
                                                 ),
                                               ],
@@ -547,22 +690,5 @@ class _RoomListPageState extends State<RoomListPage> with AutomaticKeepAliveClie
         ),
       ],
     );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'AVAILABLE':
-        return Colors.green;
-      case 'OCCUPIED':
-        return Colors.blue;
-      case 'RESERVED':
-        return Colors.yellow;
-      case 'MAINTENANCE':
-        return Colors.red;
-      case 'DISABLED':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
   }
 }

@@ -1,10 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-
-import 'package:datn_web_admin/feature/dashboard/presentation/widgets/statistic_overview_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:datn_web_admin/feature/admin/domain/entities/admin_entity.dart';
@@ -12,7 +9,6 @@ import 'package:datn_web_admin/feature/admin/presentation/bloc/admin_bloc.dart';
 import 'package:datn_web_admin/feature/admin/presentation/bloc/admin_event.dart';
 import 'package:datn_web_admin/feature/admin/presentation/bloc/admin_state.dart';
 import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_bloc.dart';
-import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_event.dart';
 import 'package:datn_web_admin/feature/auth/presentation/bloc/auth_state.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_bloc.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_event.dart';
@@ -20,17 +16,12 @@ import 'package:datn_web_admin/feature/register/domain/entity/register_entity.da
 import 'package:datn_web_admin/feature/register/presentation/bloc/registration_bloc.dart';
 import 'package:datn_web_admin/feature/register/presentation/bloc/registration_event.dart';
 import 'package:datn_web_admin/feature/register/presentation/bloc/registration_state.dart';
-import 'package:datn_web_admin/feature/report/domain/entities/report_entity.dart';
 import 'package:datn_web_admin/feature/report/presentation/bloc/report/report_bloc.dart';
 import 'package:datn_web_admin/feature/report/presentation/bloc/report/report_event.dart';
 import 'package:datn_web_admin/feature/report/presentation/bloc/report/report_state.dart';
-import 'package:datn_web_admin/feature/report/presentation/bloc/rp_type/rp_type_bloc.dart';
-import 'package:datn_web_admin/feature/report/presentation/bloc/rp_type/rp_type_event.dart';
-import 'package:datn_web_admin/feature/report/presentation/bloc/rp_type/rp_type_state.dart';
 import 'package:datn_web_admin/feature/report/presentation/page/widget/report_tab/report_detail_dialog.dart';
 import 'package:datn_web_admin/common/constants/colors.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/widgets/consumptions_bar_chart.dart';
-import 'package:datn_web_admin/feature/dashboard/presentation/widgets/maintenance_request_card.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/widgets/reports_pie_chart.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/widgets/registration_card.dart';
 
@@ -81,7 +72,7 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     if (authState.auth != null) {
       context.read<StatisticsBloc>().add(FetchMonthlyConsumption(
         year: DateTime.now().year,
-        areaId: null,
+        areaId: null, forceRefresh: false,
       ));
     }
   }
@@ -129,41 +120,6 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
     });
   }
 
-  void _showChartDialog(BuildContext context, Widget chartWidget, String title) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.9,
-            height: MediaQuery.of(context).size.height * 0.9,
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Expanded(child: chartWidget),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 
   Widget buildRegistrationContent(RegistrationState state, BuildContext context) {
     int pendingCount = 0;
@@ -573,85 +529,55 @@ class _DashboardPageState extends State<DashboardPage> with RouteAware {
                         ),
                         child: LayoutBuilder(
                           builder: (context, constraints) {
-                            const chartHeight = 300.0;
-                            final chartWidth = constraints.maxWidth > 600
-                                ? (constraints.maxWidth - 32) / 2
-                                : constraints.maxWidth;
-                            return constraints.maxWidth > 600
-                                ? Row(
-                                    children: [
-                                      Expanded(
-                                        child: GestureDetector(
-                                          onTap: () => _showChartDialog(
-                                            context,
-                                            DashboardBarChart(
-                                              chartWidth: MediaQuery.of(context).size.width * 0.8,
-                                              chartHeight: 500,
-                                            ),
-                                            'Biểu đồ cột chi tiết',
-                                          ),
-                                          child: DashboardBarChart(
-                                            chartWidth: chartWidth,
-                                            chartHeight: chartHeight,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: GestureDetector(
-                                          onTap: () => _showChartDialog(
-                                            context,
-                                            ReportPieChart(
-                                              chartWidth: MediaQuery.of(context).size.width * 0.8,
-                                              chartHeight: 800,
-                                              pieRadius: MediaQuery.of(context).size.width * 0.15,
-                                            ),
-                                            'Biểu đồ tròn chi tiết',
-                                          ),
-                                          child: ReportPieChart(
-                                            chartWidth: chartWidth,
-                                            chartHeight: chartHeight,
-                                            pieRadius: MediaQuery.of(context).size.width * 0.06,
-                                          ),
-                                        ),
+                            return Column(
+                              children: [
+                                // Gọi trực tiếp DashboardBarChart như ReportPieChart
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 24),
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.grey.withOpacity(0.3),
+                                        spreadRadius: 1,
+                                        blurRadius: 3,
+                                        offset: const Offset(0, 2),
                                       ),
                                     ],
-                                  )
-                                : Column(
-                                    children: [
-                                      GestureDetector(
-                                        onTap: () => _showChartDialog(
-                                          context,
-                                          DashboardBarChart(
-                                            chartWidth: MediaQuery.of(context).size.width * 0.8,
-                                            chartHeight: 500,
-                                          ),
-                                          'Biểu đồ cột chi tiết',
-                                        ),
-                                        child: DashboardBarChart(
-                                          chartWidth: chartWidth,
-                                          chartHeight: chartHeight,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      GestureDetector(
-                                        onTap: () => _showChartDialog(
-                                          context,
-                                          ReportPieChart(
-                                            chartWidth: MediaQuery.of(context).size.width * 0.8,
-                                            chartHeight: 800,
-                                            pieRadius: MediaQuery.of(context).size.width * 0.08,
-                                          ),
-                                          'Biểu đồ tròn chi tiết',
-                                        ),
-                                        child: ReportPieChart(
-                                          chartWidth: chartWidth,
-                                          chartHeight: chartHeight,
-                                          pieRadius: MediaQuery.of(context).size.width * 0.08,
-                                        ),
+                                  ),
+                                  child: DashboardBarChart(),
+                                ),
+                                
+                                // Report Chart (Pie Chart) - Always enlarged with modern design
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 24),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: Colors.grey.shade200),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.grey.withOpacity(0.2),
+                                        spreadRadius: 0,
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
                                       ),
                                     ],
-                                  );
+                                  ),
+                                  child: SizedBox(
+                                    height: 700, // Increased height for the modernized pie chart
+                                    child: ReportPieChart(
+                                      chartWidth: constraints.maxWidth,
+                                      chartHeight: 650,
+                                      pieRadius: constraints.maxWidth * 0.12,
+                                      isEnlarged: true,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
                           },
                         ),
                       ),

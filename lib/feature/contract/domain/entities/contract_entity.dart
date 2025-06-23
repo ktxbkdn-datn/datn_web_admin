@@ -10,13 +10,14 @@ class Contract extends Equatable {
   final String startDate;
   final String endDate;
   final String roomName;
-  final String userEmail;
-  final String? cccd; // CCCD
-  final String? className; // Lớp học
-  final String? dateOfBirth; // Ngày sinh
-  final String? fullname; // Tên đầy đủ
-  final String? phone; // Số điện thoại
-  final String? areaName; // Tên khu vực
+  final String studentCode; // Bắt buộc
+  final String? userEmail; // Có thể bỏ nếu không dùng nữa
+  final String? cccd;
+  final String? className;
+  final String? dateOfBirth;
+  final String? fullname;
+  final String? phone;
+  final String? areaName;
 
   Contract({
     required this.contractId,
@@ -28,7 +29,8 @@ class Contract extends Equatable {
     required this.startDate,
     required this.endDate,
     required this.roomName,
-    required this.userEmail,
+    required this.studentCode,
+    this.userEmail,
     this.cccd,
     this.className,
     this.dateOfBirth,
@@ -47,7 +49,8 @@ class Contract extends Equatable {
     String? startDate,
     String? endDate,
     String? roomName,
-    String? userEmail,
+    String? studentCode, // Bắt buộc
+    String? userEmail, // Có thể bỏ nếu không dùng nữa
     String? cccd,
     String? className,
     String? dateOfBirth,
@@ -65,7 +68,8 @@ class Contract extends Equatable {
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       roomName: roomName ?? this.roomName,
-      userEmail: userEmail ?? this.userEmail,
+      studentCode: studentCode ?? this.studentCode, // Bắt buộc
+      userEmail: userEmail ?? this.userEmail, // Có thể bỏ nếu không dùng nữa
       cccd: cccd ?? this.cccd,
       className: className ?? this.className,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
@@ -87,7 +91,8 @@ class Contract extends Equatable {
       'startDate': startDate,
       'endDate': endDate,
       'roomName': roomName,
-      'userEmail': userEmail,
+      'studentCode': studentCode, // Bắt buộc
+      'userEmail': userEmail, // Có thể bỏ nếu không dùng nữa
       'cccd': cccd,
       'className': className,
       'dateOfBirth': dateOfBirth,
@@ -109,7 +114,8 @@ class Contract extends Equatable {
       startDate: json['startDate'] as String,
       endDate: json['endDate'] as String,
       roomName: json['roomName'] as String,
-      userEmail: json['userEmail'] as String,
+      studentCode: json['studentCode'] as String, // Bắt buộc
+      userEmail: json['userEmail'] as String?,
       cccd: json['cccd'] as String?,
       className: json['className'] as String?,
       dateOfBirth: json['dateOfBirth'] as String?,
@@ -130,7 +136,8 @@ class Contract extends Equatable {
     startDate,
     endDate,
     roomName,
-    userEmail,
+    studentCode, // Bắt buộc
+    userEmail, // Có thể bỏ nếu không dùng nữa
     cccd,
     className,
     dateOfBirth,

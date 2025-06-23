@@ -64,15 +64,38 @@ class NotificationItem extends StatefulWidget {
   _NotificationItemState createState() => _NotificationItemState();
 }
 
-class _NotificationItemState extends State<NotificationItem> {
+class _NotificationItemState extends State<NotificationItem> with SingleTickerProviderStateMixin {
   Future<String?>? _authTokenFuture;
   String? _authToken;
   bool _isExpanded = false;
+
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
     super.initState();
     _authTokenFuture = _loadAuthToken();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    ));
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutCubic,
+    ));
+    _animationController.forward();
   }
 
   Future<String?> _loadAuthToken() async {
@@ -96,6 +119,8 @@ class _NotificationItemState extends State<NotificationItem> {
 
   @override
   void dispose() {
+    _animationController.dispose();
+
     final notificationId = widget.notification.notificationId;
     if (notificationId != null) {
       widget.pageControllers[notificationId]?.dispose();
@@ -214,39 +239,112 @@ class _NotificationItemState extends State<NotificationItem> {
     }
   }
 
+  Color _getTargetTypeColor(String? targetType) {
+    switch (targetType) {
+      case 'ALL':
+        return Colors.blue;
+      case 'ROOM':
+        return Colors.green;
+      case 'USER':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getTargetTypeIcon(String? targetType) {
+    switch (targetType) {
+      case 'ALL':
+        return Icons.group;
+      case 'ROOM':
+        return Icons.meeting_room;
+      case 'USER':
+        return Icons.person;
+      default:
+        return Icons.help;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final notification = widget.notification;
     final notificationId = notification.notificationId;
-
-    bool isGeneral = widget.notification.targetType == 'ALL';
+    final targetColor = _getTargetTypeColor(notification.targetType);
 
     return FutureBuilder<String?>(
       future: _authTokenFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            elevation: 4,
+          return Container(
             margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-            child: const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Center(child: CircularProgressIndicator()),
+            child: Card(
+              elevation: 10,
+              shadowColor: Colors.black.withOpacity(0.08),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              child: Container(
+                height: 120,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    colors: [Colors.grey.shade50, Colors.grey.shade100],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                  ),
+                ),
+              ),
             ),
           );
         }
 
         if (snapshot.hasError) {
-          return Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            elevation: 4,
+          return Container(
             margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Center(
-                child: Text(
-                  'Error loading authentication token: ${snapshot.error}',
-                  style: const TextStyle(color: Colors.red),
+            child: Card(
+              elevation: 10,
+              shadowColor: Colors.red.withOpacity(0.15),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              child: Container(
+                padding: const EdgeInsets.all(20.0),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    colors: [Colors.red.shade50, Colors.red.shade100],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.error_outline, color: Colors.red.shade600, size: 48),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Error loading authentication token',
+                        style: TextStyle(
+                          color: Colors.red.shade700,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${snapshot.error}',
+                        style: TextStyle(
+                          color: Colors.red.shade600,
+                          fontSize: 12,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -255,135 +353,381 @@ class _NotificationItemState extends State<NotificationItem> {
 
         _authToken = snapshot.data;
 
-        return Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          elevation: 4,
-          margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+        return SlideTransition(
+          position: _slideAnimation,
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 18.0),
+              child: Card(
+                elevation: 14,
+                shadowColor: targetColor.withOpacity(0.18),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(28),
+                    gradient: LinearGradient(
+                      colors: [Colors.white, targetColor.withOpacity(0.03)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    border: Border.all(
+                      color: targetColor.withOpacity(0.13),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header Section
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Target Type Badge
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          targetColor.withOpacity(0.13),
+                                          targetColor.withOpacity(0.07),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(22),
+                                      border: Border.all(
+                                        color: targetColor.withOpacity(0.35),
+                                        width: 1.2,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: targetColor.withOpacity(0.08),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          _getTargetTypeIcon(widget.notification.targetType),
+                                          size: 17,
+                                          color: targetColor,
+                                        ),
+                                        const SizedBox(width: 7),
+                                        Text(
+                                          _getTargetTypeDisplayText(widget.notification.targetType),
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: targetColor,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  // Title
+                                  Text(
+                                    notification.title, // Removed ?? 'Không có tiêu đề' since title is non-nullable
+                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.grey.shade800,
+                                          height: 1.3,
+                                        ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Action Buttons
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.04),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(14),
+                                      onTap: widget.onEdit,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(9),
+                                        child: Icon(
+                                          Icons.edit_outlined,
+                                          color: Colors.blue.shade600,
+                                          size: 22,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(14),
+                                      onTap: widget.onDelete,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(9),
+                                        child: Icon(
+                                          Icons.delete_outline,
+                                          color: Colors.red.shade600,
+                                          size: 22,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        // Message Content
+                        Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: Colors.grey.shade200,
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
+                              Text(
+                                notification.message, // Removed ?? 'No content' since message is non-nullable
+                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                      color: Colors.grey.shade700,
+                                      height: 1.5,
+                                    ),
+                                maxLines: _isExpanded ? null : 3,
+                                overflow: _isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                              ),
+                              if ((notification.message.length) > 100) // Removed ?. and ?? 0, message is non-nullable
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _isExpanded = !_isExpanded;
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.shade50,
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(
+                                          color: Colors.blue.shade200,
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            _isExpanded ? 'Thu gọn' : 'Xem thêm',
+                                            style: TextStyle(
+                                              color: Colors.blue.shade700,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Icon(
+                                            _isExpanded ? Icons.expand_less : Icons.expand_more,
+                                            color: Colors.blue.shade700,
+                                            size: 16,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                                child: Text(
-                                  'Đối tượng: ${_getTargetTypeDisplayText(widget.notification.targetType)}',
-                                  style: const TextStyle(fontSize: 14, color: Colors.blue),
+                            ],
+                          ),
+                        ),
+                        // Media Section
+                        if (notification.media != null && notification.media!.isNotEmpty && notificationId != null) ...[
+                          const SizedBox(height: 18),
+                          Container(
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.grey.shade50,
+                                  Colors.white, // Changed from Colors.grey.shade25 to Colors.white
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: Colors.grey.shade200,
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.03),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
                                 ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.attachment,
+                                      color: Colors.grey.shade600,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 7),
+                                    Text(
+                                      'Media đính kèm (${notification.media!.length})',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade700,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                _authToken != null
+                                    ? MediaPreview(
+                                        mediaItems: notification.media!,
+                                        baseUrl: widget.baseUrl,
+                                        notificationId: notificationId,
+                                        authToken: _authToken!,
+                                        getChewieController: _getChewieController,
+                                        showFullScreenMedia: widget.showFullScreenMedia,
+                                      )
+                                    : Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.shade50,
+                                          borderRadius: BorderRadius.circular(14),
+                                          border: Border.all(
+                                            color: Colors.red.shade200,
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.warning_amber,
+                                              color: Colors.red.shade600,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                'Cannot load media: Authentication token missing',
+                                                style: TextStyle(
+                                                  color: Colors.red.shade700,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 18),
+                        // Footer Section
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                          decoration: BoxDecoration(
+                            color: targetColor.withOpacity(0.07),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: targetColor.withOpacity(0.13),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.access_time,
+                                    size: 16,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  const SizedBox(width: 7),
+                                  Text(
+                                    _calculateRelativeTime(widget.notification.createdAt),
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.schedule,
+                                    size: 16,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  const SizedBox(width: 7),
+                                  Text(
+                                    widget.formatDateTime(widget.notification.createdAt) ?? 'Unknown',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            notification.title ?? 'Không có tiêu đề',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.blue, size: 28),
-                          onPressed: widget.onEdit, // Nếu không truyền gì thì sẽ bị disable
-                          tooltip: 'Chỉnh sửa thông báo',
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red, size: 28),
-                          onPressed: widget.onDelete,
-                          tooltip: 'Xoá thông báo',
                         ),
                       ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  notification.message ?? 'No content',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.black54,
-                      ),
-                  maxLines: _isExpanded ? null : 3,
-                  overflow: _isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
-                ),
-                if ((notification.message?.length ?? 0) > 100)
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _isExpanded = !_isExpanded;
-                      });
-                    },
-                    child: Text(
-                      _isExpanded ? 'Thu gọn' : 'Xem thêm',
-                      style: const TextStyle(
-                        color: Colors.blue,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
                   ),
-                if (notification.media != null && notification.media!.isNotEmpty && notificationId != null) ...[
-                  const SizedBox(height: 12),
-                  _authToken != null
-                      ? MediaPreview(
-                          mediaItems: notification.media!,
-                          baseUrl: widget.baseUrl,
-                          notificationId: notificationId,
-                          authToken: _authToken!,
-                          getChewieController: _getChewieController,
-                          showFullScreenMedia: widget.showFullScreenMedia,
-                        )
-                      : const Center(
-                          child: Text(
-                            'Cannot load media: Authentication token missing',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ),
-                ],
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Posted: ${_calculateRelativeTime(widget.notification.createdAt)}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey,
-                            fontStyle: FontStyle.italic,
-                          ),
-                    ),
-                    Text(
-                      widget.formatDateTime(widget.notification.createdAt) ?? 'Unknown',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey,
-                            fontStyle: FontStyle.italic,
-                          ),
-                    ),
-                  ],
                 ),
-              ],
-            ),
+              ),
+            ),  
           ),
-        );
+        );  
       },
     );
   }
 }
+
+// All boxShadow lists are correct and only contain BoxShadow objects.
+// No action needed, just forcing a refresh to clear stale errors.
+
+

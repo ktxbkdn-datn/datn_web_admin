@@ -16,6 +16,8 @@ class GetAllUsers {
     String? fullname,
     String? phone,
     String? className,
+    String? hometown,        // thêm
+    String? studentCode,     // thêm
   }) async {
     try {
       print('Calling GetAllUsers with page: $page, limit: $limit');
@@ -27,6 +29,8 @@ class GetAllUsers {
         fullname: fullname,
         phone: phone,
         className: className,
+        hometown: hometown,        // thêm
+        studentCode: studentCode,  // thêm
       );
       return result.fold(
         (failure) {
@@ -55,6 +59,8 @@ class CreateUser {
     required String email,
     required String fullname,
     String? phone,
+    String? hometown,        // thêm
+    String? studentCode,     // thêm
   }) async {
     try {
       print('Calling CreateUser with email: $email');
@@ -62,6 +68,8 @@ class CreateUser {
         email: email,
         fullname: fullname,
         phone: phone,
+        hometown: hometown,        // thêm
+        studentCode: studentCode,  // thêm
       );
       return result.fold(
         (failure) {
@@ -93,6 +101,8 @@ class UpdateUser {
     String? cccd,
     DateTime? dateOfBirth,
     String? className,
+    String? hometown,        // thêm
+    String? studentCode,     // thêm
   }) async {
     try {
       print('Calling UpdateUser for user ID: $userId');
@@ -104,6 +114,8 @@ class UpdateUser {
         cccd: cccd,
         dateOfBirth: dateOfBirth,
         className: className,
+        hometown: hometown,        // thêm
+        studentCode: studentCode,  // thêm
       );
       return result.fold(
         (failure) {

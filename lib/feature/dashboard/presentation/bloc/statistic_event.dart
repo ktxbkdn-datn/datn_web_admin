@@ -15,7 +15,7 @@ class FetchMonthlyConsumption extends StatisticsEvent {
   const FetchMonthlyConsumption({
     required this.year,
     this.month,
-    this.areaId,
+    this.areaId, required bool forceRefresh,
   });
 
   @override
@@ -57,14 +57,16 @@ class FetchRoomStatusStats extends StatisticsEvent {
 class FetchRoomStatusSummary extends StatisticsEvent {
   final int year;
   final int? areaId;
+  final bool forceRefresh;
 
   const FetchRoomStatusSummary({
     required this.year,
     this.areaId,
+    this.forceRefresh = false,
   });
 
   @override
-  List<Object?> get props => [year, areaId];
+  List<Object?> get props => [year, areaId, forceRefresh];
 }
 
 class FetchUserSummary extends StatisticsEvent {
@@ -172,15 +174,17 @@ class FetchReportStats extends StatisticsEvent {
   final int? year;
   final int? month;
   final int? areaId;
+  final bool forceRefresh;
 
   const FetchReportStats({
     this.year,
     this.month,
     this.areaId,
+    this.forceRefresh = false,
   });
 
   @override
-  List<Object?> get props => [year, month, areaId];
+  List<Object?> get props => [year, month, areaId, forceRefresh];
 }
 
 class FetchRoomFillRateStats extends StatisticsEvent {

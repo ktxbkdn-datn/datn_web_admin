@@ -14,6 +14,7 @@ import 'package:datn_web_admin/feature/room/presentations/bloc/area_bloc/area_ev
 import 'package:datn_web_admin/feature/room/presentations/bloc/area_bloc/area_state.dart';
 import 'package:datn_web_admin/feature/room/presentations/bloc/room_bloc/room_bloc.dart';
 import 'package:datn_web_admin/feature/bill/presentation/page/widget/monthly_bill/monthly_bill_detail_dialog.dart';
+import 'package:datn_web_admin/feature/bill/presentation/page/widget/bill_meter_details/notify_remind_bill_dialog.dart';
 import 'package:datn_web_admin/feature/service/data/models/service_model.dart';
 import 'package:datn_web_admin/feature/service/domain/entities/service_entity.dart';
 import 'package:datn_web_admin/feature/service/presentation/bloc/service_bloc.dart';
@@ -343,6 +344,21 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
     });
   }
 
+  void _showNotifyRemindPaymentDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => NotifyRemindBillDetailDialog(
+        title: 'Gửi thông báo nhắc thanh toán',
+        description: 'Chọn tháng cần nhắc nhở thanh toán:',
+        buttonText: 'Gửi thông báo nhắc thanh toán',
+        onSubmit: (billMonth) {
+          final bloc = BlocProvider.of<BillBloc>(context);
+          bloc.add(NotifyRemindPaymentEvent(billMonth: billMonth));
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -434,8 +450,7 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                         duration: const Duration(seconds: 3),
                       ),
                     );
-                    _fetchBills();
-                  } else if (state is MonthlyBillsCreated) {
+                    _fetchBills();                  } else if (state is MonthlyBillsCreated) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(state.message),
@@ -443,7 +458,17 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                         duration: const Duration(seconds: 3),
                       ),
                     );
+                    _fetchBills();                  } else if (state is NotificationSent) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Gửi thông báo thành công'),
+                        backgroundColor: AppColors.buttonSuccess,
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                    // Reload the page after successful notification
                     _fetchBills();
+                    _fetchBillDetails();
                   }
                 },
               ),
@@ -742,12 +767,25 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                  ),
-                                  icon: const Icon(Icons.refresh),
+                                  ),                                  icon: const Icon(Icons.refresh),
                                   label: const Text('Làm mới'),
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 10),
+                            // Row(
+                            //   mainAxisAlignment: MainAxisAlignment.start,
+                            //   children: [
+                            //     Tooltip(
+                            //       message: 'Gửi thông báo nhắc nhở thanh toán',
+                            //       child: IconButton(
+                            //         onPressed: _showNotifyRemindPaymentDialog,
+                            //         icon: const Icon(Icons.payment, size: 32),
+                            //         color: AppColors.buttonError,
+                            //       ),
+                            //     ),
+                            //   ],
+                            // ),
                           ],
                         ),
                       ),
@@ -758,10 +796,32 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                           child: BlocBuilder<BillBloc, BillState>(
                             builder: (context, state) {
                               bool isLoading = state is BillLoading;
-
-                              // Nếu chưa có service, hiển thị loading
-                              if (_services.isEmpty) {
-                                return const Center(child: CircularProgressIndicator());
+                              // Hiển thị loading khi đang tải dữ liệu hoặc chưa có dữ liệu thực tế
+                              if (isLoading || _services.isEmpty) {
+                                return Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const CircularProgressIndicator(
+                                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.buttonPrimaryColor),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'Đang tải dữ liệu...',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: AppColors.textSecondary.withOpacity(0.8),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                              // Nếu đã có dữ liệu nhưng không có hóa đơn nào
+                              if (_bills.isEmpty) {
+                                return const Center(
+                                  child: Text('Không có hóa đơn nào', style: TextStyle(color: AppColors.textSecondary)),
+                                );
                               }
 
                               int startIndex = (_currentPage - 1) * _limit;
@@ -772,9 +832,10 @@ class _BillListPageState extends State<BillListPage> with AutomaticKeepAliveClie
                                   : [];
 
                               return Column(
-                                children: [
-                                  if (isLoading && _isInitialLoad)
-                                    const Center(child: CircularProgressIndicator())
+                                children: [                                  if (isLoading)
+                                    const Center(
+                                      child: CircularProgressIndicator(color: AppColors.buttonPrimaryColor)
+                                    )
                                   else if (paginatedBills.isEmpty && !isLoading)
                                     const Center(child: Text('Không có hóa đơn nào'))
                                   else

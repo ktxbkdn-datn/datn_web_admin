@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import '../../../../src/core/error/failures.dart';
 import '../../domain/entities/room_entity.dart';
@@ -11,7 +12,7 @@ class RoomRepositoryImpl implements RoomRepository {
   RoomRepositoryImpl(this.roomDataSource);
 
   @override
-  Future<Either<Failure, List<RoomEntity>>> getAllRooms({
+  Future<Either<Failure, Map<String, dynamic>>> getAllRooms({
     required int page,
     required int limit,
     int? minCapacity,
@@ -21,9 +22,10 @@ class RoomRepositoryImpl implements RoomRepository {
     bool? available,
     String? search,
     int? areaId,
+    String? searchUser,
   }) async {
     try {
-      final rooms = await roomDataSource.getAllRooms(
+      final result = await roomDataSource.getAllRooms(
         page: page,
         limit: limit,
         minCapacity: minCapacity,
@@ -33,8 +35,10 @@ class RoomRepositoryImpl implements RoomRepository {
         available: available,
         search: search,
         areaId: areaId,
+        searchUser: searchUser,
       );
-      return Right(rooms.cast<RoomEntity>());
+      
+      return Right(result);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -113,4 +117,15 @@ class RoomRepositoryImpl implements RoomRepository {
       return Left(ServerFailure(e.toString()));
     }
   }
+
+  @override
+  Future<List<Map<String, dynamic>>> getUsersInRoom(int roomId) async {
+    return await roomDataSource.getUsersInRoom(roomId);
+  }
+
+  @override
+  Future<Uint8List> exportUsersInRoom(int roomId) async {
+    return await roomDataSource.exportUsersInRoom(roomId);
+  }
+
 }

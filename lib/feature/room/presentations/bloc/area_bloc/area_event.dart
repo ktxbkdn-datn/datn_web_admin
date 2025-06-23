@@ -32,3 +32,25 @@ class DeleteAreaEvent extends AreaEvent {
 
   DeleteAreaEvent(this.areaId);
 }
+
+class ExportUsersInAreaEvent extends AreaEvent {
+  final int areaId;
+  ExportUsersInAreaEvent(this.areaId);
+}
+
+class GetAreasWithStudentCountEvent extends AreaEvent {}
+
+class GetUsersInAreaEvent extends AreaEvent {
+  final int areaId;
+  GetUsersInAreaEvent(this.areaId);
+}
+
+class ExportUsersInRoomEvent extends AreaEvent {
+  final int roomId;
+  ExportUsersInRoomEvent(this.roomId);
+}
+
+// Thêm 2 event mới
+class GetAllUsersInAllAreasEvent extends AreaEvent {}
+
+class ExportAllUsersInAllAreasEvent extends AreaEvent {}

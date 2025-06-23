@@ -8,6 +8,8 @@ import 'package:datn_web_admin/feature/room/presentations/bloc/area_bloc/area_st
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:logger/logger.dart';
 
 class ReportStatsPage extends StatefulWidget {
   const ReportStatsPage({Key? key}) : super(key: key);
@@ -17,90 +19,54 @@ class ReportStatsPage extends StatefulWidget {
 }
 
 class _ReportStatsPageState extends State<ReportStatsPage> {
-  int _selectedYear = DateTime.now().year;
+  final ValueNotifier<DateTime> _selectedMonth = ValueNotifier(DateTime.now());
   int? _selectedAreaId;
   List<ReportStats> _reportStatsData = []; // Cache data
+  final Logger _logger = Logger();
 
   @override
   void initState() {
     super.initState();
+    initializeDateFormatting('vi', null);
     _fetchData();
     context.read<AreaBloc>().add(FetchAreasEvent(page: 1, limit: 100));
     context.read<StatisticsBloc>().add(LoadCachedReportStatsEvent());
   }
-
-  void _fetchData() {
-    context.read<StatisticsBloc>().add(FetchReportStats(
-      year: _selectedYear,
-      areaId: _selectedAreaId,
-    ));
-  }
-
+  
   @override
+  void dispose() {
+    _selectedMonth.dispose();
+    super.dispose();
+  }
+    void _fetchData({bool forceRefresh = false}) {
+    try {
+      final date = _selectedMonth.value;
+      _logger.i('ReportStatsPage: Fetching reports for year ${date.year}');
+      context.read<StatisticsBloc>().add(FetchReportStats(
+        year: date.year,
+        areaId: _selectedAreaId,
+        forceRefresh: forceRefresh,
+      ));
+    } catch (e) {
+      _logger.e('Error in _fetchData: $e');
+      // Use current date as fallback
+      final now = DateTime.now();
+      context.read<StatisticsBloc>().add(FetchReportStats(
+        year: now.year,
+        areaId: _selectedAreaId,
+        forceRefresh: forceRefresh,
+      ));
+    }
+  }@override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Tiêu đề
-          const Text(
-            'Thống kê báo cáo nhận được hằng tháng',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-          // Các button, dropdown
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  BlocBuilder<AreaBloc, AreaState>(
-                    builder: (context, areaState) {
-                      if (areaState.isLoading) {
-                        return const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2));
-                      } else if (areaState.error != null) {
-                        return const Text('Lỗi tải khu vực');
-                      }
-                      List<DropdownMenuItem<int?>> items = [
-                        const DropdownMenuItem(value: null, child: Text('Tất cả')),
-                        ...areaState.areas.map((area) => DropdownMenuItem(value: area.areaId, child: Text(area.name))),
-                      ];
-                      return DropdownButton<int?>(
-                        value: _selectedAreaId,
-                        items: items,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedAreaId = value;
-                            _reportStatsData = [];
-                          });
-                          _fetchData();
-                        },
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  DropdownButton<int>(
-                    value: _selectedYear,
-                    items: List.generate(6, (index) => 2020 + index)
-                        .map((year) => DropdownMenuItem(value: year, child: Text(year.toString())))
-                        .toList(),
-                    onChanged: (year) {
-                      if (year != null) {
-                        setState(() {
-                          _selectedYear = year;
-                          _reportStatsData = [];
-                        });
-                        _fetchData();
-                      }
-                    },
-                  ),
-                ],
-              ),
-              // Nếu có nút snapshot hoặc filter khác, thêm ở đây
-            ],
-          ),
+          _buildHeader(),
+          const SizedBox(height: 16),
+          _buildYearSelector(),
           const SizedBox(height: 16),
           Expanded(
             child: BlocBuilder<StatisticsBloc, StatisticsState>(
@@ -119,16 +85,25 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
                     // Hiển thị dữ liệu cũ khi loading
                   } else {
                     return const Center(child: CircularProgressIndicator());
-                  }
-                } else if (state is StatisticsError) {
+                  }                } else if (state is StatisticsError) {
                   return Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text('Lỗi: ${state.message}'),
-                        ElevatedButton(
-                          onPressed: _fetchData,
-                          child: const Text('Thử lại'),
+                        const SizedBox(height: 8),
+                        ElevatedButton.icon(                          onPressed: () {
+                            setState(() {
+                              _reportStatsData = [];
+                            });
+                            _fetchData(forceRefresh: true);
+                          },
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Thử lại'),
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: Colors.blue,
+                          ),
                         ),
                       ],
                     ),
@@ -137,9 +112,8 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text(state.message)),
-                    );
-                  });
-                  _fetchData();
+                    );                  });
+                  _fetchData(forceRefresh: true);
                   return const Center(child: CircularProgressIndicator());
                 }
 
@@ -168,24 +142,41 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
+                        children: [                          SizedBox(
                             width: chartWidth,
                             height: chartHeight,
-                            child: BarChart(
-                              BarChartData(
-                                alignment: BarChartAlignment.spaceAround,
-                                barTouchData: BarTouchData(
+                            child: LineChart(
+                              LineChartData(
+                                minX: 0,  // Tháng 1 (index 0)
+                                maxX: 11, // Tháng 12 (index 11)
+                                lineTouchData: LineTouchData(
                                   enabled: true,
-                                  touchTooltipData: BarTouchTooltipData(
-                                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                                      final reportType = reportTypes[rodIndex];
-                                      final month = groupIndex + 1;
-                                      final value = _getReportCount(filteredData, month, reportType);
-                                      return BarTooltipItem(
-                                        '$reportType\n$value báo cáo',
-                                        const TextStyle(color: Colors.white, fontSize: 12),
-                                      );
+                                  touchTooltipData: LineTouchTooltipData(                                    tooltipPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    tooltipMargin: 8,
+                                    maxContentWidth: 300, // Increased width further to prevent wrapping
+                                    fitInsideHorizontally: true,
+                                    fitInsideVertically: true,
+                                    getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                                      return touchedSpots.map((spot) {
+                                        final reportTypeIndex = spot.barIndex;
+                                        final reportType = reportTypes[reportTypeIndex];
+                                        final month = (spot.x + 1).toInt();
+                                        final value = spot.y.toInt();
+                                        return LineTooltipItem(
+                                          '$reportType - Tháng $month: $value báo cáo', // Single line format
+                                          TextStyle(
+                                            color: Colors.white, 
+                                            fontSize: 12, 
+                                            fontWeight: FontWeight.bold,
+                                            shadows: [
+                                              Shadow(
+                                                color: Colors.black26,
+                                                blurRadius: 2,
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList();
                                     },
                                   ),
                                 ),
@@ -194,13 +185,21 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
                                   bottomTitles: AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
+                                      reservedSize: 20,
+                                      interval: 1, // Ensure each month is evenly spaced
                                       getTitlesWidget: (value, meta) {
+                                        // Only show labels for months 1-12
                                         final month = value.toInt() + 1;
-                                        return Text('T$month', style: const TextStyle(fontSize: 12, color: Colors.grey));
+                                        if (month >= 1 && month <= 12) {
+                                          return Text('T$month', 
+                                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                            textAlign: TextAlign.center,
+                                          );
+                                        }
+                                        return const SizedBox.shrink();
                                       },
                                     ),
-                                  ),
-                                  leftTitles: AxisTitles(
+                                  ),                                  leftTitles: AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
                                       reservedSize: 40,
@@ -223,27 +222,55 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
                                   drawHorizontalLine: true,
                                   horizontalInterval: yInterval,
                                 ),
-                                barGroups: List.generate(12, (month) => _buildBarGroup(month, filteredData, reportTypes, colors)),
+                                lineBarsData: _createLineChartData(filteredData, reportTypes, colors),
                                 minY: 0,
                                 maxY: roundedMaxY,
                               ),
                             ),
                           ),
                           const SizedBox(height: 16),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 4,
-                            children: List.generate(reportTypes.length, (index) {
-                              final reportType = reportTypes[index];
-                              return Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(width: 10, height: 10, color: colors[index]),
-                                  const SizedBox(width: 4),
-                                  Text(reportType, style: const TextStyle(fontSize: 12)),
-                                ],
-                              );
-                            }),
+                          // Improved legend styling
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Wrap(
+                              spacing: 16,
+                              runSpacing: 8,
+                              children: List.generate(reportTypes.length, (index) {
+                                final reportType = reportTypes[index];
+                                return Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 12, 
+                                      height: 12, 
+                                      decoration: BoxDecoration(
+                                        color: colors[index],
+                                        borderRadius: BorderRadius.circular(3),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      reportType, 
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }),
+                            ),
                           ),
                         ],
                       );
@@ -257,7 +284,143 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
         ],
       ),
     );
+  }  // --- Header with title and refresh button ---  
+  Widget _buildHeader() {
+    // Safely get the current selected date, defaulting to now if null or disposed
+    DateTime selectedDate;
+    try {
+      // ValueNotifier<T> value can't be null, but we can safely handle any exceptions
+      selectedDate = _selectedMonth.value;
+    } catch (e) {
+      // Handle the case where ValueNotifier might be disposed or invalid
+      _logger.e('Error accessing _selectedMonth: $e');
+      selectedDate = DateTime.now();
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.timeline, color: Colors.blue.shade700, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    "Biểu đồ báo cáo theo thời gian",
+                    style: TextStyle(
+                      color: Color(0xFF1F2937),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+              IconButton(
+                icon: Icon(Icons.refresh, color: Colors.blue.shade700),
+                tooltip: 'Làm mới dữ liệu',
+                onPressed: () {
+                  _logger.i('ReportStatsPage: Refreshing reports');
+                  setState(() {
+                    _reportStatsData = [];
+                  });
+                  _fetchData(forceRefresh: true);
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),          Text(
+            "Năm ${selectedDate.year}",
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
+  // --- Area and year selector with modern styling ---
+  Widget _buildYearSelector() {
+    return ValueListenableBuilder<DateTime>(
+      valueListenable: _selectedMonth,
+      builder: (context, selectedDate, _) {
+        final currentYear = DateTime.now().year;
+        final years = List.generate(6, (index) => currentYear - 3 + index);
+        return Row(
+          children: [
+            // Area selector
+            Expanded(
+              child: BlocBuilder<AreaBloc, AreaState>(
+                builder: (context, areaState) {
+                  if (areaState.isLoading) {
+                    return const SizedBox(height: 48, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+                  } else if (areaState.error != null) {
+                    return const Text('Lỗi tải khu vực');
+                  }
+                  List<DropdownMenuItem<int?>> items = [
+                    const DropdownMenuItem(value: null, child: Text('Tất cả khu vực')),
+                    ...areaState.areas.map((area) => DropdownMenuItem(value: area.areaId, child: Text(area.name))),
+                  ];
+                  return DropdownButtonFormField<int?>(
+                    value: _selectedAreaId,
+                    items: items,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedAreaId = value;
+                        _reportStatsData = [];
+                      });
+                      _fetchData();
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'Khu vực',
+                      prefixIcon: const Icon(Icons.location_on_outlined),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Year selector
+            Expanded(
+              child: DropdownButtonFormField<int>(
+                value: selectedDate.year,
+                items: years.map((year) => DropdownMenuItem<int>(
+                  value: year,
+                  child: Text(year.toString()),
+                )).toList(),
+                onChanged: (year) {
+                  if (year != null) {
+                    final newDate = DateTime(year, 1); // Luôn đặt tháng là tháng 1 khi chỉ chọn năm
+                    _selectedMonth.value = newDate;
+                    setState(() {
+                      _reportStatsData = [];
+                    });
+                    _fetchData();
+                  }
+                },
+                decoration: InputDecoration(
+                  labelText: 'Năm',
+                  prefixIcon: const Icon(Icons.calendar_today_outlined),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );  }
 
   List<String> _getReportTypes(List<ReportStats> data) {
     final reportTypes = <String>{};
@@ -266,7 +429,6 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
     }
     return reportTypes.toList();
   }
-
   List<Color> _generateColors(int count) {
     const colors = [
       Colors.green,
@@ -280,21 +442,53 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
     return List.generate(count, (index) => colors[index % colors.length]);
   }
 
-  BarChartGroupData _buildBarGroup(int month, List<ReportStats> data, List<String> reportTypes, List<Color> colors) {
-    final monthKey = month + 1;
-    return BarChartGroupData(
-      x: month,
-      barRods: List.generate(reportTypes.length, (index) {
-        final reportType = reportTypes[index];
-        final value = _getReportCount(data, monthKey, reportType);
-        return BarChartRodData(
-          toY: value.toDouble(),
-          color: colors[index],
-          width: 12,
-          borderRadius: BorderRadius.circular(4),
-        );
-      }),
-    );
+  // Create line chart data for each report type
+  List<LineChartBarData> _createLineChartData(List<ReportStats> data, List<String> reportTypes, List<Color> colors) {
+    final result = <LineChartBarData>[];
+    
+    // Create a line for each report type
+    for (int typeIndex = 0; typeIndex < reportTypes.length; typeIndex++) {
+      final reportType = reportTypes[typeIndex];
+      final spots = <FlSpot>[];
+      
+      // Create data points for all 12 months
+      for (int month = 1; month <= 12; month++) {
+        final value = _getReportCount(data, month, reportType);
+        // Use month-1 for x-axis to match 0-11 range
+        spots.add(FlSpot((month - 1).toDouble(), value.toDouble()));
+      }
+      
+      // Create line data for this report type
+      result.add(
+        LineChartBarData(
+          spots: spots,
+          isCurved: true,
+          curveSmoothness: 0.3,
+          color: colors[typeIndex],
+          barWidth: 3,
+          isStrokeCapRound: true,
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (spot, percent, barData, index) {
+              // Only show dots for months with data
+              final hasValue = spot.y > 0;
+              return FlDotCirclePainter(
+                radius: hasValue ? 5 : 0,
+                color: colors[typeIndex],
+                strokeWidth: 2,
+                strokeColor: Colors.white,
+              );
+            },
+          ),
+          belowBarData: BarAreaData(
+            show: true,
+            color: colors[typeIndex].withOpacity(0.15),
+          ),
+        )
+      );
+    }
+    
+    return result;
   }
 
   double _getMaxY(List<ReportStats> data, List<String> reportTypes) {
@@ -321,12 +515,10 @@ class _ReportStatsPageState extends State<ReportStatsPage> {
     if (minIntervalPixels.isInfinite || minIntervalPixels.isNaN) return 1.0;
     final interval = (minIntervalPixels / 5).ceil() * 5.0;
     return interval.clamp(1.0, maxY / 2);
-  }
-
-  int _getReportCount(List<ReportStats> data, int month, String reportType) {
+  }  int _getReportCount(List<ReportStats> data, int month, String reportType) {
     int count = 0;
     for (var area in data) {
-      area.years[_selectedYear]?.months[month]?.forEach((type, value) {
+      area.years[_selectedMonth.value.year]?.months[month]?.forEach((type, value) {
         if (type == reportType) count += value;
       });
     }

@@ -1,12 +1,11 @@
+import 'package:datn_web_admin/feature/contract/domain/usecase/contract_usecase.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:typed_data';
+import 'package:dartz/dartz.dart';
+
 import '../../../../src/core/error/failures.dart';
 import '../../domain/entities/contract_entity.dart';
-import '../../domain/usecase/create_contract.dart';
-import '../../domain/usecase/delete_contract.dart';
-import '../../domain/usecase/get_all_contracts.dart';
-import '../../domain/usecase/get_contract_by_id.dart';
-import '../../domain/usecase/update_contract.dart';
-import '../../domain/usecase/update_contract_status.dart';
+
 import 'contract_event.dart';
 import 'contract_state.dart';
 
@@ -17,6 +16,7 @@ class ContractBloc extends Bloc<ContractEvent, ContractState> {
   final UpdateContract updateContract;
   final DeleteContract deleteContract;
   final UpdateContractStatus updateContractStatus;
+  final ExportContractPdf exportContractPdf;
   List<Contract> _contracts = []; // Lưu trữ hợp đồng trang hiện tại
   static const int _limit = 10; // Định nghĩa limit cố định, đồng bộ với ContractListPage
 
@@ -27,6 +27,7 @@ class ContractBloc extends Bloc<ContractEvent, ContractState> {
     required this.updateContract,
     required this.deleteContract,
     required this.updateContractStatus,
+    required this.exportContractPdf,
   }) : super(ContractInitial()) {
     on<FetchAllContractsEvent>(_onFetchAllContracts);
     on<FetchContractByIdEvent>(_onFetchContractById);
@@ -82,7 +83,7 @@ class ContractBloc extends Bloc<ContractEvent, ContractState> {
 
   Future<void> _onCreateContract(CreateContractEvent event, Emitter<ContractState> emit) async {
     emit(const ContractLoading());
-    final result = await createContract(event.contract, event.areaId);
+    final result = await createContract(event.contract, event.areaId, event.studentCode);
     result.fold(
       (failure) => emit(ContractError(failure: failure, errorMessage: failure.message)),
       (contract) {
@@ -133,5 +134,7 @@ class ContractBloc extends Bloc<ContractEvent, ContractState> {
         add(FetchAllContractsEvent(page: 1, limit: _limit)); // Sử dụng _limit đã định nghĩa
       },
     );
+  }  Future<Either<Failure, Uint8List>> exportPdf(int contractId) async {
+    return await this.exportContractPdf(contractId);
   }
 }

@@ -1,4 +1,5 @@
 import 'package:datn_web_admin/feature/user/domain/entities/user_entity.dart';
+import 'package:intl/intl.dart';
 import '../../../../src/core/error/failures.dart';
 import '../../../../src/core/network/api_client.dart';
 import '../model/user_model.dart';
@@ -16,6 +17,8 @@ class UserDataSource {
     String? fullname,
     String? phone,
     String? className,
+    String? hometown,        // thêm
+    String? studentCode,     // thêm
   }) async {
     try {
       final response = await apiService.get(
@@ -28,6 +31,8 @@ class UserDataSource {
           if (fullname != null) 'fullname': fullname,
           if (phone != null) 'phone': phone,
           if (className != null) 'class_name': className,
+          if (hometown != null) 'hometown': hometown,
+          if (studentCode != null) 'student_code': studentCode,
         },
       );
       if (response.containsKey('users')) {
@@ -66,6 +71,8 @@ class UserDataSource {
     required String email,
     required String fullname,
     String? phone,
+    String? hometown,
+    String? studentCode,
   }) async {
     try {
       final response = await apiService.post(
@@ -74,6 +81,8 @@ class UserDataSource {
           'email': email,
           'fullname': fullname,
           'phone': phone,
+          'hometown': hometown, // Đảm bảo truyền lên
+          'student_code': studentCode, // Đảm bảo truyền lên
         },
       );
       if (response.containsKey('user') && response['user'].containsKey('user_id')) {
@@ -95,7 +104,7 @@ class UserDataSource {
     String? phone,
     String? cccd,
     DateTime? dateOfBirth,
-    String? className,
+    String? className, String? hometown, String? studentCode,
   }) async {
     try {
       final response = await apiService.put(
@@ -105,7 +114,7 @@ class UserDataSource {
           if (email != null) 'email': email,
           if (phone != null) 'phone': phone,
           if (cccd != null) 'CCCD': cccd,
-          if (dateOfBirth != null) 'date_of_birth': dateOfBirth.toIso8601String(),
+          if (dateOfBirth != null) 'date_of_birth': DateFormat('dd-MM-yyyy').format(dateOfBirth),
           if (className != null) 'class_name': className,
         },
       );

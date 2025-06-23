@@ -2,6 +2,7 @@ import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_blo
 import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_event.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/bloc/statistic_state.dart';
 import 'package:datn_web_admin/feature/dashboard/presentation/widgets/fill_rate_pie_chart.dart';
+import 'package:datn_web_admin/feature/dashboard/domain/entities/user_monthly_stats.dart';
 import 'package:datn_web_admin/feature/room/presentations/bloc/area_bloc/area_bloc.dart';
 import 'package:datn_web_admin/feature/room/presentations/bloc/area_bloc/area_event.dart';
 import 'package:datn_web_admin/feature/room/presentations/bloc/area_bloc/area_state.dart';
@@ -28,19 +29,36 @@ class _UserStatsPageState extends State<UserStatsPage> {
     super.initState();
     _fetchData();
     context.read<AreaBloc>().add(FetchAreasEvent(page: 1, limit: 100));
-    context.read<StatisticsBloc>().add(LoadCachedUserMonthlyStatsEvent());
   }
 
   void _fetchData() {
     _logger.i('Fetching user summary and fill rate for year: $_selectedYear, areaId: $_selectedAreaId');
-    context.read<StatisticsBloc>().add(FetchUserSummary(
-      year: _selectedYear,
-      areaId: _selectedAreaId,
-    ));
-    context.read<StatisticsBloc>().add(FetchRoomFillRateStats(
-      areaId: _selectedAreaId,
-      roomId: null,
-    ));
+    // Add more detailed logging to debug data fetching
+    try {
+      context.read<StatisticsBloc>().add(FetchUserSummary(
+        year: _selectedYear,
+        areaId: _selectedAreaId,
+      ));
+      
+      _logger.i('Dispatching FetchUserMonthlyStats event');
+      context.read<StatisticsBloc>().add(FetchUserMonthlyStats(
+        year: _selectedYear,
+        month: null,  // Add month parameter explicitly as null
+        quarter: null, // Add quarter parameter explicitly
+        areaId: _selectedAreaId,
+        roomId: null, // Add roomId parameter explicitly
+      ));
+      
+      context.read<StatisticsBloc>().add(FetchRoomFillRateStats(
+        areaId: _selectedAreaId,
+        roomId: null,
+      ));
+      
+      // Thêm log để xác nhận các sự kiện đã được gửi đi
+      _logger.d('All fetch events dispatched successfully');
+    } catch (e) {
+      _logger.e('Error dispatching events: $e');
+    }
   }
 
   void _triggerSnapshot() {
@@ -53,14 +71,14 @@ class _UserStatsPageState extends State<UserStatsPage> {
 
   @override
   Widget build(BuildContext context) {
+    _logger.d('Building UserStatsPage with year=$_selectedYear, areaId=$_selectedAreaId');
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Tiêu đề
+        children: [          // Tiêu đề
           const Text(
-            'Thống kê sinh viên đang lưu trú theo tháng',
+            'Biểu đồ đường thống kê sinh viên đang lưu trú theo tháng',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
@@ -85,8 +103,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
                       ];
                       return DropdownButton<int?>(
                         value: _selectedAreaId,
-                        items: items,
-                        onChanged: (value) {
+                        items: items,                        onChanged: (value) {
                           setState(() {
                             _selectedAreaId = value;
                             _summaryData = [];
@@ -134,33 +151,31 @@ class _UserStatsPageState extends State<UserStatsPage> {
           BlocBuilder<StatisticsBloc, StatisticsState>(
             buildWhen: (previous, current) =>
                 current is StatisticsLoading ||
-                (current is PartialLoading && current.requestType == 'user_summary') ||
-                (current is StatisticsError && current.message.contains('user_summary')) ||
+                (current is PartialLoading && (current.requestType == 'user_summary' || current.requestType == 'user_monthly_stats')) ||
+                (current is StatisticsError && (current.message.contains('user_summary') || current.message.contains('user_monthly_stats'))) ||
                 current is UserSummaryLoaded ||
                 current is UserMonthlyStatsLoaded ||
                 current is ManualSnapshotTriggered,
             builder: (context, state) {
-              _logger.i('Bar chart state: $state');
-
+              _logger.i('Bar chart state: $state');              // Handle UserSummaryLoaded state
               if (state is UserSummaryLoaded) {
                 _summaryData = state.summaryData;
-              } else if (state is UserMonthlyStatsLoaded) {
-                _summaryData = state.userMonthlyStatsData.map((data) {
-                  return {
-                    'month': data.months,
-                    'total_users': data.totalUsers,
-                  };
-                }).toList();
+                _logger.d('Loaded summary data: ${_summaryData.length} entries');
+              } 
+              // Handle UserMonthlyStatsLoaded state
+              else if (state is UserMonthlyStatsLoaded) {
+                _summaryData = _transformUserMonthlyStats(state.userMonthlyStatsData);
+                _logger.d('Loaded monthly stats data: ${_summaryData.length} entries');
               }
 
-              if (state is StatisticsLoading || (state is PartialLoading && state.requestType == 'user_summary')) {
+              if (state is StatisticsLoading || (state is PartialLoading && (state.requestType == 'user_summary' || state.requestType == 'user_monthly_stats'))) {
                 if (_summaryData.isNotEmpty) {
                   _logger.i('Displaying cached data while loading');
                 } else {
                   return const Center(child: CircularProgressIndicator());
                 }
-              } else if (state is StatisticsError && state.message.contains('user_summary')) {
-                _logger.e('User summary error: ${state.message}');
+              } else if (state is StatisticsError && (state.message.contains('user_summary') || state.message.contains('user_monthly_stats'))) {
+                _logger.e('User summary/monthly stats error: ${state.message}');
                 return Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -181,9 +196,9 @@ class _UserStatsPageState extends State<UserStatsPage> {
                 });
                 _fetchData();
                 return const Center(child: CircularProgressIndicator());
-              }
-
+              }              // Make sure to log data for debugging
               if (_summaryData.isNotEmpty) {
+                _logger.d('Rendering chart with ${_summaryData.length} data points');
                 final maxY = _getMaxY(_summaryData);
                 final roundedMaxY = maxY == 0 ? 10.0 : _roundMaxYToEven(maxY);
 
@@ -200,32 +215,42 @@ class _UserStatsPageState extends State<UserStatsPage> {
                         final chartHeight = 300.0;
                         final yInterval = _calculateYInterval(roundedMaxY, chartHeight);
 
-                        _logger.d('Bar chart dimensions: width=$chartWidth, height=$chartHeight, maxY=$maxY, yInterval=$yInterval');
-
-                        return BarChart(
-                          BarChartData(
-                            alignment: BarChartAlignment.spaceAround,
-                            barTouchData: BarTouchData(
-                              enabled: true,
-                              touchTooltipData: BarTouchTooltipData(
-                                getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                                  final month = groupIndex + 1;
-                                  final value = _getUserCount(_summaryData, month);
-                                  return BarTooltipItem(
-                                    'Tháng $month\n$value người',
-                                    const TextStyle(color: Colors.white, fontSize: 12),
-                                  );
+                        _logger.d('Bar chart dimensions: width=$chartWidth, height=$chartHeight, maxY=$maxY, yInterval=$yInterval');                        // Tạo dữ liệu cho line chart
+                        final lineSpots = _createLineChartData(_summaryData);
+                          return LineChart(                          LineChartData(
+                            minX: 0,  // Tháng 1 (index 0)
+                            maxX: 11, // Tháng 12 (index 11)
+                            lineTouchData: LineTouchData(
+                              enabled: true,                              touchTooltipData: LineTouchTooltipData(
+                                getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                                  return touchedSpots.map((spot) {
+                                    // x đã là 0-11, nên phải +1 để chuyển thành tháng 1-12
+                                    final month = (spot.x + 1).toInt();
+                                    final value = spot.y.toInt();
+                                    return LineTooltipItem(
+                                      'Tháng $month: $value người',
+                                      const TextStyle(color: Colors.white, fontSize: 12),
+                                    );
+                                  }).toList();
                                 },
                               ),
                             ),
                             titlesData: FlTitlesData(
-                              show: true,
-                              bottomTitles: AxisTitles(
+                              show: true,                              bottomTitles: AxisTitles(
                                 sideTitles: SideTitles(
                                   showTitles: true,
+                                  reservedSize: 20,
+                                  interval: 1, // Đảm bảo mỗi tháng cách đều nhau
                                   getTitlesWidget: (value, meta) {
+                                    // Chỉ hiển thị nhãn cho các tháng từ 0-11 (tương ứng với tháng 1-12)
                                     final month = value.toInt() + 1;
-                                    return Text('T$month', style: const TextStyle(fontSize: 12, color: Colors.grey));
+                                    if (month >= 1 && month <= 12) {
+                                      return Text('T$month', 
+                                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                        textAlign: TextAlign.center,
+                                      );
+                                    }
+                                    return const SizedBox.shrink();
                                   },
                                 ),
                               ),
@@ -253,7 +278,38 @@ class _UserStatsPageState extends State<UserStatsPage> {
                               drawHorizontalLine: true,
                               horizontalInterval: yInterval,
                             ),
-                            barGroups: List.generate(12, (month) => _buildBarGroup(month, _summaryData)),
+                            lineBarsData: [
+                              LineChartBarData(                                spots: lineSpots,
+                                isCurved: true,
+                                curveSmoothness: 0.3,  // Làm mịn đường cong
+                                color: Colors.blue,
+                                barWidth: 3,
+                                isStrokeCapRound: true,
+                                dotData: FlDotData(
+                                  show: true,
+                                  getDotPainter: (spot, percent, barData, index) {
+                                    // Chỉ hiển thị điểm cho các tháng có dữ liệu thực
+                                    final hasValue = spot.y > 0;
+                                    return FlDotCirclePainter(
+                                      radius: hasValue ? 4 : 0,  // Ẩn điểm cho giá trị 0
+                                      color: Colors.blue,
+                                      strokeWidth: 1,
+                                      strokeColor: Colors.white,
+                                    );
+                                  },
+                                ),                                belowBarData: BarAreaData(
+                                  show: true,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.blue.withOpacity(0.3),
+                                      Colors.blue.withOpacity(0.05),
+                                    ],
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                  ),
+                                ),
+                              ),
+                            ],
                             minY: 0,
                             maxY: roundedMaxY,
                           ),
@@ -273,13 +329,12 @@ class _UserStatsPageState extends State<UserStatsPage> {
           const Wrap(
             spacing: 8,
             runSpacing: 4,
-            children: [
-              Row(
+            children: [              Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.person, color: Colors.blue, size: 16),
+                  Icon(Icons.show_chart, color: Colors.blue, size: 16),
                   SizedBox(width: 4),
-                  Text('Người dùng', style: TextStyle(fontSize: 12)),
+                  Text('Biểu đồ đường thể hiện số lượng người dùng', style: TextStyle(fontSize: 12)),
                 ],
               ),
             ],
@@ -298,24 +353,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
       ),
     );
   }
-
-  BarChartGroupData _buildBarGroup(int month, List<Map<String, dynamic>> data) {
-    final monthKey = month + 1;
-    final value = _getUserCount(data, monthKey);
-    _logger.d('Building bar group for month $monthKey: value = $value');
-    return BarChartGroupData(
-      x: month,
-      barRods: [
-        BarChartRodData(
-          toY: value.toDouble(),
-          color: Colors.blue,
-          width: 12,
-          borderRadius: BorderRadius.circular(4),
-        ),
-      ],
-    );
-  }
-
+  // Các phương thức hỗ trợ cho biểu đồ
   double _getMaxY(List<Map<String, dynamic>> data) {
     double maxY = 0;
     for (var monthData in data) {
@@ -329,7 +367,6 @@ class _UserStatsPageState extends State<UserStatsPage> {
   double _roundMaxYToEven(double maxY) {
     return ((maxY / 5).ceil() * 5).toDouble();
   }
-
   double _calculateYInterval(double maxY, double chartHeight) {
     if (maxY <= 0 || chartHeight <= 10) return 1.0;
     const pixelsPerLabel = 40.0;
@@ -339,16 +376,6 @@ class _UserStatsPageState extends State<UserStatsPage> {
     if (minIntervalPixels.isInfinite || minIntervalPixels.isNaN) return 1.0;
     final interval = (minIntervalPixels / 5).ceil() * 5.0;
     return interval.clamp(1.0, maxY / 2);
-  }
-
-  int _getUserCount(List<Map<String, dynamic>> data, int month) {
-    final monthData = data.firstWhere(
-      (d) => d['month'] == month,
-      orElse: () => {'month': month, 'total_users': 0},
-    );
-    final count = _safeToInt(monthData['total_users']);
-    _logger.d('User count for month $month: $count');
-    return count;
   }
 
   double _safeToDouble(dynamic value) {
@@ -367,5 +394,58 @@ class _UserStatsPageState extends State<UserStatsPage> {
       return parsed ?? 0;
     }
     return 0;
+  }
+  // Transform UserMonthlyStats to the format expected by the chart
+  List<Map<String, dynamic>> _transformUserMonthlyStats(List<UserMonthlyStats> stats) {
+    final result = <Map<String, dynamic>>[];
+    final monthTotals = <int, int>{};  // Map để tổng hợp dữ liệu theo tháng
+    
+    // Tính tổng số người dùng cho mỗi tháng từ tất cả các khu vực
+    for (var stat in stats) {
+      stat.months.forEach((month, count) {
+        monthTotals[month] = (monthTotals[month] ?? 0) + count;
+      });
+    }
+    
+    // Tạo danh sách kết quả với một bản ghi duy nhất cho mỗi tháng
+    monthTotals.forEach((month, count) {
+      result.add({
+        'month': month,
+        'total_users': count,
+        'area_id': stats.isNotEmpty ? stats.first.areaId : 0,
+        'area_name': stats.isNotEmpty ? stats.first.areaName : '',
+      });
+    });
+    
+    _logger.d('Transformed ${stats.length} UserMonthlyStats objects into ${result.length} unique monthly data points');
+    return result;
+  }  // Tạo danh sách các điểm dữ liệu cho line chart
+  List<FlSpot> _createLineChartData(List<Map<String, dynamic>> data) {
+    final spots = <FlSpot>[];
+    final monthData = <int, double>{};  // Map để đảm bảo mỗi tháng chỉ có một giá trị
+    
+    // Lấy giá trị cho mỗi tháng từ dữ liệu đầu vào
+    for (var entry in data) {
+      final month = _safeToInt(entry['month']);
+      final count = _safeToDouble(entry['total_users']);
+      if (month >= 1 && month <= 12) {
+        // Nếu tháng đã tồn tại, chỉ cập nhật nếu giá trị mới lớn hơn
+        if (!monthData.containsKey(month) || count > monthData[month]!) {
+          monthData[month] = count;
+        }
+      }
+    }
+    
+    _logger.d('Extracted data for ${monthData.length} unique months');
+    
+    // Tạo danh sách điểm cho tất cả 12 tháng, đảm bảo sắp xếp theo thứ tự tháng
+    for (int month = 1; month <= 12; month++) {
+      final userCount = monthData[month] ?? 0.0;
+      // Quan trọng: x = month - 1 để phù hợp với chỉ số 0-11 trên trục x
+      spots.add(FlSpot((month - 1).toDouble(), userCount));
+      _logger.d('Added spot for month $month with value $userCount at x=${month-1}');
+    }
+    
+    return spots;
   }
 }

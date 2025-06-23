@@ -83,6 +83,14 @@ class ContractStatusUpdated extends ContractState {
   List<Object?> get props => [successMessage];
 }
 
+class ContractPdfExported extends ContractState {
+  final String filePath; // hoặc url nếu backend trả về url
+  const ContractPdfExported(this.filePath);
+
+  @override
+  List<Object?> get props => [filePath];
+}
+
 class ContractError extends ContractState {
   final Failure failure;
   final String errorMessage;

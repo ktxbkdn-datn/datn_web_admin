@@ -134,4 +134,66 @@ class BillRepositoryImpl implements BillRepository {
       }
     }
   }
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> notifyRemindBillDetail({
+    required String billMonth,
+  }) async {
+    try {
+      final result = await remoteDataSource.notifyRemindBillDetail(
+        billMonth: billMonth,
+      );
+      return result;
+    } catch (e) {
+      if (e is ServerFailure) {
+        return Left(ServerFailure(e.message));
+      } else if (e is NetworkFailure) {
+        return Left(NetworkFailure(e.message));
+      } else {
+        return Left(ServerFailure('Không thể gửi thông báo nhắc nhở'));
+      }
+    }
+  }
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> notifyRemindPayment({
+    required String billMonth,
+  }) async {
+    try {
+      final result = await remoteDataSource.notifyRemindPayment(
+        billMonth: billMonth,
+      );
+      return result;
+    } catch (e) {
+      if (e is ServerFailure) {
+        return Left(ServerFailure(e.message));
+      } else if (e is NetworkFailure) {
+        return Left(NetworkFailure(e.message));
+      } else {
+        return Left(ServerFailure('Không thể gửi thông báo nhắc thanh toán'));
+      }
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> getRoomBillDetails({
+    required int roomId,
+    required int year,
+    required int serviceId,
+  }) async {
+    try {
+      final result = await remoteDataSource.getRoomBillDetails(
+        roomId: roomId,
+        year: year,
+        serviceId: serviceId,
+      );
+      return result;
+    } catch (e) {
+      if (e is ServerFailure) {
+        return Left(ServerFailure(e.message));
+      } else if (e is NetworkFailure) {
+        return Left(NetworkFailure(e.message));
+      } else {
+        return Left(ServerFailure('Không thể lấy chi tiết chỉ số phòng'));
+      }
+    }
+  }
 }

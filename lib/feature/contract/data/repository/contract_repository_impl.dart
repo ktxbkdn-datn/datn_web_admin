@@ -1,4 +1,5 @@
 import 'package:dartz/dartz.dart';
+import 'dart:typed_data';
 import '../../../../src/core/error/failures.dart';
 import '../../domain/entities/contract_entity.dart';
 import '../../domain/repository/contract_repository.dart';
@@ -50,7 +51,7 @@ class ContractRepositoryImpl implements ContractRepository {
   }
 
   @override
-  Future<Either<Failure, Contract>> createContract(Contract contract, int areaId) async {
+  Future<Either<Failure, Contract>> createContract(Contract contract, int areaId, String studentCode) async {
     try {
       final contractModel = ContractModel(
         contractId: 0,
@@ -62,9 +63,9 @@ class ContractRepositoryImpl implements ContractRepository {
         startDate: contract.startDate,
         endDate: contract.endDate,
         roomName: contract.roomName,
-        userEmail: contract.userEmail,
+        studentCode: studentCode, 
       );
-      final result = await remoteDataSource.createContract(contractModel, areaId);
+      final result = await remoteDataSource.createContract(contractModel, areaId, studentCode);
       return Right(result.toEntity());
     } catch (e) {
       return Left(ServerFailure('Lỗi không xác định: $e'));
@@ -84,7 +85,7 @@ class ContractRepositoryImpl implements ContractRepository {
         startDate: contract.startDate,
         endDate: contract.endDate,
         roomName: contract.roomName,
-        userEmail: contract.userEmail,
+        studentCode: contract.studentCode, 
       );
       final result = await remoteDataSource.updateContract(contractId, contractModel, areaId);
       return Right(result.toEntity());
@@ -108,6 +109,15 @@ class ContractRepositoryImpl implements ContractRepository {
     try {
       await remoteDataSource.updateContractStatus();
       return Right(null);
+    } catch (e) {
+      return Left(ServerFailure('Lỗi không xác định: $e'));
+    }
+  }
+  @override
+  Future<Either<Failure, Uint8List>> exportContractPdf(int contractId) async {
+    try {
+      final result = await remoteDataSource.exportContractPdf(contractId);
+      return result; // Đã là Either<Failure, Uint8List> nên trả về trực tiếp
     } catch (e) {
       return Left(ServerFailure('Lỗi không xác định: $e'));
     }

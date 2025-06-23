@@ -1,7 +1,9 @@
+import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
+import 'package:http/http.dart' as http;
+
 import '../../../../src/core/error/failures.dart';
 import '../../../../src/core/network/api_client.dart';
-import '../../domain/entities/contract_entity.dart';
 import '../models/contract_model.dart';
 
 abstract class ContractRemoteDataSource {
@@ -17,10 +19,11 @@ abstract class ContractRemoteDataSource {
   });
 
   Future<ContractModel> getContractById(int contractId);
-  Future<ContractModel> createContract(ContractModel contract, int areaId);
+  Future<ContractModel> createContract(ContractModel contract, int areaId, String studentCode);
   Future<ContractModel> updateContract(int contractId, ContractModel contract, int areaId);
   Future<void> deleteContract(int contractId);
   Future<void> updateContractStatus();
+  Future<Either<Failure, Uint8List>> exportContractPdf(int contractId);
 }
 
 class ContractRemoteDataSourceImpl implements ContractRemoteDataSource {
@@ -87,9 +90,11 @@ class ContractRemoteDataSourceImpl implements ContractRemoteDataSource {
   }
 
   @override
-  Future<ContractModel> createContract(ContractModel contract, int areaId) async {
+  Future<ContractModel> createContract(ContractModel contract, int areaId, String studentCode) async {
     try {
-      final jsonData = contract.toJson()..['area_id'] = areaId;
+      final jsonData = contract.toJson()
+        ..['area_id'] = areaId
+        ..['student_code'] = studentCode;
       final response = await apiService.post('/admin/contracts', jsonData);
       return ContractModel.fromJson(response);
     } catch (e) {
@@ -143,6 +148,23 @@ class ContractRemoteDataSourceImpl implements ContractRemoteDataSource {
         throw NetworkFailure(e.message);
       }
       throw ServerFailure('Không thể cập nhật trạng thái hợp đồng: $e');
+    }
+  }
+
+  @override
+  Future<Either<Failure, Uint8List>> exportContractPdf(int contractId) async {
+    try {
+      // Sử dụng API Service có sẵn để gọi API
+      // Không parse response (vì đây là binary), lấy body bytes trực tiếp
+      final response = await apiService.getRaw('/admin/contracts/$contractId/export');
+      return Right(response);
+    } catch (e) {
+      if (e is ServerFailure) {
+        return Left(ServerFailure(e.message));
+      } else if (e is NetworkFailure) {
+        return Left(NetworkFailure(e.message));
+      }
+      return Left(ServerFailure('Không thể export hợp đồng: $e'));
     }
   }
 }

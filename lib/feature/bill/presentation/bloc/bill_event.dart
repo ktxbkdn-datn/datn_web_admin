@@ -99,6 +99,43 @@ class DeleteMonthlyBillEvent extends BillEvent {
   List<Object?> get props => [billId];
 }
 
+class NotifyRemindBillDetailEvent extends BillEvent {
+  final String billMonth;
+
+  const NotifyRemindBillDetailEvent({
+    required this.billMonth,
+  });
+
+  @override
+  List<Object?> get props => [billMonth];
+}
+
+class NotifyRemindPaymentEvent extends BillEvent {
+  final String billMonth;
+
+  const NotifyRemindPaymentEvent({
+    required this.billMonth,
+  });
+
+  @override
+  List<Object?> get props => [billMonth];
+}
+
+class GetRoomBillDetailsEvent extends BillEvent {
+  final int roomId;
+  final int year;
+  final int serviceId;
+
+  const GetRoomBillDetailsEvent({
+    required this.roomId,
+    required this.year,
+    required this.serviceId,
+  });
+
+  @override
+  List<Object?> get props => [roomId, year, serviceId];
+}
+
 class BillDetailModel {
   // ...existing fields...
   final bool? submitted;

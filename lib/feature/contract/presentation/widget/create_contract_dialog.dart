@@ -18,11 +18,10 @@ class CreateContractDialog extends StatefulWidget {
 class _CreateContractDialogState extends State<CreateContractDialog> {
   final _formKey = GlobalKey<FormState>();
   final _roomNameController = TextEditingController();
-  final _userEmailController = TextEditingController();
+  final _studentCodeController = TextEditingController();
   final _startDateController = TextEditingController();
   final _endDateController = TextEditingController();
   DateTime? _selectedStartDate;
-  DateTime? _selectedEndDate;
   int? _areaId;
   String? _contractType;
   bool _isProcessing = false;
@@ -33,7 +32,7 @@ class _CreateContractDialogState extends State<CreateContractDialog> {
   @override
   void dispose() {
     _roomNameController.dispose();
-    _userEmailController.dispose();
+    _studentCodeController.dispose();
     _startDateController.dispose();
     _endDateController.dispose();
     super.dispose();
@@ -71,7 +70,6 @@ class _CreateContractDialogState extends State<CreateContractDialog> {
     );
     if (pickedDate != null) {
       setState(() {
-        _selectedEndDate = pickedDate;
         _endDateController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
       });
     }
@@ -95,9 +93,10 @@ class _CreateContractDialogState extends State<CreateContractDialog> {
             startDate: _startDateController.text,
             endDate: _endDateController.text,
             roomName: _roomNameController.text,
-            userEmail: _userEmailController.text,
+            studentCode: _studentCodeController.text,
           ),
           areaId: _areaId!,
+          studentCode: _studentCodeController.text,
         ));
       } catch (e) {
         print('Error creating contract: $e');
@@ -195,7 +194,6 @@ class _CreateContractDialogState extends State<CreateContractDialog> {
                           child: ContractFormWidget(
                             formKey: _formKey,
                             roomNameController: _roomNameController,
-                            userEmailController: _userEmailController,
                             startDateController: _startDateController,
                             endDateController: _endDateController,
                             areaId: _areaId,
@@ -213,6 +211,8 @@ class _CreateContractDialogState extends State<CreateContractDialog> {
                             onStartDateTap: () => _selectStartDate(context),
                             onEndDateTap: () => _selectEndDate(context),
                             showContractTypeField: true,
+                            studentCodeController: _studentCodeController,
+                           
                           ),
                         ),
                       ),
