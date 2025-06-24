@@ -1,3 +1,4 @@
+import 'package:datn_web_admin/feature/room/presentations/widget/area/student_list_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,6 +16,7 @@ import '../../bloc/area_bloc/area_event.dart';
 import '../../bloc/area_bloc/area_state.dart';
 import '../area/create_area_dialog.dart';
 import '../area/edit_area_dialog.dart';
+
 
 
 class AreaListTab extends StatefulWidget {
@@ -133,28 +135,35 @@ class _AreaListTabState extends State<AreaListTab> with AutomaticKeepAliveClient
                       _areas = state.areas;
                       _isInitialLoad = false;
                     });
-                    _saveLocalData();
-                  } else if (state.exportFile != null && state.successMessage != null) {
-                    try {
-                      FileSaver.instance.saveFile(
-                        name: 'danh_sach_sinh_vien.xlsx',
-                        bytes: state.exportFile!,
-                        ext: 'xlsx',
-                        mimeType: MimeType.microsoftExcel,
-                      );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Đã tải xuống file Excel thành công!'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Lỗi khi tải file: $e'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
+                    _saveLocalData();                  } else if (state.exportFile != null && state.successMessage != null) {
+                    // Chỉ tải file nếu không có dialog StudentListDialog đang mở
+                    if (ModalRoute.of(context)?.isCurrent ?? true) {
+                      // Kiểm tra xem có dialog đang mở không - nếu không có thì mới tải
+                      final isDialogOpen = Navigator.of(context).canPop() && 
+                                        !ModalRoute.of(context)!.isCurrent;
+                      if (!isDialogOpen) {
+                        try {
+                          FileSaver.instance.saveFile(
+                            name: 'danh_sach_sinh_vien.xlsx',
+                            bytes: state.exportFile!,
+                            ext: 'xlsx',
+                            mimeType: MimeType.microsoftExcel,
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Đã tải xuống file Excel thành công!'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Lỗi khi tải file: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
                     }
                   }
                 },
@@ -229,38 +238,25 @@ class _AreaListTabState extends State<AreaListTab> with AutomaticKeepAliveClient
                                         label: const Text('Làm mới'),
                                       ),
                                       const SizedBox(width: 10),
-                                      ElevatedButton.icon(
-                                        onPressed: () {
-                                          setState(() {
-                                            _showingStudentList = !_showingStudentList;
-                                          });
-                                          if (_showingStudentList) {
-                                            context.read<AreaBloc>().add(GetAllUsersInAllAreasEvent());
-                                          }
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.orange,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                        ),
-                                        icon: Icon(_showingStudentList ? Icons.visibility_off : Icons.people),
-                                        label: Text(_showingStudentList ? 'Ẩn danh sách' : 'Xem sinh viên'),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      ElevatedButton.icon(
-                                        onPressed: () {
-                                          context.read<AreaBloc>().add(ExportAllUsersInAllAreasEvent());
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.purple,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                        ),
-                                        icon: const Icon(Icons.download),
-                                        label: const Text('Tải Excel'),
-                                      ),
+                                      // ElevatedButton.icon(
+                                      //   onPressed: () {
+                                      //     setState(() {
+                                      //       _showingStudentList = !_showingStudentList;
+                                      //     });
+                                      //     if (_showingStudentList) {
+                                      //       context.read<AreaBloc>().add(GetAllUsersInAllAreasEvent());
+                                      //     }
+                                      //   },
+                                      //   style: ElevatedButton.styleFrom(
+                                      //     backgroundColor: Colors.orange,
+                                      //     shape: RoundedRectangleBorder(
+                                      //       borderRadius: BorderRadius.circular(8),
+                                      //     ),
+                                      //   ),
+                                      //   icon: Icon(_showingStudentList ? Icons.visibility_off : Icons.people),
+                                      //   label: Text(_showingStudentList ? 'Ẩn danh sách' : 'Xem sinh viên'),
+                                      // ),
+                                     
                                       const SizedBox(width: 10),
                                       ElevatedButton.icon(
                                         onPressed: () {
@@ -352,6 +348,70 @@ class _AreaListTabState extends State<AreaListTab> with AutomaticKeepAliveClient
                                                 icon: const Icon(Icons.delete, color: Colors.black),
                                                 onPressed: () {
                                                   context.read<AreaBloc>().add(DeleteAreaEvent(area.areaId));
+                                                },
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Icons.people, color: Colors.blue),
+                                                tooltip: 'Xem sinh viên',
+                                                onPressed: () {
+                                                  showDialog(
+                                                    context: context,
+                                                    builder: (context) => StudentListDialog(area: area),
+                                                  );
+                                                },
+                                              ),                                              IconButton(
+                                                icon: const Icon(Icons.download, color: Colors.green),
+                                                tooltip: 'Tải Excel',
+                                                onPressed: () {
+                                                  // Tạo dialog tạm thời để hiển thị trạng thái xuất file
+                                                  showDialog(
+                                                    context: context,
+                                                    barrierDismissible: false,
+                                                    builder: (context) => AlertDialog(
+                                                      title: const Text('Đang tải xuống'),
+                                                      content: Row(
+                                                        children: const [
+                                                          CircularProgressIndicator(),
+                                                          SizedBox(width: 16),
+                                                          Text('Đang chuẩn bị file Excel...'),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  );
+                                                  
+                                                  // Gọi API xuất file
+                                                  context.read<AreaBloc>().add(ExportUsersInAreaEvent(area.areaId));
+                                                  
+                                                  // Lắng nghe kết quả trả về
+                                                  Future.delayed(const Duration(seconds: 1), () {
+                                                    Navigator.of(context).pop(); // Đóng dialog
+                                                    
+                                                    final state = context.read<AreaBloc>().state;
+                                                    if (state.exportFile != null) {
+                                                      try {
+                                                        FileSaver.instance.saveFile(
+                                                          name: 'danh_sach_sv_${area.name}.xlsx',
+                                                          bytes: state.exportFile!,
+                                                          ext: 'xlsx',
+                                                          mimeType: MimeType.microsoftExcel,
+                                                        );
+                                                        
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          const SnackBar(
+                                                            content: Text('Đã tải xuống file Excel thành công!'),
+                                                            backgroundColor: Colors.green,
+                                                          ),
+                                                        );
+                                                      } catch (e) {
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          SnackBar(
+                                                            content: Text('Lỗi khi tải file: $e'),
+                                                            backgroundColor: Colors.red,
+                                                          ),
+                                                        );
+                                                      }
+                                                    }
+                                                  });
                                                 },
                                               ),
                                             ],

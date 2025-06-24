@@ -19,6 +19,7 @@ class ContractModel extends Equatable {
   final String? fullname;
   final String? phone;
   final String? areaName;
+  final String? userEmail;
 
   ContractModel({
     required this.contractId,
@@ -37,6 +38,7 @@ class ContractModel extends Equatable {
     this.fullname,
     this.phone,
     this.areaName,
+    this.userEmail,
   });
 
   factory ContractModel.fromJson(Map<String, dynamic> json) {
@@ -57,6 +59,7 @@ class ContractModel extends Equatable {
       fullname: json['user_details']['fullname'] as String?,
       phone: json['user_details']['phone'] as String?,
       areaName: json['room_details']['area_details']['name'] as String?,
+      userEmail: json['user_details']?['email'] as String?,
     );
   }
 
@@ -88,6 +91,7 @@ class ContractModel extends Equatable {
       fullname: fullname,
       phone: phone,
       areaName: areaName,
+      userEmail: userEmail,
     );
   }
 
@@ -109,5 +113,6 @@ class ContractModel extends Equatable {
     fullname,
     phone,
     areaName,
+    userEmail,
   ];
 }

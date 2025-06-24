@@ -18,7 +18,10 @@ class StudentListDialog extends StatefulWidget {
   _StudentListDialogState createState() => _StudentListDialogState();
 }
 
-class _StudentListDialogState extends State<StudentListDialog> {
+class _StudentListDialogState extends State<StudentListDialog> {  
+  // Biến này đánh dấu khi nào nút "Tải Excel" được nhấn
+  bool _isExportRequested = false;
+
   @override
   void initState() {
     super.initState();
@@ -57,9 +60,11 @@ class _StudentListDialogState extends State<StudentListDialog> {
                   ),
                 ),
                 Row(
-                  children: [
-                    ElevatedButton.icon(
+                  children: [                    ElevatedButton.icon(
                       onPressed: () {
+                        setState(() {
+                          _isExportRequested = true;
+                        });
                         if (widget.area != null) {
                           context.read<AreaBloc>().add(ExportUsersInAreaEvent(widget.area!.areaId));
                         } else {
@@ -82,11 +87,11 @@ class _StudentListDialogState extends State<StudentListDialog> {
               ],
             ),
             const Divider(thickness: 1),
-            const SizedBox(height: 16),
-            Expanded(
+            const SizedBox(height: 16),            Expanded(
               child: BlocListener<AreaBloc, AreaState>(
                 listener: (context, state) {
-                  if (state.exportFile != null) {
+                  // Chỉ tải file nếu đã có yêu cầu xuất file từ nút "Tải Excel" trong dialog
+                  if (state.exportFile != null && _isExportRequested) {
                     try {
                       final filename = widget.area != null
                           ? 'danh_sach_sv_${widget.area!.name}.xlsx'
@@ -98,6 +103,11 @@ class _StudentListDialogState extends State<StudentListDialog> {
                         ext: 'xlsx',
                         mimeType: MimeType.microsoftExcel,
                       );
+                      
+                      // Reset lại cờ đánh dấu đã xử lý yêu cầu xuất file
+                      setState(() {
+                        _isExportRequested = false;
+                      });
                       
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(

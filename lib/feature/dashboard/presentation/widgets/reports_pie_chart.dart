@@ -408,8 +408,7 @@ class _ReportPieChartState extends State<ReportPieChart> {
       builder: (context, constraints) {
         // Responsive layout
         final bool isWideLayout = constraints.maxWidth > 750;
-        
-        if (isWideLayout) {
+          if (isWideLayout) {
           // Side-by-side layout for wide screens
           return Container(
             decoration: BoxDecoration(
@@ -427,9 +426,9 @@ class _ReportPieChartState extends State<ReportPieChart> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Chart Area - 2/3 width
+                // Chart Area - 3/5 width
                 Expanded(
-                  flex: 2,
+                  flex: 3,
                   child: _buildPieChartArea(sections, totalCount),
                 ),
                 
@@ -440,9 +439,9 @@ class _ReportPieChartState extends State<ReportPieChart> {
                   color: Colors.grey.shade200,
                 ),
                 
-                // Legend Area - 1/3 width
+                // Legend Area - 2/5 width
                 Expanded(
-                  flex: 1,
+                  flex: 2,
                   child: _buildLegendArea(reportCounts, reportTypes, colors, totalCount),
                 ),
               ],
@@ -494,68 +493,72 @@ class _ReportPieChartState extends State<ReportPieChart> {
       },
     );
   }
-
   Widget _buildPieChartArea(List<PieChartSectionData> sections, int totalCount) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                "Biểu đồ phân bố",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1F2937),
-                ),
-              ),
-              Row(
-                children: [
-                  Icon(Icons.trending_up, size: 16, color: Colors.grey.shade600),
-                  const SizedBox(width: 6),
-                  Text(
-                    "Tổng: $totalCount báo cáo",
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade600,
-                    ),
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min, // Không chiếm quá nhiều không gian
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Biểu đồ phân bố",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1F2937),
                   ),
-                ],
-              ),
-            ],
+                ),
+                Row(
+                  children: [
+                    Icon(Icons.trending_up, size: 16, color: Colors.grey.shade600),
+                    const SizedBox(width: 6),
+                    Text(
+                      "Tổng: $totalCount báo cáo",
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
-        SizedBox(
-          height: 300,
-          width: double.infinity,
-          child: PieChart(
-            PieChartData(
-              sections: sections,
-              centerSpaceRadius: widget.pieRadius / 5,
-              sectionsSpace: 2,
-              pieTouchData: PieTouchData(
-                enabled: true,
-                touchCallback: (flTouchEvent, pieTouchResponse) {
-                  // Touch handling logic here if needed
-                },
+          SizedBox(
+            height: 380, // Giảm chiều cao để không bị tràn
+            width: double.infinity,
+            child: Center(
+              child: PieChart(
+                PieChartData(
+                  sections: sections,
+                  centerSpaceRadius: (widget.pieRadius - 40) / 5,
+                  sectionsSpace: 2,
+                  pieTouchData: PieTouchData(
+                    enabled: true,
+                    touchCallback: (flTouchEvent, pieTouchResponse) {
+                      // Touch handling logic here if needed
+                    },
+                  ),
+                ),
+                swapAnimationDuration: const Duration(milliseconds: 250),
+                swapAnimationCurve: Curves.easeInOutQuad,
               ),
             ),
-            swapAnimationDuration: const Duration(milliseconds: 250),
-            swapAnimationCurve: Curves.easeInOutQuad,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
-
   Widget _buildLegendArea(Map<int, int> reportCounts, List<ReportTypeEntity> reportTypes, List<Color> colors, int totalCount) {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
             "Chi tiết báo cáo",
@@ -564,7 +567,7 @@ class _ReportPieChartState extends State<ReportPieChart> {
               fontWeight: FontWeight.w600,
               color: Color(0xFF1F2937),
             ),
-          ),          const SizedBox(height: 16),
+          ),const SizedBox(height: 16),
           // Legend items
           ...reportCounts.entries.map((entry) {
             final reportType = reportTypes.firstWhere(
